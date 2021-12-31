@@ -110,10 +110,11 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->gyroMovementCalibrationThreshold = 48;
     gyroConfig->gyro_hardware_lpf = GYRO_HARDWARE_LPF_NORMAL;
     gyroConfig->gyro_lpf1_type = FILTER_PT1;
-    gyroConfig->gyro_lpf1_static_hz = 250;  // NOTE: dynamic lpf is enabled by default so this setting is actually
-                                        // overridden and the static lowpass 1 is disabled. We can't set this
-                                        // value to 0 otherwise Configurator versions 10.4 and earlier will also
-                                        // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
+    gyroConfig->gyro_lpf1_static_hz = GYRO_LPF1_DYN_MIN_HZ_DEFAULT;  
+        // NOTE: dynamic lpf is enabled by default so this setting is actually
+        // overridden and the static lowpass 1 is disabled. We can't set this
+        // value to 0 otherwise Configurator versions 10.4 and earlier will also
+        // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
     gyroConfig->gyro_lpf2_type = FILTER_PT1;
     gyroConfig->gyro_lpf2_static_hz = GYRO_LPF2_HZ_DEFAULT;
     gyroConfig->gyro_high_fsr = false;
@@ -472,7 +473,7 @@ FAST_CODE void gyroFiltering(timeUs_t currentTimeUs)
     }
 
 #ifdef USE_DYN_NOTCH_FILTER
-    if (isDynamicFilterActive()) {
+    if (isDynNotchActive()) {
         dynNotchUpdate();
     }
 #endif
@@ -618,13 +619,13 @@ float dynThrottle(float throttle) {
 void dynLpfGyroUpdate(float throttle)
 {
     if (gyro.dynLpfFilter != DYN_LPF_NONE) {
-        unsigned int cutoffFreq;
+        float cutoffFreq;
         if (gyro.dynLpfCurveExpo > 0) {
             cutoffFreq = dynLpfCutoffFreq(throttle, gyro.dynLpfMin, gyro.dynLpfMax, gyro.dynLpfCurveExpo);
         } else {
-            cutoffFreq = fmax(dynThrottle(throttle) * gyro.dynLpfMax, gyro.dynLpfMin);
+            cutoffFreq = fmaxf(dynThrottle(throttle) * gyro.dynLpfMax, gyro.dynLpfMin);
         }
-        DEBUG_SET(DEBUG_DYN_LPF, 2, cutoffFreq);
+        DEBUG_SET(DEBUG_DYN_LPF, 2, lrintf(cutoffFreq));
         const float gyroDt = gyro.targetLooptime * 1e-6f;
         switch (gyro.dynLpfFilter) {
         case DYN_LPF_PT1:

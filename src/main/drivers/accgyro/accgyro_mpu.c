@@ -115,7 +115,7 @@ static void mpu6050FindRevision(gyroDev_t *gyro)
 // Gyro read has just completed
 busStatus_e mpuIntcallback(uint32_t arg)
 {
-    volatile gyroDev_t *gyro = (gyroDev_t *)arg;
+    gyroDev_t *gyro = (gyroDev_t *)arg;
     int32_t gyroDmaDuration = cmpTimeCycles(getCycleCounter(), gyro->gyroLastEXTI);
 
     if (gyroDmaDuration > gyro->gyroDmaMaxDuration) {
@@ -272,7 +272,6 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
 
         // We need some offset from the gyro interrupts to ensure sampling after the interrupt
         gyro->gyroDmaMaxDuration = 5;
-        // Using DMA for gyro access upsets the scheduler on the F4
         if (gyro->detectedEXTI > GYRO_EXTI_DETECT_THRESHOLD) {
             if (spiUseDMA(&gyro->dev)) {
                 // Indicate that the bus on which this device resides may initiate DMA transfers from interrupt context

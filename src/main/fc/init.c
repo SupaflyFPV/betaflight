@@ -401,16 +401,6 @@ void init(void)
     dbgPinInit();
 #endif
 
-#ifdef USE_SDCARD
-    // Ensure the SD card is initialised before the USB MSC starts to avoid a race condition
-#if !defined(CONFIG_IN_SDCARD) && defined(STM32H7) && defined(USE_SDCARD_SDIO) // H7 only for now, likely should be applied to F4/F7 too
-    sdioPinConfigure();
-    SDIO_GPIO_Init();
-    initFlags |= SD_INIT_ATTEMPTED;
-    sdCardAndFSInit();
-#endif
-#endif
-
 #ifdef USE_BRUSHED_ESC_AUTODETECT
     // Now detect again with the actually configured pin for motor 1, if it is not the default pin.
     ioTag_t configuredMotorIoTag = motorConfig()->dev.ioTags[0];
@@ -597,12 +587,28 @@ void init(void)
         initFlags |= SPI_AND_QSPI_INIT_ATTEMPTED;
     }
 
+#if defined(USE_SDCARD_SDIO) && !defined(CONFIG_IN_SDCARD) && defined(STM32H7)
+    sdioPinConfigure();
+    SDIO_GPIO_Init();
+#endif
+
 #ifdef USE_USB_MSC
 /* MSC mode will start after init, but will not allow scheduler to run,
  *  so there is no bottleneck in reading and writing data */
     mscInit();
     if (mscCheckBootAndReset() || mscCheckButton()) {
         ledInit(statusLedConfig());
+
+#ifdef USE_SDCARD
+        if (blackboxConfig()->device == BLACKBOX_DEVICE_SDCARD) {
+            if (sdcardConfig()->mode) {
+                if (!(initFlags & SD_INIT_ATTEMPTED)) {
+                    sdCardAndFSInit();
+                    initFlags |= SD_INIT_ATTEMPTED;
+                }
+            }
+        }
+#endif
 
 #if defined(USE_FLASHFS)
         // If the blackbox device is onboard flash, then initialize and scan
@@ -766,12 +772,6 @@ void init(void)
     }
 #endif
 
-#ifdef USE_TELEMETRY
-    if (featureIsEnabled(FEATURE_TELEMETRY)) {
-        telemetryInit();
-    }
-#endif
-
 #ifdef USE_ESC_SENSOR
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
         escSensorInit();
@@ -805,8 +805,8 @@ void init(void)
     if (blackboxConfig()->device == BLACKBOX_DEVICE_SDCARD) {
         if (sdcardConfig()->mode) {
             if (!(initFlags & SD_INIT_ATTEMPTED)) {
-                initFlags |= SD_INIT_ATTEMPTED;
                 sdCardAndFSInit();
+                initFlags |= SD_INIT_ATTEMPTED;
             }
         }
     }
@@ -878,6 +878,12 @@ void init(void)
     cmsInit();
 #endif
 
+#ifdef USE_TELEMETRY
+    if (featureIsEnabled(FEATURE_TELEMETRY)) {
+        telemetryInit();
+    }
+#endif
+
 #if (defined(USE_OSD) || (defined(USE_MSP_DISPLAYPORT) && defined(USE_CMS)))
     displayPort_t *osdDisplayPort = NULL;
     osdDisplayPortDevice_e osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_NONE;
@@ -909,7 +915,7 @@ void init(void)
 
 #if defined(USE_MAX7456)
         case OSD_DISPLAYPORT_DEVICE_MAX7456:
-            // If there is a max7456 chip for the OSD configured and detectd then use it.
+            // If there is a max7456 chip for the OSD configured and detected then use it.
             if (max7456DisplayPortInit(vcdProfile(), &osdDisplayPort) || device == OSD_DISPLAYPORT_DEVICE_MAX7456) {
                 osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_MAX7456;
                 break;
@@ -965,14 +971,25 @@ void init(void)
 
     setArmingDisabled(ARMING_DISABLED_BOOT_GRACE_TIME);
 
+    // On F4/F7 allocate SPI DMA streams before motor timers
+#if defined(STM32F4) || defined(STM32F7)
+#ifdef USE_SPI
+    // Attempt to enable DMA on all SPI busses
+    spiInitBusDMA();
+#endif
+#endif
+
 #ifdef USE_MOTOR
     motorPostInit();
     motorEnable();
 #endif
 
+    // On H7/G4 allocate SPI DMA streams after motor timers as SPI DMA allocate will always be possible
+#if defined(STM32H7) || defined(STM32G4)
 #ifdef USE_SPI
     // Attempt to enable DMA on all SPI busses
     spiInitBusDMA();
+#endif
 #endif
 
     swdPinsInit();

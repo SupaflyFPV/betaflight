@@ -93,7 +93,7 @@ PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 3);
 #define PID_PROCESS_DENOM_DEFAULT       8
 #elif defined(STM32F3)
 #define PID_PROCESS_DENOM_DEFAULT       4
-#elif defined(STM32F411xE)
+#elif defined(STM32F411xE) || defined(STM32G4) //G4 sometimes cpu overflow when PID rate set to higher than 4k
 #define PID_PROCESS_DENOM_DEFAULT       2
 #else
 #define PID_PROCESS_DENOM_DEFAULT       1
@@ -173,10 +173,11 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .abs_control_error_limit = 20,
         .abs_control_cutoff = 11,
         .antiGravityMode = ANTI_GRAVITY_SMOOTH,
-        .dterm_lpf1_static_hz = 150,    // NOTE: dynamic lpf is enabled by default so this setting is actually
-                                    // overridden and the static lowpass 1 is disabled. We can't set this
-                                    // value to 0 otherwise Configurator versions 10.4 and earlier will also
-                                    // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
+        .dterm_lpf1_static_hz = DTERM_LPF1_DYN_MIN_HZ_DEFAULT,
+            // NOTE: dynamic lpf is enabled by default so this setting is actually
+            // overridden and the static lowpass 1 is disabled. We can't set this
+            // value to 0 otherwise Configurator versions 10.4 and earlier will also
+            // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
         .dterm_lpf2_static_hz = DTERM_LPF2_HZ_DEFAULT,   // second Dterm LPF ON by default
         .dterm_lpf1_type = FILTER_PT1,
         .dterm_lpf2_type = FILTER_PT1,
@@ -212,22 +213,20 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .vbat_sag_compensation = 0,
         .simplified_pids_mode = PID_SIMPLIFIED_TUNING_RPY,
         .simplified_master_multiplier = SIMPLIFIED_TUNING_DEFAULT,
-        .simplified_roll_pitch_ratio = SIMPLIFIED_TUNING_PITCH_D_DEFAULT,
+        .simplified_roll_pitch_ratio = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_i_gain = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_d_gain = SIMPLIFIED_TUNING_D_DEFAULT,
         .simplified_pi_gain = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_dmin_ratio = SIMPLIFIED_TUNING_D_DEFAULT,
         .simplified_feedforward_gain = SIMPLIFIED_TUNING_DEFAULT,
-        .simplified_pitch_pi_gain = SIMPLIFIED_TUNING_PITCH_P_DEFAULT,
+        .simplified_pitch_pi_gain = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_dterm_filter = true,
         .simplified_dterm_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT,
     );
+
 #ifndef USE_D_MIN
     pidProfile->pid[PID_ROLL].D = 30;
     pidProfile->pid[PID_PITCH].D = 32;
-#endif
-#ifdef USE_SIMPLIFIED_TUNING
-        applySimplifiedTuning(pidProfile);
 #endif
 }
 
@@ -1234,13 +1233,14 @@ bool pidAntiGravityEnabled(void)
 #ifdef USE_DYN_LPF
 void dynLpfDTermUpdate(float throttle)
 {
-    unsigned int cutoffFreq;
     if (pidRuntime.dynLpfFilter != DYN_LPF_NONE) {
+        float cutoffFreq;
         if (pidRuntime.dynLpfCurveExpo > 0) {
             cutoffFreq = dynLpfCutoffFreq(throttle, pidRuntime.dynLpfMin, pidRuntime.dynLpfMax, pidRuntime.dynLpfCurveExpo);
         } else {
-            cutoffFreq = fmax(dynThrottle(throttle) * pidRuntime.dynLpfMax, pidRuntime.dynLpfMin);
+            cutoffFreq = fmaxf(dynThrottle(throttle) * pidRuntime.dynLpfMax, pidRuntime.dynLpfMin);
         }
+
         switch (pidRuntime.dynLpfFilter) {
         case DYN_LPF_PT1:
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
