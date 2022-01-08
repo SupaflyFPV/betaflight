@@ -166,7 +166,11 @@ static bool gyroInitLowpassFilterLpf(int slot, int type, uint16_t lpfHz, uint32_
     if (lpfHz) {
         switch (type) {
         case FILTER_PT1:
+#ifdef USE_DYN_LPF
+            *lowpassFilterApplyFn = (filterApplyFnPtr) pt1FilterApplyWeighted;
+#else
             *lowpassFilterApplyFn = (filterApplyFnPtr) pt1FilterApply;
+#endif
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
                 pt1FilterInit(&lowpassFilter[axis].pt1FilterState, gain);
             }
@@ -231,6 +235,8 @@ static void dynLpfFilterInit()
     gyro.dynLpfMin = gyroConfig()->gyro_lpf1_dyn_min_hz;
     gyro.dynLpfMax = gyroConfig()->gyro_lpf1_dyn_max_hz;
     gyro.dynLpfCurveExpo = gyroConfig()->gyro_lpf1_dyn_expo;
+    gyro.dynLpfThrPercent = gyroConfig()->gyro_lpf1_dyn_thr_percent;
+    gyro.dynLpfMinWeight = gyroConfig()->gyro_lpf1_dyn_min_weight;
 }
 #endif
 

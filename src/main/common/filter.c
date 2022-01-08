@@ -52,6 +52,7 @@ void pt1FilterInit(pt1Filter_t *filter, float k)
 {
     filter->state = 0.0f;
     filter->k = k;
+    filter->weight = 1.0f;
 }
 
 void pt1FilterUpdateCutoff(pt1Filter_t *filter, float k)
@@ -59,10 +60,22 @@ void pt1FilterUpdateCutoff(pt1Filter_t *filter, float k)
     filter->k = k;
 }
 
+void pt1FilterUpdateCutoffWeighted(pt1Filter_t *filter, float k, float weight)
+{
+    filter->k = k;
+    filter->weight = weight;
+}
+
 FAST_CODE float pt1FilterApply(pt1Filter_t *filter, float input)
 {
     filter->state = filter->state + filter->k * (input - filter->state);
     return filter->state;
+}
+
+FAST_CODE float pt1FilterApplyWeighted(pt1Filter_t *filter, float input)
+{
+    filter->state = filter->state + filter->k * (input - filter->state);
+    return filter->weight * filter->state + (1 - filter->weight) * input;
 }
 
 // PT2 Low Pass filter
