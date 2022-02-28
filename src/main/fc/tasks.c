@@ -182,9 +182,10 @@ bool taskUpdateRxMainInProgress()
 
 static void taskUpdateRxMain(timeUs_t currentTimeUs)
 {
-    static timeUs_t rxStateDurationFracUs[RX_STATE_COUNT];
-    timeUs_t executeTimeUs;
+    static timeDelta_t rxStateDurationFractionUs[RX_STATE_COUNT];
+    timeDelta_t executeTimeUs;
     rxState_e oldRxState = rxState;
+    timeDelta_t anticipatedExecutionTime;
 
     // Where we are using a state machine call schedulerIgnoreTaskExecRate() for all states bar one
     if (rxState != RX_STATE_UPDATE) {
@@ -224,20 +225,28 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
         break;
     }
 
-    if (schedulerGetIgnoreTaskExecTime()) {
-        return;
+    if (!schedulerGetIgnoreTaskExecTime()) {
+        executeTimeUs = micros() - currentTimeUs + RX_TASK_MARGIN;
+
+        // If the scheduler has reduced the anticipatedExecutionTime due to task aging, pick that up
+        anticipatedExecutionTime = schedulerGetNextStateTime();
+        if (anticipatedExecutionTime != (rxStateDurationFractionUs[oldRxState] >> RX_TASK_DECAY_SHIFT)) {
+            rxStateDurationFractionUs[oldRxState] = anticipatedExecutionTime << RX_TASK_DECAY_SHIFT;
+        }
+
+        if (executeTimeUs > (rxStateDurationFractionUs[oldRxState] >> RX_TASK_DECAY_SHIFT)) {
+            rxStateDurationFractionUs[oldRxState] = executeTimeUs << RX_TASK_DECAY_SHIFT;
+        } else {
+            // Slowly decay the max time
+            rxStateDurationFractionUs[oldRxState]--;
+        }
     }
 
-    executeTimeUs = micros() - currentTimeUs + RX_TASK_MARGIN;
-
-    if (executeTimeUs > (rxStateDurationFracUs[oldRxState] >> RX_TASK_DECAY_SHIFT)) {
-        rxStateDurationFracUs[oldRxState] = executeTimeUs << RX_TASK_DECAY_SHIFT;
-    } else {
-        // Slowly decay the max time
-        rxStateDurationFracUs[oldRxState]--;
+    if (debugMode == DEBUG_RX_STATE_TIME) {
+        debug[oldRxState] = rxStateDurationFractionUs[oldRxState] >> RX_TASK_DECAY_SHIFT;
     }
 
-    schedulerSetNextStateTime(rxStateDurationFracUs[rxState] >> RX_TASK_DECAY_SHIFT);
+    schedulerSetNextStateTime(rxStateDurationFractionUs[rxState] >> RX_TASK_DECAY_SHIFT);
 }
 
 
@@ -312,7 +321,7 @@ static void taskCameraControl(uint32_t currentTime)
 task_t tasks[TASK_COUNT];
 
 // Task ID data in .data (initialised data)
-task_attr_t task_attrs[TASK_COUNT] = {
+task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_SYSTEM] = DEFINE_TASK("SYSTEM", "LOAD", NULL, taskSystemLoad, TASK_PERIOD_HZ(10), TASK_PRIORITY_MEDIUM_HIGH),
     [TASK_MAIN] = DEFINE_TASK("SYSTEM", "UPDATE", NULL, taskMain, TASK_PERIOD_HZ(1000), TASK_PRIORITY_MEDIUM_HIGH),
     [TASK_SERIAL] = DEFINE_TASK("SERIAL", NULL, NULL, taskHandleSerial, TASK_PERIOD_HZ(100), TASK_PRIORITY_LOW), // 100 Hz should be enough to flush up to 115 bytes @ 115200 baud
@@ -423,7 +432,7 @@ task_t *getTask(unsigned taskId)
 void tasksInit(void)
 {
     for (int i = 0; i < TASK_COUNT; i++) {
-        tasks[i].attr = &task_attrs[i];
+        tasks[i].attribute = &task_attributes[i];
     }
 
     schedulerInit();

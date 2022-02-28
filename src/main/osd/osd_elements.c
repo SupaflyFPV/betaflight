@@ -121,6 +121,7 @@
 #include "common/typeconversion.h"
 #include "common/utils.h"
 #include "common/unit.h"
+#include "common/filter.h"
 
 #include "config/config.h"
 #include "config/feature.h"
@@ -178,6 +179,9 @@
 
 #define FULL_CIRCLE 360
 #define EFFICIENCY_MINIMUM_SPEED_CM_S 100
+#define EFFICIENCY_CUTOFF_HZ 0.5f
+
+static pt1Filter_t batteryEfficiencyFilt;
 
 #define MOTOR_STOPPED_THRESHOLD_RPM 1000
 
@@ -1082,12 +1086,9 @@ static void osdElementEfficiency(osdElementParms_t *element)
 {
     int efficiency = 0;
     if (sensors(SENSOR_GPS) && ARMING_FLAG(ARMED) && STATE(GPS_FIX) && gpsSol.groundSpeed >= EFFICIENCY_MINIMUM_SPEED_CM_S) {
-        const int speedX100 = osdGetSpeedToSelectedUnit(gpsSol.groundSpeed * 100); // speed * 100 for improved resolution at slow speeds
-        
-        if (speedX100 > 0) {
-            const int mAmperage = getAmperage() * 10; // Current in mA
-            efficiency = mAmperage * 100 / speedX100; // mAmperage * 100 to cancel out speed * 100 from above
-        }
+        const float speed = (float)osdGetSpeedToSelectedUnit(gpsSol.groundSpeed);
+        const float mAmperage = (float)getAmperage() * 10.f; // Current in mA
+        efficiency = lrintf(pt1FilterApply(&batteryEfficiencyFilt, (mAmperage / speed)));
     }
 
     const char unitSymbol = osdConfig()->units == UNIT_IMPERIAL ? SYM_MILES : SYM_KM;
@@ -1846,7 +1847,7 @@ void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort)
 {
     if (backgroundLayerSupported) {
         displayLayerSelect(osdDisplayPort, DISPLAYPORT_LAYER_BACKGROUND);
-        displayClearScreen(osdDisplayPort);
+        displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_WAIT);
         for (unsigned i = 0; i < activeOsdElementCount; i++) {
             osdDrawSingleElementBackground(osdDisplayPort, activeOsdElementArray[i]);
         }
@@ -1858,6 +1859,7 @@ void osdElementsInit(bool backgroundLayerFlag)
 {
     backgroundLayerSupported = backgroundLayerFlag;
     activeOsdElementCount = 0;
+    pt1FilterInit(&batteryEfficiencyFilt, pt1FilterGain(EFFICIENCY_CUTOFF_HZ, 1.0f / osdConfig()->framerate_hz));
 }
 
 void osdSyncBlink() {
