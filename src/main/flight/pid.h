@@ -342,7 +342,7 @@ typedef struct pidRuntime_s {
 #endif
 
 #ifdef USE_RC_SMOOTHING_FILTER
-    pt3Filter_t feedforwardPt3[XYZ_AXIS_COUNT];
+    pt2Filter_t feedforwardPt2[XYZ_AXIS_COUNT];
     bool feedforwardLpfInitialized;
     uint8_t rcSmoothingDebugAxis;
     uint8_t rcSmoothingFilterType;

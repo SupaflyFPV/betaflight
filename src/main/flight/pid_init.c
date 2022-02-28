@@ -257,7 +257,7 @@ void pidInitFeedforwardLpf(uint16_t filterCutoff, uint8_t debugAxis)
     if (filterCutoff > 0) {
         pidRuntime.feedforwardLpfInitialized = true;
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-            pt3FilterInit(&pidRuntime.feedforwardPt3[axis], pt3FilterGain(filterCutoff, pidRuntime.dT));
+            pt2FilterInit(&pidRuntime.feedforwardPt2[axis], pt2FilterGain(filterCutoff, pidRuntime.dT));
         }
     }
 }
@@ -266,7 +266,7 @@ void pidUpdateFeedforwardLpf(uint16_t filterCutoff)
 {
     if (filterCutoff > 0) {
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-            pt3FilterUpdateCutoff(&pidRuntime.feedforwardPt3[axis], pt3FilterGain(filterCutoff, pidRuntime.dT));
+            pt2FilterUpdateCutoff(&pidRuntime.feedforwardPt2[axis], pt2FilterGain(filterCutoff, pidRuntime.dT));
         }
     }
 }

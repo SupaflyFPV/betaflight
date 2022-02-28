@@ -665,7 +665,7 @@ float FAST_CODE applyRcSmoothingFeedforwardFilter(int axis, float pidSetpointDel
         DEBUG_SET(DEBUG_RC_SMOOTHING, 1, lrintf(pidSetpointDelta * 100.0f));
     }
     if (pidRuntime.feedforwardLpfInitialized) {
-        ret = pt3FilterApply(&pidRuntime.feedforwardPt3[axis], pidSetpointDelta);
+        ret = pt2FilterApply(&pidRuntime.feedforwardPt2[axis], pidSetpointDelta);
         if (axis == pidRuntime.rcSmoothingDebugAxis) {
             DEBUG_SET(DEBUG_RC_SMOOTHING, 2, lrintf(ret * 100.0f));
         }
