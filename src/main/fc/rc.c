@@ -350,6 +350,7 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
             if (i < THROTTLE) { // Throttle handled by smoothing rcCommand
                 if (!smoothingData->filterInitialized) {
+                    
                     pt2FilterInit(&smoothingData->filter[i], pt2FilterGain(smoothingData->setpointCutoffFrequency, dT));
                 } else {
                     pt2FilterUpdateCutoff(&smoothingData->filter[i], pt2FilterGain(smoothingData->setpointCutoffFrequency, dT));
@@ -366,9 +367,9 @@ FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothi
         // initialize or update the Level filter
         for (int i = FD_ROLL; i < FD_YAW; i++) {
             if (!smoothingData->filterInitialized) {
-                pt2FilterInit(&smoothingData->filterDeflection[i], pt2FilterGain(smoothingData->setpointCutoffFrequency, dT));
+                pt3FilterInit(&smoothingData->filterDeflection[i], pt3FilterGain(smoothingData->setpointCutoffFrequency, dT));
             } else {
-                pt2FilterUpdateCutoff(&smoothingData->filterDeflection[i], pt2FilterGain(smoothingData->setpointCutoffFrequency, dT));
+                pt3FilterUpdateCutoff(&smoothingData->filterDeflection[i], pt3FilterGain(smoothingData->setpointCutoffFrequency, dT));
             }
         }
     }
@@ -557,7 +558,7 @@ static FAST_CODE void processRcSmoothingFilter(void)
     bool smoothingNeeded = (FLIGHT_MODE(ANGLE_MODE) || FLIGHT_MODE(HORIZON_MODE)) && rcSmoothingData.filterInitialized;
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         if (smoothingNeeded && axis < FD_YAW) {
-            rcDeflectionSmoothed[axis] = pt2FilterApply(&rcSmoothingData.filterDeflection[axis], rcDeflection[axis]);
+            rcDeflectionSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterDeflection[axis], rcDeflection[axis]);
         } else {
             rcDeflectionSmoothed[axis] = rcDeflection[axis];
         }
