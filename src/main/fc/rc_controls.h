@@ -95,7 +95,7 @@ typedef struct rcSmoothingFilterTraining_s {
 
 typedef struct rcSmoothingFilter_s {
     bool filterInitialized;
-    pt3Filter_t filter[4];
+    pt2Filter_t filter[4];
     pt3Filter_t filterDeflection[2];
     uint8_t setpointCutoffSetting;
     uint8_t throttleCutoffSetting;
