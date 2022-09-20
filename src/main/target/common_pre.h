@@ -246,9 +246,12 @@ extern uint8_t _dmaram_end__;
 #define USE_SERIALRX_SPEKTRUM   // SRXL, DSM2 and DSMX protocol
 #define USE_SERIALRX_SUMD       // Graupner Hott protocol
 
-#if (TARGET_FLASH_SIZE > 128)
+#if (TARGET_FLASH_SIZE > 256)
+#define PID_PROFILE_COUNT 4
+#define CONTROL_RATE_PROFILE_COUNT  4
+#elif (TARGET_FLASH_SIZE > 128)
 #define PID_PROFILE_COUNT 3
-#define CONTROL_RATE_PROFILE_COUNT  6
+#define CONTROL_RATE_PROFILE_COUNT  4
 #else
 #define PID_PROFILE_COUNT 2
 #define CONTROL_RATE_PROFILE_COUNT  3
@@ -288,6 +291,7 @@ extern uint8_t _dmaram_end__;
 #define USE_VTX_CONTROL
 #define USE_VTX_SMARTAUDIO
 #define USE_VTX_TRAMP
+#define USE_VTX_MSP
 #endif
 
 #if ((TARGET_FLASH_SIZE > 256 && !defined(FEATURE_CUT_LEVEL)) || (FEATURE_CUT_LEVEL < 10))
@@ -417,4 +421,5 @@ extern uint8_t _dmaram_end__;
 #define USE_EMFAT_AUTORUN
 #define USE_EMFAT_ICON
 #define USE_GPS_PLUS_CODES
+#define USE_BATTERY_CONTINUE
 #endif

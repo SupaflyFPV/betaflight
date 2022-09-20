@@ -20,17 +20,12 @@
 
 #pragma once
 
-#include "pg/pg.h"
 #include "drivers/io_types.h"
 
-#define STATS_OFF (-1)
+#include "pg/pg.h"
 
-typedef struct statsConfig_s {
-    uint32_t stats_total_flights;
-    uint32_t stats_total_time_s;
-    uint32_t stats_total_dist_m;
-    int8_t stats_min_armed_time_s;
-    uint32_t stats_mah_used;
-} statsConfig_t;
+typedef struct mspConfig_s {
+    uint8_t halfDuplex; // allow msp to operate in half duplex mode
+} mspConfig_t;
 
-PG_DECLARE(statsConfig_t, statsConfig);
+PG_DECLARE(mspConfig_t, mspConfig);

@@ -18,19 +18,11 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "platform.h"
 
 #include "pg/pg.h"
-#include "drivers/io_types.h"
+#include "pg/pg_ids.h"
 
-#define STATS_OFF (-1)
+#include "msp.h"
 
-typedef struct statsConfig_s {
-    uint32_t stats_total_flights;
-    uint32_t stats_total_time_s;
-    uint32_t stats_total_dist_m;
-    int8_t stats_min_armed_time_s;
-    uint32_t stats_mah_used;
-} statsConfig_t;
-
-PG_DECLARE(statsConfig_t, statsConfig);
+PG_REGISTER(mspConfig_t, mspConfig, PG_MSP_CONFIG, 0);

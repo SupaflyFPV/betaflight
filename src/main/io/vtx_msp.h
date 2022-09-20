@@ -20,17 +20,16 @@
 
 #pragma once
 
-#include "pg/pg.h"
-#include "drivers/io_types.h"
+#include <stdint.h>
 
-#define STATS_OFF (-1)
+#include "build/build_config.h"
 
-typedef struct statsConfig_s {
-    uint32_t stats_total_flights;
-    uint32_t stats_total_time_s;
-    uint32_t stats_total_dist_m;
-    int8_t stats_min_armed_time_s;
-    uint32_t stats_mah_used;
-} statsConfig_t;
+typedef enum {
+    // Offline - device hasn't responded yet
+    MSP_VTX_STATUS_OFFLINE = 0,
+    MSP_VTX_STATUS_READY,
+} mspVtxStatus_e;
 
-PG_DECLARE(statsConfig_t, statsConfig);
+bool vtxMspInit(void);
+void setMspVtxDeviceStatusReady(const int descriptor);
+void prepareMspFrame(uint8_t *mspFrame);

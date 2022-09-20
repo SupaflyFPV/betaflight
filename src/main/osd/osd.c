@@ -94,7 +94,6 @@
 
 #include "sensors/acceleration.h"
 #include "sensors/battery.h"
-#include "sensors/esc_sensor.h"
 #include "sensors/sensors.h"
 
 #ifdef USE_HARDWARE_REVISION_DETECTION
@@ -483,17 +482,18 @@ void osdInit(displayPort_t *osdDisplayPortToUse, osdDisplayPortDevice_e displayP
 
 static void osdResetStats(void)
 {
-    stats.max_current  = 0;
-    stats.max_speed    = 0;
-    stats.min_voltage  = 5000;
-    stats.end_voltage  = 0;
-    stats.min_rssi     = 99; // percent
-    stats.max_altitude = 0;
-    stats.max_distance = 0;
-    stats.armed_time   = 0;
-    stats.max_g_force  = 0;
-    stats.max_esc_temp = 0;
-    stats.max_esc_rpm  = 0;
+    stats.max_current     = 0;
+    stats.max_speed       = 0;
+    stats.min_voltage     = 5000;
+    stats.end_voltage     = 0;
+    stats.min_rssi        = 99; // percent
+    stats.max_altitude    = 0;
+    stats.max_distance    = 0;
+    stats.armed_time      = 0;
+    stats.max_g_force     = 0;
+    stats.max_esc_temp_ix = 0;
+    stats.max_esc_temp    = 0;
+    stats.max_esc_rpm     = 0;
     stats.min_link_quality = (linkQualitySource == LQ_SOURCE_NONE) ? 99 : 100; // percent
     stats.min_rssi_dbm = CRSF_SNR_MAX;
 }
@@ -501,19 +501,14 @@ static void osdResetStats(void)
 #if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)
 static int32_t getAverageEscRpm(void)
 {
-#ifdef USE_DSHOT_TELEMETRY
-    if (motorConfig()->dev.useDshotTelemetry) {
-        uint32_t rpm = 0;
-        for (int i = 0; i < getMotorCount(); i++) {
-            rpm += getDshotTelemetry(i);
-        }
-        rpm = rpm / getMotorCount();
-        return rpm * 100 * 2 / motorConfig()->motorPoleCount;
-    }
-#endif
 #ifdef USE_ESC_SENSOR
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
-        return calcEscRpm(osdEscDataCombined->rpm);
+        return erpmToRpm(osdEscDataCombined->rpm);
+    }
+#endif
+#ifdef USE_DSHOT_TELEMETRY
+    if (motorConfig()->dev.useDshotTelemetry) {
+        return getDshotAverageRpm();
     }
 #endif
     return 0;
@@ -588,13 +583,26 @@ static void osdUpdateStats(void)
     }
 #endif
 
-#ifdef USE_ESC_SENSOR
+#if defined(USE_ESC_SENSOR)
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
         value = osdEscDataCombined->temperature;
         if (stats.max_esc_temp < value) {
             stats.max_esc_temp = value;
         }
+    } else
+#endif
+#if defined(USE_DSHOT_TELEMETRY)
+    {
+        // Take max temp from dshot telemetry
+        for (uint8_t k = 0; k < getMotorCount(); k++) {
+            if (dshotTelemetryState.motorState[k].maxTemp > stats.max_esc_temp) {
+                stats.max_esc_temp_ix = k + 1;
+                stats.max_esc_temp = dshotTelemetryState.motorState[k].maxTemp;
+            }
+        }
     }
+#else
+    {}
 #endif
 
 #if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)
@@ -806,9 +814,15 @@ static bool osdDisplayStat(int statistic, uint8_t displayRow)
 
 #ifdef USE_ESC_SENSOR
     case OSD_STAT_MAX_ESC_TEMP:
-        tfp_sprintf(buff, "%d%c", osdConvertTemperatureToSelectedUnit(stats.max_esc_temp), osdGetTemperatureSymbolForSelectedUnit());
-        osdDisplayStatisticLabel(displayRow, "MAX ESC TEMP", buff);
-        return true;
+    {
+    	uint16_t ix = 0;
+    	if (stats.max_esc_temp_ix > 0) {
+    		ix = tfp_sprintf(buff, "%d ", stats.max_esc_temp_ix);
+    	}
+    	tfp_sprintf(buff + ix, "%d%c", osdConvertTemperatureToSelectedUnit(stats.max_esc_temp), osdGetTemperatureSymbolForSelectedUnit());
+    	osdDisplayStatisticLabel(displayRow, "MAX ESC TEMP", buff);
+    	return true;
+    }
 #endif
 
 #if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)

@@ -105,6 +105,7 @@
 #include "io/usb_msc.h"
 #include "io/vtx_control.h"
 #include "io/vtx.h"
+#include "io/vtx_msp.h"
 
 #include "msp/msp_box.h"
 #include "msp/msp_protocol.h"
@@ -138,7 +139,6 @@
 #include "sensors/battery.h"
 #include "sensors/boardalignment.h"
 #include "sensors/compass.h"
-#include "sensors/esc_sensor.h"
 #include "sensors/gyro.h"
 #include "sensors/gyro_init.h"
 #include "sensors/rangefinder.h"
@@ -1053,9 +1053,13 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
     return true;
 }
 
-static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
+static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t *dst)
 {
     bool unsupportedCommand = false;
+
+#if !defined(USE_VTX_COMMON) || !defined(USE_VTX_MSP)
+    UNUSED(srcDesc);
+#endif
 
     switch (cmdMSP) {
     case MSP_STATUS_EX:
@@ -1206,14 +1210,35 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
 
 #ifdef USE_DSHOT_TELEMETRY
             if (motorConfig()->dev.useDshotTelemetry) {
-                rpm = (int)getDshotTelemetry(i) * 100 * 2 / motorConfig()->motorPoleCount;
+                rpm = erpmToRpm(getDshotTelemetry(i));
                 rpmDataAvailable = true;
                 invalidPct = 10000; // 100.00%
+
+
 #ifdef USE_DSHOT_TELEMETRY_STATS
                 if (isDshotMotorTelemetryActive(i)) {
                     invalidPct = getDshotTelemetryMotorInvalidPercent(i);
                 }
 #endif
+
+
+                // Provide extended dshot telemetry
+                if ((dshotTelemetryState.motorState[i].telemetryTypes & DSHOT_EXTENDED_TELEMETRY_MASK) != 0) {
+                    // Temperature Celsius [0, 1, ..., 255] in degree Celsius, just like Blheli_32 and KISS
+                    if ((dshotTelemetryState.motorState[i].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_TEMPERATURE)) != 0) {
+                        escTemperature = dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_TEMPERATURE];
+                    }
+
+                    // Current -> 0-255A step 1A
+                    if ((dshotTelemetryState.motorState[i].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_CURRENT)) != 0) {
+                        escCurrent = dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_CURRENT];
+                    }
+
+                    // Voltage -> 0-63,75V step 0,25V
+                    if ((dshotTelemetryState.motorState[i].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_VOLTAGE)) != 0) {
+                    	escVoltage = dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_VOLTAGE] >> 2;
+                    }
+                }
             }
 #endif
 
@@ -1221,7 +1246,7 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
             if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
                 escSensorData_t *escData = getEscSensorData(i);
                 if (!rpmDataAvailable) {  // We want DSHOT telemetry RPM data (if available) to have precedence
-                    rpm = calcEscRpm(escData->rpm);
+                    rpm = erpmToRpm(escData->rpm);
                     rpmDataAvailable = true;
                 }
                 escTemperature = escData->temperature;
@@ -1426,9 +1451,10 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
 #endif
         break;
 
-#if defined(USE_ESC_SENSOR)
     // Deprecated in favor of MSP_MOTOR_TELEMETY as of API version 1.42
+    // Used by DJI FPV
     case MSP_ESC_SENSOR_DATA:
+#if defined(USE_ESC_SENSOR)
         if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
             sbufWriteU8(dst, getMotorCount());
             for (int i = 0; i < getMotorCount(); i++) {
@@ -1436,12 +1462,23 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
                 sbufWriteU8(dst, escData->temperature);
                 sbufWriteU16(dst, escData->rpm);
             }
-        } else {
+        } else
+#endif
+#if defined(USE_DSHOT_TELEMETRY)
+        if (motorConfig()->dev.useDshotTelemetry) {
+            sbufWriteU8(dst, getMotorCount());
+            for (int i = 0; i < getMotorCount(); i++) {
+                sbufWriteU8(dst, dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_TEMPERATURE]);
+                sbufWriteU16(dst, getDshotTelemetry(i) * 100 * 2 / motorConfig()->motorPoleCount);
+            }
+        }
+        else
+#endif
+        {
             unsupportedCommand = true;
         }
 
         break;
-#endif
 
 #ifdef USE_GPS
     case MSP_GPS_CONFIG:
@@ -1452,6 +1489,9 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         // Added in API version 1.43
         sbufWriteU8(dst, gpsConfig()->gps_set_home_point_once);
         sbufWriteU8(dst, gpsConfig()->gps_ublox_use_galileo);
+        // Added in API version 1.45
+        sbufWriteU8(dst, gpsConfig()->gpsRequiredSats);
+        sbufWriteU8(dst, gpsConfig()->gpsMinimumSats);
         break;
 
     case MSP_RAW_GPS:
@@ -1468,7 +1508,7 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
 
     case MSP_COMP_GPS:
         sbufWriteU16(dst, GPS_distanceToHome);
-        sbufWriteU16(dst, GPS_directionToHome);
+        sbufWriteU16(dst, GPS_directionToHome / 10); // resolution increased in Betaflight 4.4 by factor of 10, this maintains backwards compatibility for DJI OSD
         sbufWriteU8(dst, GPS_update & 1);
         break;
 
@@ -1492,7 +1532,8 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
         sbufWriteU16(dst, gpsRescueConfig()->throttleMax);
         sbufWriteU16(dst, gpsRescueConfig()->throttleHover);
         sbufWriteU8(dst,  gpsRescueConfig()->sanityChecks);
-        sbufWriteU8(dst,  gpsRescueConfig()->minSats);
+        sbufWriteU8(dst, 0); // not required in API 1.44, gpsRescueConfig()->minSats
+
         // Added in API version 1.43
         sbufWriteU16(dst, gpsRescueConfig()->ascendRate);
         sbufWriteU16(dst, gpsRescueConfig()->descendRate);
@@ -2026,7 +2067,9 @@ static bool mspProcessOutCommand(int16_t cmdMSP, sbuf_t *dst)
             sbufWriteU8(dst, 0);
             sbufWriteU8(dst, 0);
 #endif
-
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 #endif
@@ -2304,6 +2347,9 @@ static mspResult_e mspFcProcessOutCommandWithArg(mspDescriptor_t srcDesc, int16_
             } else {
                 return MSP_RESULT_ERROR;
             }
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 
@@ -2320,6 +2366,9 @@ static mspResult_e mspFcProcessOutCommandWithArg(mspDescriptor_t srcDesc, int16_
             } else {
                 return MSP_RESULT_ERROR;
             }
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 #endif // USE_VTX_TABLE
@@ -2690,6 +2739,12 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             gpsConfigMutable()->gps_set_home_point_once = sbufReadU8(src);
             gpsConfigMutable()->gps_ublox_use_galileo = sbufReadU8(src);
         }
+        if (sbufBytesRemaining(src) >= 2) {
+            // Added in API version 1.45
+            gpsConfigMutable()->gpsRequiredSats = sbufReadU8(src);
+            gpsConfigMutable()->gpsMinimumSats = sbufReadU8(src);
+        }
+
         break;
 
 #ifdef USE_GPS_RESCUE
@@ -2702,7 +2757,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         gpsRescueConfigMutable()->throttleMax = sbufReadU16(src);
         gpsRescueConfigMutable()->throttleHover = sbufReadU16(src);
         gpsRescueConfigMutable()->sanityChecks = sbufReadU8(src);
-        gpsRescueConfigMutable()->minSats = sbufReadU8(src);
+        sbufReadU8(src);  // not used since 1.43, was gps rescue minSats
         if (sbufBytesRemaining(src) >= 6) {
             // Added in API version 1.43
             gpsRescueConfigMutable()->ascendRate = sbufReadU16(src);
@@ -3261,6 +3316,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
                 sbufReadU8(src);
 #endif
             }
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 #endif
@@ -3308,6 +3366,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             } else {
                 return MSP_RESULT_ERROR;
             }
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 
@@ -3332,6 +3393,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             } else {
                 return MSP_RESULT_ERROR;
             }
+#ifdef USE_VTX_MSP
+            setMspVtxDeviceStatusReady(srcDesc);
+#endif
         }
         break;
 #endif
@@ -4047,7 +4111,7 @@ mspResult_e mspFcProcessCommand(mspDescriptor_t srcDesc, mspPacket_t *cmd, mspPa
 
     if (mspCommonProcessOutCommand(cmdMSP, dst, mspPostProcessFn)) {
         ret = MSP_RESULT_ACK;
-    } else if (mspProcessOutCommand(cmdMSP, dst)) {
+    } else if (mspProcessOutCommand(srcDesc, cmdMSP, dst)) {
         ret = MSP_RESULT_ACK;
     } else if ((ret = mspFcProcessOutCommandWithArg(srcDesc, cmdMSP, src, dst, mspPostProcessFn)) != MSP_RESULT_CMD_UNKNOWN) {
         /* ret */;

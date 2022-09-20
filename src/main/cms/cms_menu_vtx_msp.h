@@ -20,17 +20,8 @@
 
 #pragma once
 
-#include "pg/pg.h"
-#include "drivers/io_types.h"
+#include "cms/cms.h"
+#include "cms/cms_types.h"
+extern CMS_Menu cmsx_menuVtxMsp;
 
-#define STATS_OFF (-1)
-
-typedef struct statsConfig_s {
-    uint32_t stats_total_flights;
-    uint32_t stats_total_time_s;
-    uint32_t stats_total_dist_m;
-    int8_t stats_min_armed_time_s;
-    uint32_t stats_mah_used;
-} statsConfig_t;
-
-PG_DECLARE(statsConfig_t, statsConfig);
+void mspCmsUpdateStatusString(void);

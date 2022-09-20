@@ -32,7 +32,6 @@ typedef struct gpsRescue_s {
     uint16_t throttleMax;
     uint16_t throttleHover;
     uint8_t velP, velI, velD;
-    uint8_t minSats;
     uint16_t minRescueDth; //meters
     uint8_t sanityChecks;
     uint8_t allowArmingWithoutFix;
@@ -49,6 +48,7 @@ PG_DECLARE(gpsRescueConfig_t, gpsRescueConfig);
 
 extern float gpsRescueAngle[ANGLE_INDEX_COUNT]; //NOTE: ANGLES ARE IN CENTIDEGREES
 
+void gpsRescueInit(void);
 void updateGPSRescueState(void);
 void rescueNewGpsData(void);
 

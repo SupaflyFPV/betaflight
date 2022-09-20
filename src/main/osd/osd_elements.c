@@ -96,6 +96,10 @@
         type 2: Graphical bar showing battery used (grows as used)
         type 3: Numeric % of remaining battery
         type 4: Numeric % or used battery
+
+    VTX_CHANNEL
+        type 1: Contains Band:Channel:Power:Pit
+        type 2: Contains only Power
 */
 
 #include <stdbool.h>
@@ -159,7 +163,6 @@
 #include "sensors/adcinternal.h"
 #include "sensors/barometer.h"
 #include "sensors/battery.h"
-#include "sensors/esc_sensor.h"
 #include "sensors/sensors.h"
 
 #ifdef USE_GPS_PLUS_CODES
@@ -259,12 +262,12 @@ static int getEscRpm(int i)
 {
 #ifdef USE_DSHOT_TELEMETRY
     if (motorConfig()->dev.useDshotTelemetry) {
-        return 100.0f / (motorConfig()->motorPoleCount / 2.0f) * getDshotTelemetry(i);
+        return erpmToRpm(getDshotTelemetry(i));
     }
 #endif
 #ifdef USE_ESC_SENSOR
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
-        return calcEscRpm(getEscSensorData(i)->rpm);
+        return erpmToRpm(getEscSensorData(i)->rpm);
     }
 #endif
     return 0;
@@ -921,16 +924,34 @@ static void osdElementOsdProfileName(osdElementParms_t *element)
 }
 #endif
 
-#ifdef USE_ESC_SENSOR
+#if defined(USE_ESC_SENSOR) ||  defined(USE_DSHOT_TELEMETRY)
+
 static void osdElementEscTemperature(osdElementParms_t *element)
 {
+#if defined(USE_ESC_SENSOR)
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
         tfp_sprintf(element->buff, "E%c%3d%c", SYM_TEMPERATURE, osdConvertTemperatureToSelectedUnit(osdEscDataCombined->temperature), osdGetTemperatureSymbolForSelectedUnit());
-    }
-}
-#endif // USE_ESC_SENSOR
+    } else
+#endif
+#if defined(USE_DSHOT_TELEMETRY)
+    {
+        uint32_t osdEleIx = tfp_sprintf(element->buff, "E%c", SYM_TEMPERATURE);
 
-#if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)
+        for (uint8_t k = 0; k < getMotorCount(); k++) {
+            if ((dshotTelemetryState.motorState[k].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_TEMPERATURE)) != 0) {
+                osdEleIx += tfp_sprintf(element->buff + osdEleIx, "%3d%c",
+                    osdConvertTemperatureToSelectedUnit(dshotTelemetryState.motorState[k].telemetryData[DSHOT_TELEMETRY_TYPE_TEMPERATURE]),
+                    osdGetTemperatureSymbolForSelectedUnit());
+            } else {
+                osdEleIx += tfp_sprintf(element->buff + osdEleIx, "  0%c", osdGetTemperatureSymbolForSelectedUnit());
+            }
+        }
+    }
+#else
+    {}
+#endif
+}
+
 static void osdElementEscRpm(osdElementParms_t *element)
 {
     renderOsdEscRpmOrFreq(&getEscRpm,element);
@@ -940,6 +961,7 @@ static void osdElementEscRpmFreq(osdElementParms_t *element)
 {
     renderOsdEscRpmOrFreq(&getEscRpmFreq,element);
 }
+
 #endif
 
 static void osdElementFlymode(osdElementParms_t *element)
@@ -1424,12 +1446,20 @@ static void osdElementVtxChannel(osdElementParms_t *element)
         vtxStatusIndicator = 'P';
     }
 
-    if (vtxStatus & VTX_STATUS_LOCKED) {
-        tfp_sprintf(element->buff, "-:-:-:L");
-    } else if (vtxStatusIndicator) {
-        tfp_sprintf(element->buff, "%c:%s:%s:%c", vtxBandLetter, vtxChannelName, vtxPowerLabel, vtxStatusIndicator);
-    } else {
-        tfp_sprintf(element->buff, "%c:%s:%s", vtxBandLetter, vtxChannelName, vtxPowerLabel);
+switch (element->type) {
+    case OSD_ELEMENT_TYPE_2:
+            tfp_sprintf(element->buff, "%s", vtxPowerLabel);
+        break;
+
+    default:
+        if (vtxStatus & VTX_STATUS_LOCKED) {
+            tfp_sprintf(element->buff, "-:-:-:L");
+        } else if (vtxStatusIndicator) {
+            tfp_sprintf(element->buff, "%c:%s:%s:%c", vtxBandLetter, vtxChannelName, vtxPowerLabel, vtxStatusIndicator);
+        } else {
+            tfp_sprintf(element->buff, "%c:%s:%s", vtxBandLetter, vtxChannelName, vtxPowerLabel);
+        }
+        break;
     }
 }
 #endif // USE_VTX_COMMON
@@ -1612,10 +1642,8 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
     [OSD_NUMERICAL_VARIO]         = osdElementNumericalVario,
 #endif
     [OSD_COMPASS_BAR]             = osdElementCompassBar,
-#ifdef USE_ESC_SENSOR
-    [OSD_ESC_TMP]                 = osdElementEscTemperature,
-#endif
 #if defined(USE_DSHOT_TELEMETRY) || defined(USE_ESC_SENSOR)
+    [OSD_ESC_TMP]                 = osdElementEscTemperature,
     [OSD_ESC_RPM]                 = osdElementEscRpm,
 #endif
     [OSD_REMAINING_TIME_ESTIMATE] = osdElementRemainingTimeEstimate,
@@ -1727,14 +1755,10 @@ void osdAddActiveElements(void)
         osdAddActiveElement(OSD_EFFICIENCY);
     }
 #endif // GPS
-#ifdef USE_ESC_SENSOR
-    if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
-        osdAddActiveElement(OSD_ESC_TMP);
-    }
-#endif
 
 #if defined(USE_DSHOT_TELEMETRY) || defined(USE_ESC_SENSOR)
     if ((featureIsEnabled(FEATURE_ESC_SENSOR)) || (motorConfig()->dev.useDshotTelemetry)) {
+        osdAddActiveElement(OSD_ESC_TMP);
         osdAddActiveElement(OSD_ESC_RPM);
         osdAddActiveElement(OSD_ESC_RPM_FREQ);
     }
@@ -1905,9 +1929,9 @@ void osdUpdateAlarms(void)
     }
 
 #ifdef USE_GPS
-    if ((STATE(GPS_FIX) == 0) || (gpsSol.numSat < 5)
+    if ((STATE(GPS_FIX) == 0) || (gpsSol.numSat < gpsConfig()->gpsMinimumSats)
 #ifdef USE_GPS_RESCUE
-            || ((gpsSol.numSat < gpsRescueConfig()->minSats) && gpsRescueIsConfigured())
+            || ((gpsSol.numSat < gpsConfig()->gpsRequiredSats) && gpsRescueIsConfigured())
 #endif
             ) {
         SET_BLINK(OSD_GPS_SATS);
@@ -1955,14 +1979,33 @@ void osdUpdateAlarms(void)
     }
 #endif
 
-#ifdef USE_ESC_SENSOR
+#if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)
+    bool blink;
+
+#if defined(USE_ESC_SENSOR)
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
         // This works because the combined ESC data contains the maximum temperature seen amongst all ESCs
-        if (osdConfig()->esc_temp_alarm != ESC_TEMP_ALARM_OFF && osdEscDataCombined->temperature >= osdConfig()->esc_temp_alarm) {
-            SET_BLINK(OSD_ESC_TMP);
-        } else {
-            CLR_BLINK(OSD_ESC_TMP);
+        blink = osdConfig()->esc_temp_alarm != ESC_TEMP_ALARM_OFF && osdEscDataCombined->temperature >= osdConfig()->esc_temp_alarm;
+    } else
+#endif
+#if defined(USE_DSHOT_TELEMETRY)
+    {
+        blink = false;
+        if (osdConfig()->esc_temp_alarm != ESC_TEMP_ALARM_OFF) {
+            for (uint32_t k = 0; !blink && (k < getMotorCount()); k++) {
+                blink = (dshotTelemetryState.motorState[k].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_TEMPERATURE)) != 0 &&
+                    dshotTelemetryState.motorState[k].telemetryData[DSHOT_TELEMETRY_TYPE_TEMPERATURE] >= osdConfig()->esc_temp_alarm;
+            }
         }
+    }
+#else
+    {}
+#endif
+
+    if (blink) {
+        SET_BLINK(OSD_ESC_TMP);
+    } else {
+        CLR_BLINK(OSD_ESC_TMP);
     }
 #endif
 }
