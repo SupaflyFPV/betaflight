@@ -63,7 +63,8 @@ static int callCounts[CALL_COUNT_ITEM_COUNT];
 
 #define CALL_COUNTER(item) (callCounts[item])
 
-void resetCallCounters(void) {
+void resetCallCounters(void)
+{
     memset(&callCounts, 0, sizeof(callCounts));
 }
 
@@ -207,7 +208,7 @@ TEST(FlightFailsafeTest, TestFailsafeDetectsRxLossAndStartsLanding)
     EXPECT_FALSE(isArmingDisabled());
 
     // simulate an Rx loss for the stage 1 duration
-    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);;
+    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);
     failsafeOnValidDataFailed();
     failsafeUpdateState();
 
@@ -342,7 +343,7 @@ TEST(FlightFailsafeTest, TestFailsafeDetectsRxLossAndJustDisarms)
     EXPECT_FALSE(isArmingDisabled());
 
     // simulate an Rx loss for the stage 1 duration
-    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);;
+    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);
     failsafeOnValidDataFailed();
     failsafeUpdateState();
 
@@ -671,7 +672,7 @@ TEST(FlightFailsafeTest, TestFailsafeNotActivatedWhenDisarmedAndRXLossIsDetected
     EXPECT_FALSE(isArmingDisabled());
 
     // simulate an Rx loss for the stage 1 duration
-    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);;
+    sysTickUptime += (failsafeConfig()->failsafe_delay * MILLIS_PER_TENTH_SECOND);
     failsafeOnValidDataFailed();
     failsafeUpdateState();
 
@@ -739,15 +740,18 @@ throttleStatus_e calculateThrottleStatus()
 
 void delay(uint32_t) {}
 
-bool featureIsEnabled(uint32_t mask) {
+bool featureIsEnabled(uint32_t mask)
+{
     return (mask & testFeatureMask);
 }
 
-void disarm(flightLogDisarmReason_e) {
+void disarm(flightLogDisarmReason_e)
+{
     callCounts[COUNTER_MW_DISARM]++;
 }
 
-void beeper(beeperMode_e mode) {
+void beeper(beeperMode_e mode)
+{
     UNUSED(mode);
 }
 
@@ -761,7 +765,8 @@ bool isUsingSticksForArming(void)
     return isUsingSticksToArm;
 }
 
-bool areSticksActive(uint8_t stickPercentLimit) {
+bool areSticksActive(uint8_t stickPercentLimit)
+{
     UNUSED(stickPercentLimit);
     return false;
 }
