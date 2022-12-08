@@ -26,6 +26,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
+#include <stdlib.h>
 
 #include "platform.h"
 
@@ -217,9 +219,9 @@ static void sendTemperature1(void)
         data = escData->dataAge < ESC_DATA_INVALID ? escData->temperature : 0;
     }
 #elif defined(USE_BARO)
-    data = (baro.baroTemperature + 50)/ 100; // Airmamaf
+    data = lrintf(baro.temperature / 100.0f); // Airmamaf
 #else
-    data = gyroGetTemperature() / 10;
+    data = lrintf(gyroGetTemperature() / 10.0f);
 #endif
     frSkyHubWriteFrame(ID_TEMPRATURE1, data);
 }
@@ -241,7 +243,7 @@ static void GPStoDDDMM_MMMM(int32_t mwiigps, gpsCoordinateDDDMMmmmm_t *result)
 {
     int32_t absgps, deg, min;
 
-    absgps = ABS(mwiigps);
+    absgps = abs(mwiigps);
     deg    = absgps / GPS_DEGREES_DIVIDER;
     absgps = (absgps - deg * GPS_DEGREES_DIVIDER) * 60;        // absgps = Minutes left * 10^7
     min    = absgps / GPS_DEGREES_DIVIDER;                     // minutes left
@@ -286,15 +288,12 @@ static void sendSatalliteSignalQualityAsTemperature2(uint8_t cycleNum)
 {
     uint16_t satellite = gpsSol.numSat;
 
-    if (gpsSol.hdop > GPS_BAD_QUALITY && ( (cycleNum % 16 ) < 8)) { // Every 1s
-        satellite = constrain(gpsSol.hdop, 0, GPS_MAX_HDOP_VAL);
+    if (gpsSol.dop.hdop > GPS_BAD_QUALITY && ( (cycleNum % 16 ) < 8)) { // Every 1s
+        satellite = constrain(gpsSol.dop.hdop, 0, GPS_MAX_HDOP_VAL);
     }
     int16_t data;
     if (telemetryConfig()->frsky_unit == UNIT_IMPERIAL) {
-        float tmp = (satellite - 32) / 1.8f;
-        // Round the value
-        tmp += (tmp < 0) ? -0.5f : 0.5f;
-        data = tmp;
+        data = lrintf((satellite - 32) / 1.8f);
     } else {
         data = satellite;
     }

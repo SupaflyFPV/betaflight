@@ -22,7 +22,8 @@
 
 #include "common/time.h"
 
-#define TASK_ALTITUDE_RATE_HZ 120
+#define TASK_ALTITUDE_RATE_HZ 100
+
 typedef struct positionConfig_s {
     uint8_t altitude_source;
     uint8_t altitude_prefer_baro;
@@ -32,8 +33,7 @@ typedef struct positionConfig_s {
 
 PG_DECLARE(positionConfig_t, positionConfig);
 
-bool isAltitudeOffset(void);
-void calculateEstimatedAltitude();
+void calculateEstimatedAltitude(void);
 void positionInit(void);
 int32_t getEstimatedAltitudeCm(void);
 float getAltitude(void);

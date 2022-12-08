@@ -205,7 +205,8 @@ static volatile bool mspConfirm;
 STATIC_UNIT_TESTED volatile bool mspReplyPending;
 STATIC_UNIT_TESTED volatile bool deviceInfoReplyPending;
 
-void mspReceiverResetState(void) {
+void mspReceiverResetState(void)
+{
     mspCurrentOffset = 0;
     mspCurrentPackage = 1;
     mspConfirm = false;
@@ -288,7 +289,6 @@ void processMspPacket(uint8_t *packet)
         deviceInfoReplyPending = true;
         break;
     case CRSF_FRAMETYPE_MSP_REQ:
-        FALLTHROUGH;
     case CRSF_FRAMETYPE_MSP_WRITE:
         if (bufferCrsfMspFrame(&packet[ELRS_MSP_PACKET_OFFSET], CRSF_FRAME_RX_MSP_FRAME_SIZE)) {
             handleCrsfMspFrameBuffer(&bufferMspResponse);

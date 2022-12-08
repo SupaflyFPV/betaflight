@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -344,7 +345,7 @@ void updateArmingStatus(void)
 
 #ifdef USE_GPS_RESCUE
         if (gpsRescueIsConfigured()) {
-            if (gpsRescueConfig()->allowArmingWithoutFix || (STATE(GPS_FIX) && (gpsSol.numSat >= gpsConfig()->gpsRequiredSats)) ||
+            if (gpsRescueConfig()->allowArmingWithoutFix || (STATE(GPS_FIX) && (gpsSol.numSat >= gpsRescueConfig()->minSats)) ||
             ARMING_FLAG(WAS_EVER_ARMED) || IS_RC_MODE_ACTIVE(BOXFLIPOVERAFTERCRASH)) {
                 unsetArmingDisabled(ARMING_DISABLED_GPS);
             } else {
@@ -360,7 +361,7 @@ void updateArmingStatus(void)
 
 #ifdef USE_RPM_FILTER
         // USE_RPM_FILTER will only be defined if USE_DSHOT and USE_DSHOT_TELEMETRY are defined
-        // If the RPM filter is anabled and any motor isn't providing telemetry, then disable arming
+        // If the RPM filter is enabled and any motor isn't providing telemetry, then disable arming
         if (isRpmFilterEnabled() && !isDshotTelemetryActive()) {
             setArmingDisabled(ARMING_DISABLED_RPMFILTER);
         } else {
@@ -509,27 +510,32 @@ void tryArm(void)
             return;
         }
 
+        if (isMotorProtocolDshot()) {
 #if defined(USE_ESC_SENSOR) && defined(USE_DSHOT_TELEMETRY)
-        // Try to activate extended DSHOT telemetry only if no esc sensor exists and dshot telemetry is active
-        if (isMotorProtocolDshot() && !featureIsEnabled(FEATURE_ESC_SENSOR) && motorConfig()->dev.useDshotTelemetry) {
-            dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_EXTENDED_TELEMETRY_ENABLE, DSHOT_CMD_TYPE_INLINE);
-        }
+            // Try to activate extended DSHOT telemetry only if no esc sensor exists and dshot telemetry is active
+            if (!featureIsEnabled(FEATURE_ESC_SENSOR) && motorConfig()->dev.useDshotTelemetry) {
+                dshotCleanTelemetryData();
+                if (motorConfig()->dev.useDshotEdt) {
+                    dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_EXTENDED_TELEMETRY_ENABLE, DSHOT_CMD_TYPE_INLINE);
+                }
+            }
 #endif
 
-        if (isMotorProtocolDshot() && isModeActivationConditionPresent(BOXFLIPOVERAFTERCRASH)) {
-            // Set motor spin direction
-            if (!(IS_RC_MODE_ACTIVE(BOXFLIPOVERAFTERCRASH) || (tryingToArm == ARMING_DELAYED_CRASHFLIP))) {
-                flipOverAfterCrashActive = false;
-                if (!featureIsEnabled(FEATURE_3D)) {
-                    dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SPIN_DIRECTION_NORMAL, DSHOT_CMD_TYPE_INLINE);
-                }
-            } else {
-                flipOverAfterCrashActive = true;
+            if (isModeActivationConditionPresent(BOXFLIPOVERAFTERCRASH)) {
+                // Set motor spin direction
+                if (!(IS_RC_MODE_ACTIVE(BOXFLIPOVERAFTERCRASH) || (tryingToArm == ARMING_DELAYED_CRASHFLIP))) {
+                    flipOverAfterCrashActive = false;
+                    if (!featureIsEnabled(FEATURE_3D)) {
+                        dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SPIN_DIRECTION_NORMAL, DSHOT_CMD_TYPE_INLINE);
+                    }
+                } else {
+                    flipOverAfterCrashActive = true;
 #ifdef USE_RUNAWAY_TAKEOFF
-                runawayTakeoffCheckDisabled = false;
+                    runawayTakeoffCheckDisabled = false;
 #endif
-                if (!featureIsEnabled(FEATURE_3D)) {
-                    dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SPIN_DIRECTION_REVERSED, DSHOT_CMD_TYPE_INLINE);
+                    if (!featureIsEnabled(FEATURE_3D)) {
+                        dshotCommandWrite(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SPIN_DIRECTION_REVERSED, DSHOT_CMD_TYPE_INLINE);
+                    }
                 }
             }
         }
@@ -571,7 +577,7 @@ void tryArm(void)
         GPS_reset_home_position();
         //beep to indicate arming
         if (featureIsEnabled(FEATURE_GPS)) {
-            if (STATE(GPS_FIX) && gpsSol.numSat >= gpsConfig()->gpsRequiredSats) {
+            if (STATE(GPS_FIX) && gpsSol.numSat >= gpsRescueConfig()->minSats) {
                 beeper(BEEPER_ARMING_GPS_FIX);
             } else {
                 beeper(BEEPER_ARMING_GPS_NO_FIX);
@@ -736,12 +742,12 @@ int8_t calculateThrottlePercent(void)
 
 uint8_t calculateThrottlePercentAbs(void)
 {
-    return ABS(calculateThrottlePercent());
+    return abs(calculateThrottlePercent());
 }
 
 static bool airmodeIsActivated;
 
-bool isAirmodeActivated()
+bool isAirmodeActivated(void)
 {
     return airmodeIsActivated;
 }
@@ -1007,7 +1013,7 @@ void processRxModes(timeUs_t currentTimeUs)
         rescheduleTask(TASK_ATTITUDE, TASK_PERIOD_HZ(acc.sampleRateHz / (float)imuConfig()->imu_process_denom));
     } else {
         LED1_OFF;
-        rescheduleTask(TASK_ATTITUDE, TASK_PERIOD_HZ(acc.sampleRateHz / 10.0f));
+        rescheduleTask(TASK_ATTITUDE, TASK_PERIOD_HZ(100));
     }
 
     if (!IS_RC_MODE_ACTIVE(BOXPREARM) && ARMING_FLAG(WAS_ARMED_WITH_PREARM)) {
@@ -1309,12 +1315,12 @@ timeUs_t getLastDisarmTimeUs(void)
     return lastDisarmTimeUs;
 }
 
-bool isTryingToArm()
+bool isTryingToArm(void)
 {
     return (tryingToArm != ARMING_DELAYED_DISARMED);
 }
 
-void resetTryingToArm()
+void resetTryingToArm(void)
 {
     tryingToArm = ARMING_DELAYED_DISARMED;
 }

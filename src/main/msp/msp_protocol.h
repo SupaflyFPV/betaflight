@@ -235,6 +235,9 @@
 #define MSP_SET_TX_INFO                 186 // in message           Used to send runtime information from TX lua scripts to the firmware
 #define MSP_TX_INFO                     187 // out message          Used by TX lua scripts to read information from the firmware
 
+#define MSP_SET_OSD_CANVAS              188 // in message           Set osd canvas size COLSxROWS
+#define MSP_OSD_CANVAS                  189 // out message          Get osd canvas size COLSxROWS
+
 //
 // Multwii original MSP commands
 //
@@ -315,7 +318,7 @@
 #define MSP_SET_SENSOR_ALIGNMENT 220    //in message          set the orientation of the acc,gyro,mag
 #define MSP_SET_LED_STRIP_MODECOLOR 221 //in  message         Set LED strip mode_color settings
 #define MSP_SET_MOTOR_CONFIG     222    //out message         Motor configuration (min/max throttle, etc)
-#define MSP_SET_GPS_CONFIG       223    //out message         GPS configuration including from 1.44 minSats
+#define MSP_SET_GPS_CONFIG       223    //out message         GPS configuration
 //DEPRECATED - #define MSP_SET_COMPASS_CONFIG   224    //out message         Compass configuration
 #define MSP_SET_GPS_RESCUE       225    //in message          GPS Rescues's angle, initialAltitude, descentDistance, rescueGroundSpeed and sanityChecks
 #define MSP_SET_GPS_RESCUE_PIDS  226    //in message          GPS Rescues's throttleP and velocity PIDS + yaw P

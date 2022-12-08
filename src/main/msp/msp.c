@@ -124,6 +124,9 @@
 #include "pg/motor.h"
 #include "pg/rx.h"
 #include "pg/rx_spi.h"
+#ifdef USE_RX_EXPRESSLRS
+#include "pg/rx_spi_expresslrs.h"
+#endif
 #include "pg/usb.h"
 #include "pg/vcd.h"
 #include "pg/vtx_table.h"
@@ -238,7 +241,7 @@ static bool mspIsMspArmingEnabled(void)
 static uint8_t mspPassthroughMode;
 static uint8_t mspPassthroughArgument;
 
-#ifdef USE_ESCSERIAL
+#if defined(USE_ESCSERIAL) && defined(USE_SERIAL_4WAY_BLHELI_INTERFACE)
 static void mspEscPassthroughFn(serialPort_t *serialPort)
 {
     escEnablePassthrough(serialPort, &motorConfig()->dev, mspPassthroughArgument, mspPassthroughMode);
@@ -327,7 +330,7 @@ static void mspFcSetPassthroughCommand(sbuf_t *dst, sbuf_t *src, mspPostProcessF
         }
         FALLTHROUGH;
 #endif // USE_ESCSERIAL
-#endif //USE_SERIAL_4WAY_BLHELI_INTERFACE
+#endif // USE_SERIAL_4WAY_BLHELI_INTERFACE
     default:
         sbufWriteU8(dst, 0);
     }
@@ -663,9 +666,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
 #if defined(USE_SOFTSERIAL1) || defined(USE_SOFTSERIAL2)
         targetCapabilities |= BIT(TARGET_HAS_SOFTSERIAL);
 #endif
-#if defined(USE_UNIFIED_TARGET)
         targetCapabilities |= BIT(TARGET_IS_UNIFIED);
-#endif
 #if defined(USE_FLASH_BOOT_LOADER)
         targetCapabilities |= BIT(TARGET_HAS_FLASH_BOOTLOADER);
 #endif
@@ -944,6 +945,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
 #define OSD_FLAGS_OSD_HARDWARE_FRSKYOSD (1 << 3)
 #define OSD_FLAGS_OSD_HARDWARE_MAX_7456 (1 << 4)
 #define OSD_FLAGS_OSD_DEVICE_DETECTED   (1 << 5)
+#define OSD_FLAGS_OSD_MSP_DEVICE        (1 << 6)
 
         uint8_t osdFlags = 0;
 #if defined(USE_OSD)
@@ -967,6 +969,13 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
             }
 
             break;
+        case OSD_DISPLAYPORT_DEVICE_MSP:
+            osdFlags |= OSD_FLAGS_OSD_MSP_DEVICE;
+            if (displayIsReady) {
+                osdFlags |= OSD_FLAGS_OSD_DEVICE_DETECTED;
+            }
+
+            break;
         default:
             break;
         }
@@ -974,10 +983,10 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         sbufWriteU8(dst, osdFlags);
 
 #ifdef USE_MAX7456
-        // send video system (AUTO/PAL/NTSC)
+        // send video system (AUTO/PAL/NTSC/HD)
         sbufWriteU8(dst, vcdProfile()->video_system);
 #else
-        sbufWriteU8(dst, 0);
+        sbufWriteU8(dst, VIDEO_SYSTEM_HD);
 #endif
 
 #ifdef USE_OSD
@@ -1044,6 +1053,14 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         sbufWriteU8(dst, osdConfig()->camera_frame_height);
 
 #endif // USE_OSD
+        break;
+    }
+
+    case MSP_OSD_CANVAS: {
+#ifdef USE_OSD
+        sbufWriteU8(dst, osdConfig()->canvas_cols);
+        sbufWriteU8(dst, osdConfig()->canvas_rows);
+#endif
         break;
     }
 
@@ -1142,11 +1159,11 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         }
         break;
 
-    case MSP_NAME:
+case MSP_NAME:
         {
-            const int nameLen = strlen(pilotConfig()->name);
+            const int nameLen = strlen(pilotConfig()->craftName);
             for (int i = 0; i < nameLen; i++) {
-                sbufWriteU8(dst, pilotConfig()->name[i]);
+                sbufWriteU8(dst, pilotConfig()->craftName[i]);
             }
         }
         break;
@@ -1236,7 +1253,7 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
 
                     // Voltage -> 0-63,75V step 0,25V
                     if ((dshotTelemetryState.motorState[i].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_VOLTAGE)) != 0) {
-                    	escVoltage = dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_VOLTAGE] >> 2;
+                        escVoltage = dshotTelemetryState.motorState[i].telemetryData[DSHOT_TELEMETRY_TYPE_VOLTAGE] >> 2;
                     }
                 }
             }
@@ -1297,7 +1314,7 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
             if (isBlinking) {
                 displayAttr |= DISPLAYPORT_ATTR_BLINK;
             }
-            sbufWriteU8(dst, displayAttr);  // see displayPortAttr_e
+            sbufWriteU8(dst, displayAttr);  // see displayPortSeverity_e
             sbufWriteU8(dst, warningsLen);  // length byte followed by the actual characters
             for (unsigned i = 0; i < warningsLen; i++) {
                 sbufWriteU8(dst, warningsBuffer[i]);
@@ -1353,10 +1370,10 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         for (int i = 0 ; i < 3; i++) {
             sbufWriteU8(dst, currentControlRateProfile->rates[i]); // R,P,Y see flight_dynamics_index_t
         }
-        sbufWriteU8(dst, currentControlRateProfile->tpa_rate);
+        sbufWriteU8(dst, 0);   // was currentControlRateProfile->tpa_rate
         sbufWriteU8(dst, currentControlRateProfile->thrMid8);
         sbufWriteU8(dst, currentControlRateProfile->thrExpo8);
-        sbufWriteU16(dst, currentControlRateProfile->tpa_breakpoint);
+        sbufWriteU16(dst, 0);   // was currentControlRateProfile->tpa_breakpoint
         sbufWriteU8(dst, currentControlRateProfile->rcExpo[FD_YAW]);
         sbufWriteU8(dst, currentControlRateProfile->rcRates[FD_YAW]);
         sbufWriteU8(dst, currentControlRateProfile->rcRates[FD_PITCH]);
@@ -1489,9 +1506,6 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         // Added in API version 1.43
         sbufWriteU8(dst, gpsConfig()->gps_set_home_point_once);
         sbufWriteU8(dst, gpsConfig()->gps_ublox_use_galileo);
-        // Added in API version 1.45
-        sbufWriteU8(dst, gpsConfig()->gpsRequiredSats);
-        sbufWriteU8(dst, gpsConfig()->gpsMinimumSats);
         break;
 
     case MSP_RAW_GPS:
@@ -1503,7 +1517,7 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         sbufWriteU16(dst, gpsSol.groundSpeed);
         sbufWriteU16(dst, gpsSol.groundCourse);
         // Added in API version 1.44    
-        sbufWriteU16(dst, gpsSol.hdop);
+        sbufWriteU16(dst, gpsSol.dop.hdop);
         break;
 
     case MSP_COMP_GPS:
@@ -1532,7 +1546,7 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         sbufWriteU16(dst, gpsRescueConfig()->throttleMax);
         sbufWriteU16(dst, gpsRescueConfig()->throttleHover);
         sbufWriteU8(dst,  gpsRescueConfig()->sanityChecks);
-        sbufWriteU8(dst, 0); // not required in API 1.44, gpsRescueConfig()->minSats
+        sbufWriteU8(dst,  gpsRescueConfig()->minSats);
 
         // Added in API version 1.43
         sbufWriteU16(dst, gpsRescueConfig()->ascendRate);
@@ -1618,6 +1632,15 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
         sbufWriteU8(dst, rxConfig()->rc_smoothing_mode);
 #else
         sbufWriteU8(dst, 0);
+#endif
+
+        // Added in MSP API 1.45
+#ifdef USE_RX_EXPRESSLRS
+        sbufWriteData(dst, rxExpressLrsSpiConfig()->UID, sizeof(rxExpressLrsSpiConfig()->UID));
+#else
+        uint8_t emptyUid[6];
+        memset(emptyUid, 0, sizeof(emptyUid));
+        sbufWriteData(dst, &emptyUid, sizeof(emptyUid));
 #endif
         break;
     case MSP_FAILSAFE_CONFIG:
@@ -2014,6 +2037,9 @@ static bool mspProcessOutCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, sbuf_t
 #else
         sbufWriteU8(dst, 0);
 #endif
+        sbufWriteU8(dst, currentPidProfile->tpa_mode);
+        sbufWriteU8(dst, currentPidProfile->tpa_rate);
+        sbufWriteU16(dst, currentPidProfile->tpa_breakpoint);   // was currentControlRateProfile->tpa_breakpoint
         break;
     case MSP_SENSOR_CONFIG:
 #if defined(USE_ACC)
@@ -2490,6 +2516,46 @@ static mspResult_e mspFcProcessOutCommandWithArg(mspDescriptor_t srcDesc, int16_
         }
 
         break;
+
+    case MSP2_GET_TEXT:
+        {
+            // type byte, then length byte followed by the actual characters
+            const uint8_t textType = sbufBytesRemaining(src) ? sbufReadU8(src) : 0;
+
+            char* textVar;
+
+            switch (textType) {
+                case MSP2TEXT_PILOT_NAME:
+                    textVar = pilotConfigMutable()->pilotName;
+                    break;
+
+                case MSP2TEXT_CRAFT_NAME:
+                    textVar = pilotConfigMutable()->craftName;
+                    break;
+
+                case MSP2TEXT_PID_PROFILE_NAME:
+                    textVar = currentPidProfile->profileName;
+                    break;
+
+                case MSP2TEXT_RATE_PROFILE_NAME:
+                    textVar = currentControlRateProfile->profileName;
+                    break;
+
+                default:
+                    return MSP_RESULT_ERROR;
+            }
+
+            const uint8_t textLength = strlen(textVar);
+
+            //  type byte, then length byte followed by the actual characters
+            sbufWriteU8(dst, textType);
+            sbufWriteU8(dst, textLength);
+            for (unsigned int i = 0; i < textLength; i++) {
+                sbufWriteU8(dst, textVar[i]);
+            }
+        }
+        break;
+
     default:
         return MSP_RESULT_CMD_UNKNOWN;
     }
@@ -2666,11 +2732,10 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
                 currentControlRateProfile->rates[i] = sbufReadU8(src);
             }
 
-            value = sbufReadU8(src);
-            currentControlRateProfile->tpa_rate = MIN(value, CONTROL_RATE_CONFIG_TPA_MAX);
+            sbufReadU8(src);    // tpa_rate is moved to PID profile
             currentControlRateProfile->thrMid8 = sbufReadU8(src);
             currentControlRateProfile->thrExpo8 = sbufReadU8(src);
-            currentControlRateProfile->tpa_breakpoint = sbufReadU16(src);
+            sbufReadU16(src);   // tpa_breakpoint is moved to PID profile
 
             if (sbufBytesRemaining(src) >= 1) {
                 currentControlRateProfile->rcExpo[FD_YAW] = sbufReadU8(src);
@@ -2739,12 +2804,6 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             gpsConfigMutable()->gps_set_home_point_once = sbufReadU8(src);
             gpsConfigMutable()->gps_ublox_use_galileo = sbufReadU8(src);
         }
-        if (sbufBytesRemaining(src) >= 2) {
-            // Added in API version 1.45
-            gpsConfigMutable()->gpsRequiredSats = sbufReadU8(src);
-            gpsConfigMutable()->gpsMinimumSats = sbufReadU8(src);
-        }
-
         break;
 
 #ifdef USE_GPS_RESCUE
@@ -2757,7 +2816,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         gpsRescueConfigMutable()->throttleMax = sbufReadU16(src);
         gpsRescueConfigMutable()->throttleHover = sbufReadU16(src);
         gpsRescueConfigMutable()->sanityChecks = sbufReadU8(src);
-        sbufReadU8(src);  // not used since 1.43, was gps rescue minSats
+        gpsRescueConfigMutable()->minSats = sbufReadU8(src);
         if (sbufBytesRemaining(src) >= 6) {
             // Added in API version 1.43
             gpsRescueConfigMutable()->ascendRate = sbufReadU16(src);
@@ -3029,7 +3088,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src); // was pidProfile.levelSensitivity
         }
         if (sbufBytesRemaining(src) >= 4) {
-            sbufReadU16(src); // was currentPidProfile->itermAcceleratorGain
+            sbufReadU16(src); // was currentPidProfile->itermThrottleThreshold
             currentPidProfile->anti_gravity_gain = sbufReadU16(src);
         }
         if (sbufBytesRemaining(src) >= 2) {
@@ -3135,6 +3194,13 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src);
 #endif
         }
+        if (sbufBytesRemaining(src) >= 4) {
+            // Added in API 1.45
+            currentPidProfile->tpa_mode = sbufReadU8(src);
+            currentPidProfile->tpa_rate = MIN(sbufReadU8(src), TPA_MAX);
+            currentPidProfile->tpa_breakpoint = sbufReadU16(src);
+        }
+
         pidInitConfig(currentPidProfile);
         initEscEndpoints();
         mixerInitProfile();
@@ -3625,6 +3691,15 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src);
 #endif
         }
+        if (sbufBytesRemaining(src) >= 6) {
+            // Added in MSP API 1.45
+#ifdef USE_RX_EXPRESSLRS
+            sbufReadData(src, rxExpressLrsSpiConfigMutable()->UID, 6);
+#else
+            uint8_t emptyUid[6];
+            sbufReadData(src, emptyUid, 6);
+#endif        
+        }
         break;
     case MSP_SET_FAILSAFE_CONFIG:
         failsafeConfigMutable()->failsafe_delay = sbufReadU8(src);
@@ -3764,9 +3839,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 #endif
 
     case MSP_SET_NAME:
-        memset(pilotConfigMutable()->name, 0, ARRAYLEN(pilotConfig()->name));
+        memset(pilotConfigMutable()->craftName, 0, ARRAYLEN(pilotConfig()->craftName));
         for (unsigned int i = 0; i < MIN(MAX_NAME_LENGTH, dataSize); i++) {
-            pilotConfigMutable()->name[i] = sbufReadU8(src);
+            pilotConfigMutable()->craftName[i] = sbufReadU8(src);
         }
 #ifdef USE_OSD
         osdAnalyzeActiveElements();
@@ -3843,6 +3918,48 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 
         break;
 #endif
+
+    case MSP2_SET_TEXT:
+        {
+            // type byte, then length byte followed by the actual characters
+            const uint8_t textType = sbufReadU8(src);
+
+            char* textVar;
+            const uint8_t textLength = MIN(MAX_NAME_LENGTH, sbufReadU8(src));
+            switch (textType) {
+                case MSP2TEXT_PILOT_NAME:
+                    textVar = pilotConfigMutable()->pilotName;
+                    break;
+
+                case MSP2TEXT_CRAFT_NAME:
+                    textVar = pilotConfigMutable()->craftName;
+                    break;
+
+                case MSP2TEXT_PID_PROFILE_NAME:
+                    textVar = currentPidProfile->profileName;
+                    break;
+
+                case MSP2TEXT_RATE_PROFILE_NAME:
+                    textVar = currentControlRateProfile->profileName;
+                    break;
+
+                default:
+                    return MSP_RESULT_ERROR;
+            }
+
+            memset(textVar, 0, strlen(textVar));
+            for (unsigned int i = 0; i < textLength; i++) {
+                textVar[i] = sbufReadU8(src);
+            }
+
+#ifdef USE_OSD
+            if (textType == MSP2TEXT_PILOT_NAME || textType == MSP2TEXT_CRAFT_NAME) {
+                osdAnalyzeActiveElements();
+            }
+#endif
+        }
+        break;
+
     default:
         // we do not know how to handle the (valid) message, indicate error MSP $M!
         return MSP_RESULT_ERROR;
@@ -4087,6 +4204,16 @@ static mspResult_e mspCommonProcessInCommand(mspDescriptor_t srcDesc, int16_t cm
             if (!displayWriteFontCharacter(osdDisplayPort, addr, &chr)) {
                 return MSP_RESULT_ERROR;
             }
+        }
+        break;
+
+    case MSP_SET_OSD_CANVAS:
+        {
+            osdConfigMutable()->canvas_cols = sbufReadU8(src);
+            osdConfigMutable()->canvas_rows = sbufReadU8(src);
+
+            // An HD VTX has communicated it's canvas size, so we must be in HD mode
+            vcdProfileMutable()->video_system = VIDEO_SYSTEM_HD;
         }
         break;
 #endif // OSD

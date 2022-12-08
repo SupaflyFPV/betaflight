@@ -28,6 +28,7 @@
  * Phobos- - Port of v2.0
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include "platform.h"
 
@@ -78,7 +79,10 @@ static uint8_t txPower = 0;
 static uint8_t wideSwitchIndex = 0;
 static uint8_t currTlmDenom = 1;
 static simpleLowpassFilter_t rssiFilter;
-static meanAccumulator_t snrFilter;
+#ifdef USE_RX_RSNR
+static simpleLowpassFilter_t rsnrFilter;
+#endif //USE_RX_RSNR
+static meanAccumulator_t snrFilter; //for dyn power purposes
 
 static volatile DMA_DATA uint8_t dmaBuffer[ELRS_RX_TX_BUFF_SIZE];
 static volatile DMA_DATA uint8_t telemetryPacket[ELRS_RX_TX_BUFF_SIZE];
@@ -88,6 +92,9 @@ static volatile uint8_t *payload;
 static void rssiFilterReset(void)
 {
     simpleLPFilterInit(&rssiFilter, 2, 5);
+#ifdef USE_RX_RSNR
+    simpleLPFilterInit(&rsnrFilter, 2, 5);
+#endif //USE_RX_RSNR
 }
 
 #define PACKET_HANDLING_TO_TOCK_ISR_DELAY_US 250
@@ -127,11 +134,11 @@ static bool phaseLockEprHaveBothEvents(void)
 
 static int32_t phaseLockEprResult(void)
 {
-    if (!phaseLockEprHaveBothEvents()) {
-        return 0;
+    if (phaseLockEprHaveBothEvents()) {
+        return (int32_t)(eprState.eventAtUs[EPR_SECOND] - eprState.eventAtUs[EPR_FIRST]);
     }
 
-    return (int32_t)(eprState.eventAtUs[EPR_SECOND] - eprState.eventAtUs[EPR_FIRST]);
+    return 0;
 }
 
 static void phaseLockEprReset(void)
@@ -300,10 +307,14 @@ static uint8_t minLqForChaos(void)
     return interval * ((interval * numfhss + 99) / (interval * numfhss));
 }
 
-static bool domainIsTeam24()
+static bool domainIsTeam24(void)
 {
-  const elrsFreqDomain_e domain = rxExpressLrsSpiConfig()->domain;
-  return (domain == ISM2400) || (domain == CE2400);
+#ifdef USE_RX_SX1280
+    const elrsFreqDomain_e domain = rxExpressLrsSpiConfig()->domain;
+    return (domain == ISM2400) || (domain == CE2400);
+#else 
+    return false;
+#endif
 }
 
 static void setRfLinkRate(const uint8_t index)
@@ -567,6 +578,9 @@ static void initializeReceiver(void)
     receiver.configChanged = false;
     receiver.rssi = 0;
     receiver.rssiFiltered = 0;
+#ifdef USE_RX_RSNR
+    receiver.rsnrFiltered = 0;
+#endif //USE_RX_RSNR
     receiver.snr = 0;
     receiver.uplinkLQ = 0;
     receiver.rateIndex = receiver.inBindingMode ? bindingRateIndex : rxExpressLrsSpiConfig()->rateIndex;
@@ -872,15 +886,10 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     switch (rxExpressLrsSpiConfig()->domain) {
 #ifdef USE_RX_SX127X
     case AU433:
-        FALLTHROUGH;
     case AU915:
-        FALLTHROUGH;
     case EU433:
-        FALLTHROUGH;
     case EU868:
-        FALLTHROUGH;
     case IN866:
-        FALLTHROUGH;
     case FCC915:
         configureReceiverForSX127x();
         bindingRateIndex = ELRS_BINDING_RATE_900;
@@ -952,6 +961,9 @@ static void handleConnectionStateUpdate(const uint32_t timeStampMs)
 #ifdef USE_RX_RSSI_DBM
         setRssiDbmDirect(-130, RSSI_SOURCE_RX_PROTOCOL);
 #endif
+#ifdef USE_RX_RSNR
+        setRsnrDirect(-30);
+#endif
 #ifdef USE_RX_LINK_QUALITY_INFO
         setLinkQualityDirect(0);
 #endif
@@ -981,15 +993,15 @@ static void handleConnectionStateUpdate(const uint32_t timeStampMs)
         lostConnection();
     }
 
-    if ((receiver.connectionState == ELRS_TENTATIVE) && (ABS(pl.offsetDeltaUs) <= 10) && (pl.offsetUs < 100) && (lqGet() > minLqForChaos())) {
+    if ((receiver.connectionState == ELRS_TENTATIVE) && (abs(pl.offsetDeltaUs) <= 10) && (pl.offsetUs < 100) && (lqGet() > minLqForChaos())) {
         gotConnection(timeStampMs); // detects when we are connected
     }
 
-    if ((receiver.timerState == ELRS_TIM_TENTATIVE) && ((timeStampMs - receiver.gotConnectionMs) > ELRS_CONSIDER_CONNECTION_GOOD_MS) && (ABS(pl.offsetDeltaUs) <= 5)) {
+    if ((receiver.timerState == ELRS_TIM_TENTATIVE) && ((timeStampMs - receiver.gotConnectionMs) > ELRS_CONSIDER_CONNECTION_GOOD_MS) && (abs(pl.offsetDeltaUs) <= 5)) {
         receiver.timerState = ELRS_TIM_LOCKED;
     }
 
-    if ((receiver.connectionState == ELRS_CONNECTED) && (ABS(pl.offsetDeltaUs) > 10) && (pl.offsetUs >= 100) && (lqGet() <= minLqForChaos())) {
+    if ((receiver.connectionState == ELRS_CONNECTED) && (abs(pl.offsetDeltaUs) > 10) && (pl.offsetUs >= 100) && (lqGet() <= minLqForChaos())) {
         lostConnection(); // SPI: resync when we're in chaos territory
     }
 }
@@ -1019,6 +1031,10 @@ static void handleLinkStatsUpdate(const uint32_t timeStampMs)
 #ifdef USE_RX_RSSI_DBM
             setRssiDbm(receiver.rssiFiltered, RSSI_SOURCE_RX_PROTOCOL);
 #endif
+#ifdef USE_RX_RSNR
+            receiver.rsnrFiltered = simpleLPFilterUpdate(&rsnrFilter, receiver.snr/4);
+            setRsnr(receiver.rsnrFiltered);
+#endif
 #ifdef USE_RX_LINK_QUALITY_INFO
             setLinkQualityDirect(receiver.uplinkLQ);
 #endif
@@ -1029,6 +1045,9 @@ static void handleLinkStatsUpdate(const uint32_t timeStampMs)
             setRssiDirect(0, RSSI_SOURCE_RX_PROTOCOL);
 #ifdef USE_RX_RSSI_DBM
             setRssiDbmDirect(-130, RSSI_SOURCE_RX_PROTOCOL);
+#endif
+#ifdef USE_RX_RSNR
+            setRsnrDirect(-30);
 #endif
 #ifdef USE_RX_LINK_QUALITY_INFO
             setLinkQualityDirect(0);

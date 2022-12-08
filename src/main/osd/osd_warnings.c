@@ -75,7 +75,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
     static unsigned armingDisabledDisplayIndex;
 
     warningText[0] = '\0';
-    *displayAttr = DISPLAYPORT_ATTR_NONE;
+    *displayAttr = DISPLAYPORT_ATTR_NORMAL;
     *blinking = false;
 
     // Cycle through the arming disabled reasons
@@ -186,6 +186,15 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
         return;
     }
 #endif // USE_RX_RSSI_DBM
+#ifdef USE_RX_RSNR
+    // rsnr
+    if (osdWarnGetState(OSD_WARNING_RSNR) && (getRsnr() < osdConfig()->rsnr_alarm)) {
+        tfp_sprintf(warningText, "RSNR LOW");
+        *displayAttr = DISPLAYPORT_ATTR_WARNING;
+        *blinking = true;
+        return;
+    }
+#endif // USE_RX_RSNR
 
 #ifdef USE_RX_LINK_QUALITY_INFO
     // Link Quality
