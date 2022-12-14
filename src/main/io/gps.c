@@ -107,6 +107,7 @@ uint8_t GPS_svinfo_cno[GPS_SV_MAXSATS_M8N];
 #define UBLOX_ACK_TIMEOUT_MAX_COUNT (25)
 
 static serialPort_t *gpsPort;
+static float gpsSampleRateHz;
 
 typedef struct gpsInitData_s {
     uint8_t index;
@@ -307,6 +308,8 @@ static void gpsSetState(gpsState_e state)
 
 void gpsInit(void)
 {
+    gpsSampleRateHz = 0.0f;
+
     gpsData.baudrateIndex = 0;
     gpsData.errors = 0;
     gpsData.timeouts = 0;
@@ -356,6 +359,7 @@ void gpsInit(void)
 #ifdef USE_GPS_NMEA
 void gpsInitNmea(void)
 {
+    static bool atgmRestartDone = false;
 #if !defined(GPS_NMEA_TX_ONLY)
     uint32_t now;
 #endif
@@ -392,6 +396,12 @@ void gpsInitNmea(void)
                gpsData.state_position++;
            } else if (gpsData.state_position < 2) {
                serialPrint(gpsPort, "$PSRF103,00,6,00,0*23\r\n");
+                // special initialization for NMEA ATGM336 and similar GPS recivers - should be done only once
+               if (!atgmRestartDone) {
+                   atgmRestartDone = true;
+                   serialPrint(gpsPort, "$PCAS02,100*1E\r\n");  // 10Hz refresh rate
+                   serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart 
+               }
                gpsData.state_position++;
            } else
 #else
@@ -1904,6 +1914,13 @@ void GPS_calculateDistanceAndDirectionToHome(void)
 
 void onGpsNewData(void)
 {
+    static timeUs_t timeUs, lastTimeUs = 0;
+
+    // Detect current sample rate of GPS solution
+    timeUs = micros();
+    gpsSampleRateHz = 1e6f / cmpTimeUs(timeUs, lastTimeUs);
+    lastTimeUs = timeUs;
+
     if (!(STATE(GPS_FIX) && gpsSol.numSat >= GPS_MIN_SAT_COUNT)) {
         // if we don't have a 3D fix and the minimum sats, don't give data to GPS rescue
         return;
@@ -1928,4 +1945,10 @@ void gpsSetFixState(bool state)
         DISABLE_STATE(GPS_FIX);
     }
 }
-#endif
+
+float gpsGetSampleRateHz(void)
+{
+    return gpsSampleRateHz;
+}
+
+#endif // USE_GPS
