@@ -18,8 +18,8 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stdbool.h"
-#include "stdint.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "platform.h"
 
@@ -68,6 +68,8 @@ mcuTypeId_e getMcuTypeId(void)
     return MCU_TYPE_H723_725;
 #elif defined(STM32G474xx)
     return MCU_TYPE_G474;
+#elif defined(AT32F435)
+    return MCU_TYPE_AT32;
 #else
     return MCU_TYPE_UNKNOWN;
 #endif

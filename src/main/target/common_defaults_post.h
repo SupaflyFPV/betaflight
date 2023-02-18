@@ -62,83 +62,6 @@
 #endif
 #endif
 
-// pg/bus_i2c
-
-#ifdef I2C_FULL_RECONFIGURABILITY
-#ifdef USE_I2C_DEVICE_1
-#define I2C1_SCL NONE
-#define I2C1_SDA NONE
-#endif
-
-#ifdef USE_I2C_DEVICE_2
-#define I2C2_SCL NONE
-#define I2C2_SDA NONE
-#endif
-
-#ifdef USE_I2C_DEVICE_3
-#define I2C3_SCL NONE
-#define I2C3_SDA NONE
-#endif
-
-#ifdef USE_I2C_DEVICE_4
-#define I2C4_SCL NONE
-#define I2C4_SDA NONE
-#endif
-
-#else // I2C_FULL_RECONFIGURABILITY
-
-// Backward compatibility for exisiting targets
-
-#ifdef STM32F4
-#ifndef I2C1_SCL
-#define I2C1_SCL PB6
-#endif
-#ifndef I2C1_SDA
-#define I2C1_SDA PB7
-#endif
-#ifndef I2C2_SCL
-#define I2C2_SCL PB10
-#endif
-#ifndef I2C2_SDA
-#define I2C2_SDA PB11
-#endif
-#ifndef I2C3_SCL
-#define I2C3_SCL PA8
-#endif
-#ifndef I2C3_SDA
-#define I2C3_SDA PC9
-#endif
-#endif // STM32F4
-
-#ifdef STM32F7
-#ifndef I2C1_SCL
-#define I2C1_SCL PB6
-#endif
-#ifndef I2C1_SDA
-#define I2C1_SDA PB7
-#endif
-#ifndef I2C2_SCL
-#define I2C2_SCL PB10
-#endif
-#ifndef I2C2_SDA
-#define I2C2_SDA PB11
-#endif
-#ifndef I2C3_SCL
-#define I2C3_SCL PA8
-#endif
-#ifndef I2C3_SDA
-#define I2C3_SDA PB4
-#endif
-#ifndef I2C4_SCL
-#define I2C4_SCL PD12
-#endif
-#ifndef I2C4_SDA
-#define I2C4_SDA PD13
-#endif
-#endif // STM32F7
-
-#endif // I2C_FULL_RECONFIGURABILITY
-
 #ifndef I2C1_CLOCKSPEED
 #define I2C1_CLOCKSPEED 800
 #endif
@@ -164,87 +87,6 @@
 #define I2C2_PULLUP false
 #define I2C3_PULLUP false
 #define I2C4_PULLUP false
-#endif
-
-// pg/bus_spi
-
-#ifdef SPI_FULL_RECONFIGURABILITY
-
-#ifdef USE_SPI_DEVICE_1
-#define SPI1_SCK_PIN    NONE
-#define SPI1_MISO_PIN   NONE
-#define SPI1_MOSI_PIN   NONE
-#endif
-
-#ifdef USE_SPI_DEVICE_2
-#define SPI2_SCK_PIN    NONE
-#define SPI2_MISO_PIN   NONE
-#define SPI2_MOSI_PIN   NONE
-#endif
-
-#ifdef USE_SPI_DEVICE_3
-#define SPI3_SCK_PIN    NONE
-#define SPI3_MISO_PIN   NONE
-#define SPI3_MOSI_PIN   NONE
-#endif
-
-#ifdef USE_SPI_DEVICE_4
-#define SPI4_SCK_PIN    NONE
-#define SPI4_MISO_PIN   NONE
-#define SPI4_MOSI_PIN   NONE
-#endif
-
-#ifdef USE_SPI_DEVICE_5
-#define SPI5_SCK_PIN    NONE
-#define SPI5_MISO_PIN   NONE
-#define SPI5_MOSI_PIN   NONE
-#endif
-
-#ifdef USE_SPI_DEVICE_6
-#define SPI6_SCK_PIN    NONE
-#define SPI6_MISO_PIN   NONE
-#define SPI6_MOSI_PIN   NONE
-#endif
-#else
-
-// Pin defaults for backward compatibility
-
-#ifndef SPI1_SCK_PIN
-#define SPI1_SCK_PIN    PA5
-#define SPI1_MISO_PIN   PA6
-#define SPI1_MOSI_PIN   PA7
-#endif
-
-#ifndef SPI2_SCK_PIN
-#define SPI2_SCK_PIN    PB13
-#define SPI2_MISO_PIN   PB14
-#define SPI2_MOSI_PIN   PB15
-#endif
-
-#ifndef SPI3_SCK_PIN
-#define SPI3_SCK_PIN    PB3
-#define SPI3_MISO_PIN   PB4
-#define SPI3_MOSI_PIN   PB5
-#endif
-
-#ifndef SPI4_SCK_PIN
-#define SPI4_SCK_PIN    NONE
-#define SPI4_MISO_PIN   NONE
-#define SPI4_MOSI_PIN   NONE
-#endif
-
-#ifndef SPI5_SCK_PIN
-#define SPI5_SCK_PIN    NONE
-#define SPI5_MISO_PIN   NONE
-#define SPI5_MOSI_PIN   NONE
-#endif
-
-#ifndef SPI6_SCK_PIN
-#define SPI6_SCK_PIN    NONE
-#define SPI6_MISO_PIN   NONE
-#define SPI6_MOSI_PIN   NONE
-#endif
-
 #endif
 
 // Extracted from rx/rx.c and rx/rx.h
@@ -291,20 +133,6 @@
 #define RX_SPI_BIND_PIN NONE
 #endif
 
-#if defined(USE_RX_CC2500)
-#if !defined(RX_CC2500_SPI_TX_EN_PIN)
-#define RX_CC2500_SPI_TX_EN_PIN NONE
-#endif
-
-#if !defined(RX_CC2500_SPI_LNA_EN_PIN)
-#define RX_CC2500_SPI_LNA_EN_PIN NONE
-#endif
-
-#if !defined(RX_CC2500_SPI_ANT_SEL_PIN)
-#define RX_CC2500_SPI_ANT_SEL_PIN NONE
-#endif
-#endif
-
 #if defined(USE_RX_EXPRESSLRS)
 #if !defined(RX_EXPRESSLRS_SPI_RESET_PIN)
 #define RX_EXPRESSLRS_SPI_RESET_PIN NONE
@@ -324,7 +152,7 @@
 
 // gyro hardware
 
-#if !defined(GYRO_1_SPI_INSTANCE)
+#if !defined(GYRO_1_SPI_INSTANCE) && !defined(SIMULATOR_BUILD)
 #define GYRO_1_SPI_INSTANCE     NULL
 #endif
 
@@ -495,12 +323,6 @@
 #endif
 
 #ifdef USE_ADC
-#if !defined(USE_UNIFIED_TARGET) && !defined(ADC_INSTANCE)
-#define ADC_INSTANCE ADC1
-#ifndef ADC1_DMA_OPT
-#define ADC1_DMA_OPT 1
-#endif
-#endif
 
 #if !defined(ADC1_DMA_OPT)
 #define ADC1_DMA_OPT (DMA_OPT_UNUSED)

@@ -93,6 +93,7 @@ typedef enum {
     DEBUG_D_LPF,
     DEBUG_VTX_TRAMP,
     DEBUG_GHST,
+    DEBUG_GHST_MSP,
     DEBUG_SCHEDULER_DETERMINISM,
     DEBUG_TIMING_ACCURACY,
     DEBUG_RX_EXPRESSLRS_SPI,
@@ -101,7 +102,14 @@ typedef enum {
     DEBUG_GPS_RESCUE_VELOCITY,
     DEBUG_GPS_RESCUE_HEADING,
     DEBUG_GPS_RESCUE_TRACKING,
+    DEBUG_ATTITUDE,
+    DEBUG_VTX_MSP,
+    DEBUG_GPS_DOP,
+    DEBUG_FAILSAFE,
+    DEBUG_GYRO_CALIBRATION,
     DEBUG_COUNT
 } debugType_e;
 
 extern const char * const debugModeNames[DEBUG_COUNT];
+
+void debugInit(void);

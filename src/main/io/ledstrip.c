@@ -133,7 +133,11 @@ void pgResetFn_ledStripConfig(ledStripConfig_t *ledStripConfig)
     ledStripConfig->ledstrip_visual_beeper_color = VISUAL_BEEPER_COLOR;
     ledStripConfig->ledstrip_brightness = 100;
 #ifndef UNIT_TEST
-    ledStripConfig->ioTag = timerioTagGetByUsage(TIM_USE_LED, 0);
+#ifdef LED_STRIP_PIN
+    ledStripConfig->ioTag = IO_TAG(LED_STRIP_PIN);
+#else
+    ledStripConfig->ioTag = IO_TAG_NONE;
+#endif
 #endif
 }
 
@@ -901,7 +905,7 @@ static int brightnessForLarsonIndex(larsonParameters_t *larsonParameters, uint8_
     int offset = larsonIndex - larsonParameters->currentIndex;
     static const int larsonLowValue = 8;
 
-    if (ABS(offset) > 1)
+    if (abs(offset) > 1)
         return (larsonLowValue);
 
     if (offset == 0)
@@ -1047,7 +1051,8 @@ void updateRequiredOverlay(void)
     disabledTimerMask |= !isOverlayTypeUsed(LED_OVERLAY_INDICATOR) << timIndicator;
 }
 
-static void applyStatusProfile(timeUs_t now) {
+static void applyStatusProfile(timeUs_t now)
+{
 
     // apply all layers; triggered timed functions has to update timers
     // test all led timers, setting corresponding bits
