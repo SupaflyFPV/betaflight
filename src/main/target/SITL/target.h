@@ -31,6 +31,7 @@
 
 #define SIMULATOR_MULTITHREAD
 
+#define SYSTEM_HSE_MHZ 0
 #define DEFAULT_CPU_OVERCLOCK 1
 #define DMA_RAM
 #define DMA_RW_AXI
@@ -66,19 +67,19 @@
 #undef SCHEDULER_DELAY_LIMIT
 #define SCHEDULER_DELAY_LIMIT           1
 
-#define USE_FAKE_LED
+#define USE_VIRTUAL_LED
 
 #define USE_ACC
-#define USE_FAKE_ACC
+#define USE_VIRTUAL_ACC
 
 #define USE_GYRO
-#define USE_FAKE_GYRO
+#define USE_VIRTUAL_GYRO
 
 #define USE_MAG
-#define USE_FAKE_MAG
+#define USE_VIRTUAL_MAG
 
 #define USE_BARO
-#define USE_FAKE_BARO
+#define USE_VIRTUAL_BARO
 
 #define USABLE_TIMER_CHANNEL_COUNT 0
 
@@ -139,7 +140,6 @@
 #undef USE_VTX_TRAMP
 #undef USE_VTX_MSP
 #undef USE_CAMERA_CONTROL
-#undef USE_BRUSHED_ESC_AUTODETECT
 #undef USE_SERIAL_4WAY_BLHELI_BOOTLOADER
 #undef USE_SERIAL_4WAY_SK_BOOTLOADER
 
@@ -154,6 +154,8 @@
 #define SOFTSERIAL_2_TIMER 3
 
 #define DEFIO_NO_PORTS   // suppress 'no pins defined' warning
+
+#define FLASH_PAGE_SIZE (0x400)
 
 // belows are internal stuff
 

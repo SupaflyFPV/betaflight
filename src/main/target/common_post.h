@@ -85,7 +85,7 @@
     In the future we can move to specific drivers being added only - to save flash space.
 */
 
-#if defined(USE_MAG) && !defined(USE_FAKE_MAG)
+#if defined(USE_MAG) && !defined(USE_VIRTUAL_MAG)
 #define USE_MAG_DATA_READY_SIGNAL
 #define USE_MAG_HMC5883
 #define USE_MAG_SPI_HMC5883
@@ -120,6 +120,10 @@
 #define USE_RX_SPEKTRUM_TELEMETRY
 
 #endif // defined(USE_RX_CC2500)
+
+#if defined(CAMERA_CONTROL_PIN) && defined(USE_VTX) && !defined(USE_CAMERA_CONTROL)
+#define USE_CAMERA_CONTROL
+#endif
 
 /* END HARDWARE INCLUSIONS */
 
@@ -163,10 +167,6 @@
 #endif
 #else
 #undef USE_VARIO
-#endif
-
-#if defined(USE_BARO) && !defined(BARO_EOC_PIN)
-#define BARO_EOC_PIN NONE
 #endif
 
 #if !defined(USE_SERIALRX)
@@ -239,7 +239,7 @@
 #undef USE_SPEKTRUM_BIND
 #undef USE_SPEKTRUM_BIND_PLUG
 #undef USE_SPEKTRUM_REAL_RSSI
-#undef USE_SPEKTRUM_FAKE_RSSI
+#undef USE_SPEKTRUM_VIRTUAL_RSSI
 #undef USE_SPEKTRUM_RSSI_PERCENT_CONVERSION
 #undef USE_SPEKTRUM_VTX_CONTROL
 #undef USE_SPEKTRUM_VTX_TELEMETRY
@@ -272,14 +272,13 @@
 #undef USE_VTX_MSP
 #endif
 
-// Burst dshot to default off if not configured explicitly by target
-#ifndef ENABLE_DSHOT_DMAR
-#define ENABLE_DSHOT_DMAR DSHOT_DMAR_OFF
-#endif
-
 // Some target doesn't define USE_ADC which USE_ADC_INTERNAL depends on
 #ifndef USE_ADC
 #undef USE_ADC_INTERNAL
+#endif
+
+#if (defined(USE_SDCARD) || defined(USE_FLASH)) && !defined(USE_BLACKBOX)
+#define USE_BLACKBOX
 #endif
 
 #ifdef USE_FLASH
@@ -338,6 +337,10 @@
 #define USE_USB_ADVANCED_PROFILES
 #endif
 
+#if defined(USE_VTX) && !defined(DEFAULT_FEATURES)
+#define DEFAULT_FEATURES FEATURE_VTX
+#endif
+
 #if !defined(USE_OSD)
 #undef USE_RX_LINK_QUALITY_INFO
 #undef USE_OSD_PROFILES
@@ -386,8 +389,10 @@
 // Setup crystal frequency on F4 for backward compatibility
 // Should be set to zero for generic targets to ensure USB is working
 // when unconfigured for targets with non-standard crystal.
-// Can be set at runtime with with CLI parameter 'system_hse_value'.
-#define SYSTEM_HSE_VALUE 0
+// Can be set at runtime with with CLI parameter 'system_hse_mhz'.
+#ifndef SYSTEM_HSE_MHZ
+#define SYSTEM_HSE_MHZ 0
+#endif
 
 // Number of pins that needs pre-init
 #ifdef USE_SPI
@@ -546,18 +551,6 @@ extern uint8_t __config_end;
 
 #ifndef USE_ITERM_RELAX
 #undef USE_ABSOLUTE_CONTROL
-#endif
-
-#if defined(USE_CUSTOM_DEFAULTS)
-#define USE_CUSTOM_DEFAULTS_ADDRESS
-#endif
-
-#if defined(USE_RX_EXPRESSLRS) && defined(STM32F411)
-#define RX_SPI_DEFAULT_PROTOCOL          RX_SPI_EXPRESSLRS
-#endif
-
-#if defined(USE_RX_EXPRESSLRS) && !defined(RX_EXPRESSLRS_TIMER_INSTANCE) && (defined(STM32F411) || defined(STM32F405) || defined(STM32F745) || defined(STM32H7))
-#define RX_EXPRESSLRS_TIMER_INSTANCE     TIM5
 #endif
 
 #if defined(USE_RX_EXPRESSLRS)

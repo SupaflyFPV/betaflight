@@ -185,7 +185,7 @@ motor_output_unittest_SRC := \
 		$(USER_DIR)/drivers/dshot.c
 
 motor_output_unittest_DEFINES := \
-		USE_DSHOT= 
+		USE_DSHOT=
 
 osd_unittest_SRC := \
 		$(USER_DIR)/osd/osd.c \
@@ -290,7 +290,7 @@ scheduler_unittest_SRC := \
 		$(USER_DIR)/common/streambuf.c
 
 scheduler_unittest_DEFINES := \
-		USE_OSD= 
+		USE_OSD=
 
 sensor_gyro_unittest_SRC := \
 		$(USER_DIR)/sensors/gyro.c \
@@ -301,7 +301,7 @@ sensor_gyro_unittest_SRC := \
 		$(USER_DIR)/common/maths.c \
 		$(USER_DIR)/common/streambuf.c \
 		$(USER_DIR)/common/sensor_alignment.c \
-		$(USER_DIR)/drivers/accgyro/accgyro_fake.c \
+		$(USER_DIR)/drivers/accgyro/accgyro_virtual.c \
 		$(USER_DIR)/drivers/accgyro/gyro_sync.c \
 		$(USER_DIR)/pg/pg.c \
 		$(USER_DIR)/pg/gyrodev.c

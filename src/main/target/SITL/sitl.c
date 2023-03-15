@@ -39,10 +39,10 @@
 #include "drivers/light_led.h"
 
 #include "drivers/timer.h"
-#include "drivers/timer_def.h"
+#include "timer_def.h"
 
-#include "drivers/accgyro/accgyro_fake.h"
-#include "drivers/barometer/barometer_fake.h"
+#include "drivers/accgyro/accgyro_virtual.h"
+#include "drivers/barometer/barometer_virtual.h"
 #include "flight/imu.h"
 
 #include "config/feature.h"
@@ -92,6 +92,7 @@ int targetParseArgs(int argc, char * argv[])
            simulator_ip, PORT_PWM, simulator_ip, PORT_PWM_RAW);
     return 0;
 }
+
 int timeval_sub(struct timespec *result, struct timespec *x, struct timespec *y);
 
 int lockMainPID(void)
@@ -102,10 +103,12 @@ int lockMainPID(void)
 #define RAD2DEG (180.0 / M_PI)
 #define ACC_SCALE (256 / 9.80665)
 #define GYRO_SCALE (16.4)
+
 void sendMotorUpdate(void)
 {
     udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
 }
+
 void updateState(const fdm_packet* pkt)
 {
     static double last_timestamp = 0; // in seconds
@@ -132,17 +135,17 @@ void updateState(const fdm_packet* pkt)
     x = constrain(-pkt->imu_linear_acceleration_xyz[0] * ACC_SCALE, -32767, 32767);
     y = constrain(-pkt->imu_linear_acceleration_xyz[1] * ACC_SCALE, -32767, 32767);
     z = constrain(-pkt->imu_linear_acceleration_xyz[2] * ACC_SCALE, -32767, 32767);
-    fakeAccSet(fakeAccDev, x, y, z);
+    virtualAccSet(virtualAccDev, x, y, z);
 //    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
 
     x = constrain(pkt->imu_angular_velocity_rpy[0] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     y = constrain(-pkt->imu_angular_velocity_rpy[1] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     z = constrain(-pkt->imu_angular_velocity_rpy[2] * GYRO_SCALE * RAD2DEG, -32767, 32767);
-    fakeGyroSet(fakeGyroDev, x, y, z);
+    virtualGyroSet(virtualGyroDev, x, y, z);
 //    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
 
     // temperature in 0.01 C = 25 deg
-    fakeBaroSet(pkt->pressure, 2500);
+    virtualBaroSet(pkt->pressure, 2500);
 #if !defined(USE_IMU_CALC)
 #if defined(SET_IMU_FROM_EULER)
     // set from Euler
@@ -285,7 +288,7 @@ void systemInit(void)
     clock_gettime(CLOCK_MONOTONIC, &start_time);
     printf("[system]Init...\n");
 
-    SystemCoreClock = 500 * 1e6; // fake 500MHz
+    SystemCoreClock = 500 * 1e6; // virtual 500MHz
 
     if (pthread_mutex_init(&updateLock, NULL) != 0) {
         printf("Create updateLock error!\n");
@@ -655,7 +658,7 @@ uint16_t adcGetChannel(uint8_t channel)
 char _estack;
 char _Min_Stack_Size;
 
-// fake EEPROM
+// virtual EEPROM
 static FILE *eepromFd = NULL;
 
 void FLASH_Unlock(void)
@@ -735,6 +738,11 @@ void spektrumBind(rxConfig_t *rxConfig)
 {
     UNUSED(rxConfig);
     printf("spektrumBind\n");
+}
+
+void debugInit(void)
+{
+    printf("debugInit\n");
 }
 
 void unusedPinsInit(void)

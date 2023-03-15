@@ -29,7 +29,6 @@ COMMON_SRC = \
             drivers/display.c \
             drivers/display_canvas.c \
             drivers/dma_common.c \
-            drivers/dma_reqmap.c \
             drivers/io.c \
             drivers/light_led.c \
             drivers/mco.c \
@@ -76,7 +75,6 @@ COMMON_SRC = \
             fc/controlrate_profile.c \
             drivers/camera_control.c \
             drivers/accgyro/gyro_sync.c \
-            drivers/pwm_esc_detect.c \
             drivers/rx/rx_spi.c \
             drivers/rx/rx_xn297.c \
             drivers/rx/rx_pwm.c \
@@ -210,6 +208,18 @@ COMMON_SRC += \
             drivers/max7456.c \
             drivers/vtx_rtc6705.c \
             drivers/vtx_rtc6705_soft_spi.c
+
+ifneq ($(CONFIG),)
+
+GYRO_DEFINE         := $(shell grep " USE_GYRO_" $(CONFIG_FILE) | awk '{print $$2}' )
+LEGACY_GYRO_DEFINES := USE_GYRO_L3GD20
+ifneq ($(findstring $(GYRO_DEFINE),$(LEGACY_GYRO_DEFINES)),)
+
+COMMON_SRC += \
+            $(addprefix drivers/accgyro_legacy/,$(notdir $(wildcard $(SRC_DIR)/drivers/accgyro_legacy/*.c)))
+
+endif
+endif
 
 RX_SRC = \
             rx/cc2500_common.c \
@@ -458,9 +468,6 @@ SRC   := $(filter-out $(MCU_EXCLUDES), $(SRC))
 SRC += $(VCP_SRC)
 
 # end target specific make file checks
-
-# Search path and source files for the ST stdperiph library
-VPATH        := $(VPATH):$(STDPERIPH_DIR)/src
 
 # Search path and source files for the Open Location Code library
 OLC_DIR = $(ROOT)/lib/main/google/olc

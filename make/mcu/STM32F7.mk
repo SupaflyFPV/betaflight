@@ -88,7 +88,7 @@ USBMSC_SRC = $(notdir $(wildcard $(USBMSC_DIR)/Src/*.c))
 EXCLUDES   = usbd_msc_storage_template.c
 USBMSC_SRC := $(filter-out ${EXCLUDES}, $(USBMSC_SRC))
 
-VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src:$(USBHID_DIR)/Src:$(USBMSC_DIR)/Src
+VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src:$(USBHID_DIR)/Src:$(USBMSC_DIR)/Src:$(STDPERIPH_DIR)/src
 
 DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
                         $(USBCORE_SRC) \
@@ -99,6 +99,7 @@ DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
 #CMSIS
 VPATH           := $(VPATH):$(CMSIS_DIR)/Include:$(CMSIS_DIR)/Device/ST/STM32F7xx
 VPATH           := $(VPATH):$(STDPERIPH_DIR)/Src
+
 CMSIS_SRC       :=
 INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(STDPERIPH_DIR)/Inc \
@@ -108,6 +109,7 @@ INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(USBMSC_DIR)/Inc \
                    $(CMSIS_DIR)/Core/Include \
                    $(ROOT)/lib/main/STM32F7/Drivers/CMSIS/Device/ST/STM32F7xx/Include \
+                   $(ROOT)/src/main/drivers/stm32 \
                    $(ROOT)/src/main/drivers/stm32/vcp_hal
 
 #Flags
@@ -165,6 +167,7 @@ MCU_COMMON_SRC = \
             drivers/stm32/bus_i2c_hal.c \
             drivers/stm32/bus_spi_ll.c \
             drivers/stm32/debug.c \
+            drivers/stm32/dma_reqmap_mcu.c \
             drivers/stm32/dma_stm32f7xx.c \
             drivers/stm32/dshot_bitbang_ll.c \
             drivers/stm32/dshot_bitbang.c \

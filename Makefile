@@ -121,6 +121,11 @@ ifeq ($(TARGET),)
 $(error No TARGET identified. Is the config.h valid for $(CONFIG)?)
 endif
 
+EXST_ADJUST_VMA := $(shell grep " FC_VMA_ADDRESS" $(CONFIG_FILE) | awk '{print $$3}' )
+ifneq ($(EXST_ADJUST_VMA),)
+EXST = yes
+endif
+
 else
 ifeq ($(TARGET),)
 TARGET := $(DEFAULT_TARGET)
@@ -129,7 +134,7 @@ endif #CONFIG
 
 BASE_CONFIGS      = $(sort $(notdir $(patsubst %/,%,$(dir $(wildcard $(ROOT)/src/config/*/config.h)))))
 BASE_TARGETS      = $(sort $(notdir $(patsubst %/,%,$(dir $(wildcard $(ROOT)/src/main/target/*/target.mk)))))
-CI_TARGETS       := $(BASE_TARGETS)
+CI_TARGETS       := $(BASE_TARGETS) CRAZYBEEF4SX1280 CRAZYBEEF4FR IFLIGHT_BLITZ_F722
 include $(ROOT)/src/main/target/$(TARGET)/target.mk
 
 REVISION := norevision
@@ -208,11 +213,6 @@ TARGET_DIR     = $(ROOT)/src/main/target/$(TARGET)
 TARGET_DIR_SRC = $(notdir $(wildcard $(TARGET_DIR)/*.c))
 
 .DEFAULT_GOAL := hex
-
-ifeq ($(CUSTOM_DEFAULTS_EXTENDED),yes)
-TARGET_FLAGS += -DUSE_CUSTOM_DEFAULTS=
-EXTRA_LD_FLAGS += -Wl,--defsym=USE_CUSTOM_DEFAULTS_EXTENDED=1
-endif
 
 INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(ROOT)/lib/main/MAVLink
@@ -576,6 +576,11 @@ TARGETS_REVISION = $(addsuffix _rev,$(BASE_TARGETS))
 ## <TARGET>_rev    : build target and add revision to filename
 $(TARGETS_REVISION):
 	$(V0) $(MAKE) hex REV=yes TARGET=$(subst _rev,,$@)
+
+CONFIGS_REVISION = $(addsuffix _rev,$(BASE_CONFIGS))
+## <CONFIG>_rev    : build configured target and add revision to filename
+$(CONFIGS_REVISION):
+	$(V0) $(MAKE) hex REV=yes CONFIG=$(subst _rev,,$@)
 
 all_rev: $(addsuffix _rev,$(CI_TARGETS))
 

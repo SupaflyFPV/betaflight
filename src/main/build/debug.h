@@ -20,7 +20,7 @@
 
 #pragma once
 
-#define DEBUG16_VALUE_COUNT 4
+#define DEBUG16_VALUE_COUNT 8
 extern int16_t debug[DEBUG16_VALUE_COUNT];
 extern uint8_t debugMode;
 
@@ -107,6 +107,9 @@ typedef enum {
     DEBUG_GPS_DOP,
     DEBUG_FAILSAFE,
     DEBUG_GYRO_CALIBRATION,
+    DEBUG_ANGLE_MODE,
+    DEBUG_ANGLE_TARGET,
+    DEBUG_CURRENT_ANGLE,
     DEBUG_COUNT
 } debugType_e;
 

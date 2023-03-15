@@ -672,12 +672,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
 #if defined(USE_FLASH_BOOT_LOADER)
         targetCapabilities |= BIT(TARGET_HAS_FLASH_BOOTLOADER);
 #endif
-#if defined(USE_CUSTOM_DEFAULTS)
-        targetCapabilities |= BIT(TARGET_SUPPORTS_CUSTOM_DEFAULTS);
-        if (hasCustomDefaults()) {
-            targetCapabilities |= BIT(TARGET_HAS_CUSTOM_DEFAULTS);
-        }
-#endif
+
 #if defined(USE_RX_BIND)
         if (getRxBindSupported()) {
             targetCapabilities |= BIT(TARGET_SUPPORTS_RX_BIND);
@@ -940,6 +935,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         break;
     }
 
+#if defined(USE_OSD)
     case MSP_OSD_CONFIG: {
 #define OSD_FLAGS_OSD_FEATURE           (1 << 0)
 //#define OSD_FLAGS_OSD_SLAVE             (1 << 1)
@@ -950,7 +946,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
 #define OSD_FLAGS_OSD_MSP_DEVICE        (1 << 6)
 
         uint8_t osdFlags = 0;
-#if defined(USE_OSD)
+
         osdFlags |= OSD_FLAGS_OSD_FEATURE;
 
         osdDisplayPortDevice_e deviceType;
@@ -981,7 +977,7 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         default:
             break;
         }
-#endif
+
         sbufWriteU8(dst, osdFlags);
 
 #ifdef USE_OSD_SD
@@ -989,9 +985,8 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         sbufWriteU8(dst, vcdProfile()->video_system);
 #else
         sbufWriteU8(dst, VIDEO_SYSTEM_HD);
-#endif
+#endif // USE_OSD_SD
 
-#ifdef USE_OSD
         // OSD specific, not applicable to OSD slaves.
 
         // Configuration
@@ -1054,9 +1049,9 @@ static bool mspCommonProcessOutCommand(int16_t cmdMSP, sbuf_t *dst, mspPostProce
         sbufWriteU8(dst, osdConfig()->camera_frame_width);
         sbufWriteU8(dst, osdConfig()->camera_frame_height);
 
-#endif // USE_OSD
         break;
     }
+#endif // USE_OSD
 
     case MSP_OSD_CANVAS: {
 #ifdef USE_OSD
@@ -1540,7 +1535,7 @@ case MSP_NAME:
 
 #ifdef USE_GPS_RESCUE
     case MSP_GPS_RESCUE:
-        sbufWriteU16(dst, gpsRescueConfig()->angle);
+        sbufWriteU16(dst, gpsRescueConfig()->maxRescueAngle);
         sbufWriteU16(dst, gpsRescueConfig()->initialAltitudeM);
         sbufWriteU16(dst, gpsRescueConfig()->descentDistanceM);
         sbufWriteU16(dst, gpsRescueConfig()->rescueGroundspeed);
@@ -1948,7 +1943,7 @@ case MSP_NAME:
         sbufWriteU8(dst, 0); // reserved
         sbufWriteU16(dst, currentPidProfile->rateAccelLimit);
         sbufWriteU16(dst, currentPidProfile->yawRateAccelLimit);
-        sbufWriteU8(dst, currentPidProfile->levelAngleLimit);
+        sbufWriteU8(dst, currentPidProfile->angle_limit);
         sbufWriteU8(dst, 0); // was pidProfile.levelSensitivity
         sbufWriteU16(dst, 0); // was currentPidProfile->itermThrottleThreshold
         sbufWriteU16(dst, currentPidProfile->anti_gravity_gain);
@@ -2487,25 +2482,14 @@ static mspResult_e mspFcProcessOutCommandWithArg(mspDescriptor_t srcDesc, int16_
 
     case MSP_RESET_CONF:
         {
-#if defined(USE_CUSTOM_DEFAULTS)
-            defaultsType_e defaultsType = DEFAULTS_TYPE_CUSTOM;
-#endif
             if (sbufBytesRemaining(src) >= 1) {
                 // Added in MSP API 1.42
-#if defined(USE_CUSTOM_DEFAULTS)
-                defaultsType = sbufReadU8(src);
-#else
                 sbufReadU8(src);
-#endif
             }
 
             bool success = false;
             if (!ARMING_FLAG(ARMED)) {
-#if defined(USE_CUSTOM_DEFAULTS)
-                success = resetEEPROM(defaultsType == DEFAULTS_TYPE_CUSTOM);
-#else
-                success = resetEEPROM(false);
-#endif
+                success = resetEEPROM();
 
                 if (success && mspPostProcessFn) {
                     rebootMode = MSP_REBOOT_FIRMWARE;
@@ -2814,7 +2798,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 
 #ifdef USE_GPS_RESCUE
         case MSP_SET_GPS_RESCUE:
-        gpsRescueConfigMutable()->angle = sbufReadU16(src);
+        gpsRescueConfigMutable()->maxRescueAngle = sbufReadU16(src);
         gpsRescueConfigMutable()->initialAltitudeM = sbufReadU16(src);
         gpsRescueConfigMutable()->descentDistanceM = sbufReadU16(src);
         gpsRescueConfigMutable()->rescueGroundspeed = sbufReadU16(src);
@@ -3090,7 +3074,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         currentPidProfile->rateAccelLimit = sbufReadU16(src);
         currentPidProfile->yawRateAccelLimit = sbufReadU16(src);
         if (sbufBytesRemaining(src) >= 2) {
-            currentPidProfile->levelAngleLimit = sbufReadU8(src);
+            currentPidProfile->angle_limit = sbufReadU8(src);
             sbufReadU8(src); // was pidProfile.levelSensitivity
         }
         if (sbufBytesRemaining(src) >= 4) {
@@ -3573,7 +3557,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         }
         break;
 
-#ifdef USE_FLASHFS
+#if defined(USE_FLASHFS) && defined(USE_BLACKBOX)
     case MSP_DATAFLASH_ERASE:
         blackboxEraseAll();
 

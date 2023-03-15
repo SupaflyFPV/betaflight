@@ -71,9 +71,12 @@
 // all the settings for classic build
 #if !defined(CLOUD_BUILD) && !defined(SITL)
 
+// if no board config is provided, include all drivers
+#if !defined(USE_CONFIG)
+
 #define USE_MAG
 
-#if !defined(USE_BARO) && !defined(USE_FAKE_BARO)
+#if !defined(USE_BARO) && !defined(USE_VIRTUAL_BARO)
 #define USE_BARO
 
 #define USE_BARO_MS5611
@@ -117,7 +120,7 @@
 #define USE_GYRO_MPU6050
 #define USE_ACCGYRO_BMI160
 #endif
-#endif
+#endif // ACC GYRO inclusion
 
 #if !defined(USE_FLASH_CHIP)
 
@@ -141,7 +144,7 @@
 #endif // USE_FLASH
 #endif // USE_FLASH_CHIP
 
-#ifndef USE_MAX7456
+#if !defined(USE_MAX7456)
 #define USE_MAX7456
 #endif
 
@@ -158,6 +161,8 @@
 #define USE_SDCARD
 #endif
 
+#endif // !defined(USE_CONFIG)
+
 #if defined(STM32F405) || defined(STM32F745) || defined(STM32H7)
 #define USE_VTX_RTC6705
 #define USE_VTX_RTC6705_SOFTSPI
@@ -171,8 +176,6 @@
 
 #define USE_RX_PPM
 #define USE_RX_PWM
-
-#define USE_BRUSHED_ESC_AUTODETECT  // Detect if brushed motors are connected and set defaults appropriately to avoid motors spinning on boot
 
 #define USE_PINIO
 
@@ -262,10 +265,6 @@
 #endif
 #endif
 
-#if (defined(USE_SDCARD) || defined(USE_FLASH)) && !defined(USE_BLACKBOX)
-#define USE_BLACKBOX
-#endif
-
 #if defined(USE_PINIO)
 #define USE_PINIOBOX
 #define USE_PIN_PULL_UP_DOWN
@@ -320,7 +319,7 @@
 #define USE_SPEKTRUM_BIND
 #define USE_SPEKTRUM_BIND_PLUG
 #define USE_SPEKTRUM_REAL_RSSI
-#define USE_SPEKTRUM_FAKE_RSSI
+#define USE_SPEKTRUM_VIRTUAL_RSSI
 #define USE_SPEKTRUM_RSSI_PERCENT_CONVERSION
 #define USE_SPEKTRUM_VTX_CONTROL
 #define USE_SPEKTRUM_VTX_TELEMETRY

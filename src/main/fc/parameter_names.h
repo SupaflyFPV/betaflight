@@ -100,6 +100,7 @@
 #define PARAM_NAME_DYN_IDLE_I_GAIN "dyn_idle_i_gain"
 #define PARAM_NAME_DYN_IDLE_D_GAIN "dyn_idle_d_gain"
 #define PARAM_NAME_DYN_IDLE_MAX_INCREASE "dyn_idle_max_increase"
+#define PARAM_NAME_DYN_IDLE_START_INCREASE "dyn_idle_start_increase"
 #define PARAM_NAME_SIMPLIFIED_PIDS_MODE "simplified_pids_mode"
 #define PARAM_NAME_SIMPLIFIED_MASTER_MULTIPLIER "simplified_master_multiplier"
 #define PARAM_NAME_SIMPLIFIED_I_GAIN "simplified_i_gain"
@@ -123,6 +124,18 @@
 #define PARAM_NAME_POSITION_ALTITUDE_PREFER_BARO "altitude_prefer_baro"
 #define PARAM_NAME_POSITION_ALTITUDE_LPF "altitude_lpf"
 #define PARAM_NAME_POSITION_ALTITUDE_D_LPF "altitude_d_lpf"
+#define PARAM_NAME_ANGLE_FEEDFORWARD "angle_feedforward"
+#define PARAM_NAME_ANGLE_FF_SMOOTHING_MS "angle_feedforward_smoothing_ms"
+#define PARAM_NAME_ANGLE_ROLL_EXPO "angle_roll_expo"
+#define PARAM_NAME_ANGLE_PITCH_EXPO "angle_pitch_expo"
+#define PARAM_NAME_ANGLE_LIMIT "angle_limit"
+#define PARAM_NAME_ANGLE_P_GAIN "angle_p_gain"
+#define PARAM_NAME_ANGLE_EARTH_REF "angle_earth_ref"
+
+#define PARAM_NAME_HORIZON_LEVEL_STRENGTH "horizon_level_strength"
+#define PARAM_NAME_HORIZON_LIMIT_DEGREES "horizon_limit_degrees"
+#define PARAM_NAME_HORIZON_LIMIT_STICKS "horizon_limit_sticks"
+#define PARAM_NAME_HORIZON_IGNORE_STICKS "horizon_ignore_sticks"
 
 #ifdef USE_GPS
 #define PARAM_NAME_GPS_PROVIDER "gps_provider"
@@ -143,12 +156,14 @@
 
 #define PARAM_NAME_GPS_RESCUE_RETURN_ALT "gps_rescue_return_alt"
 #define PARAM_NAME_GPS_RESCUE_RETURN_SPEED "gps_rescue_ground_speed"
-#define PARAM_NAME_GPS_RESCUE_PITCH_ANGLE_MAX "gps_rescue_pitch_angle_max"
+#define PARAM_NAME_GPS_RESCUE_MAX_RESCUE_ANGLE "gps_rescue_max_angle"
 #define PARAM_NAME_GPS_RESCUE_ROLL_MIX "gps_rescue_roll_mix"
+#define PARAM_NAME_GPS_RESCUE_PITCH_CUTOFF "gps_rescue_pitch_cutoff"
 
 #define PARAM_NAME_GPS_RESCUE_DESCENT_DIST "gps_rescue_descent_dist"
 #define PARAM_NAME_GPS_RESCUE_DESCEND_RATE "gps_rescue_descend_rate"
 #define PARAM_NAME_GPS_RESCUE_LANDING_ALT "gps_rescue_landing_alt"
+#define PARAM_NAME_GPS_RESCUE_DISARM_THRESHOLD "gps_rescue_disarm_threshold"
 
 #define PARAM_NAME_GPS_RESCUE_THROTTLE_MIN "gps_rescue_throttle_min"
 #define PARAM_NAME_GPS_RESCUE_THROTTLE_MAX "gps_rescue_throttle_max"

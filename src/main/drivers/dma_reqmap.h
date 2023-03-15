@@ -25,15 +25,17 @@
 #include "drivers/dma.h"
 #include "drivers/timer.h"
 
+#include "dma_reqmap_mcu.h"
+
 typedef uint16_t dmaCode_t;
 
 typedef struct dmaChannelSpec_s {
     dmaCode_t             code;
     dmaResource_t         *ref;
-#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32G4)
-    uint32_t              channel;
-#elif defined(AT32F4)
+#if defined(USE_DMA_MUX)
     uint32_t              dmaMuxId;
+#else
+    uint32_t              channel;
 #endif
 } dmaChannelSpec_t;
 
@@ -44,8 +46,8 @@ typedef struct dmaChannelSpec_s {
 #define DMA_CODE_REQUEST(code) DMA_CODE_CHANNEL(code)
 
 typedef enum {
-    DMA_PERIPH_SPI_MOSI,
-    DMA_PERIPH_SPI_MISO,
+    DMA_PERIPH_SPI_SDO,
+    DMA_PERIPH_SPI_SDI,
     DMA_PERIPH_ADC,
     DMA_PERIPH_SDIO,
     DMA_PERIPH_UART_TX,
@@ -56,17 +58,6 @@ typedef enum {
 typedef int8_t dmaoptValue_t;
 
 #define DMA_OPT_UNUSED (-1)
-
-#if defined(STM32H7) || defined(STM32G4)
-#define MAX_PERIPHERAL_DMA_OPTIONS 16
-#define MAX_TIMER_DMA_OPTIONS 16
-#elif defined(AT32F4)
-#define MAX_PERIPHERAL_DMA_OPTIONS 14
-#define MAX_TIMER_DMA_OPTIONS 22
-#else
-#define MAX_PERIPHERAL_DMA_OPTIONS 2
-#define MAX_TIMER_DMA_OPTIONS 3
-#endif
 
 struct timerHardware_s;
 

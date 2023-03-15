@@ -8,6 +8,9 @@ CMSIS_DIR      := $(ROOT)/lib/main/STM32F4/Drivers/CMSIS
 STDPERIPH_DIR   = $(ROOT)/lib/main/STM32F4/Drivers/STM32F4xx_HAL_Driver
 STDPERIPH_SRC   = $(notdir $(wildcard $(STDPERIPH_DIR)/Src/*.c))
 EXCLUDES        =
+
+VPATH       := $(VPATH):$(STDPERIPH_DIR)/Src
+
 else
 CMSIS_DIR      := $(ROOT)/lib/main/CMSIS
 STDPERIPH_DIR   = $(ROOT)/lib/main/STM32F4/Drivers/STM32F4xx_StdPeriph_Driver
@@ -31,6 +34,8 @@ EXCLUDES        = stm32f4xx_crc.c \
                   stm32f4xx_dbgmcu.c \
                   stm32f4xx_cryp_tdes.c \
                   stm32f4xx_hash_sha1.c
+
+VPATH       := $(VPATH):$(STDPERIPH_DIR)/src
 endif
 
 ifeq ($(TARGET_MCU),$(filter $(TARGET_MCU),STM32F411xE STM32F446xx))
@@ -94,6 +99,9 @@ endif
 #CMSIS
 VPATH           := $(VPATH):$(CMSIS_DIR)/Core/Include:$(ROOT)/lib/main/STM32F4/Drivers/CMSIS/Device/ST/STM32F4xx
 
+INCLUDE_DIRS    := $(INCLUDE_DIRS) \
+                   $(ROOT)/src/main/drivers/stm32
+
 ifeq ($(PERIPH_DRIVER), HAL)
 CMSIS_SRC       :=
 INCLUDE_DIRS    := $(INCLUDE_DIRS) \
@@ -155,6 +163,7 @@ MCU_COMMON_SRC = \
             drivers/stm32/bus_i2c_stm32f4xx.c \
             drivers/stm32/bus_spi_stdperiph.c \
             drivers/stm32/debug.c \
+            drivers/stm32/dma_reqmap_mcu.c \
             drivers/stm32/dma_stm32f4xx.c \
             drivers/stm32/dshot_bitbang.c \
             drivers/stm32/dshot_bitbang_stdperiph.c \
@@ -171,6 +180,7 @@ MCU_COMMON_SRC = \
             drivers/stm32/timer_stdperiph.c \
             drivers/stm32/timer_stm32f4xx.c \
             drivers/stm32/transponder_ir_io_stdperiph.c \
+            drivers/stm32/usbd_msc_desc.c \
             startup/system_stm32f4xx.c
 
 ifeq ($(PERIPH_DRIVER), HAL)
@@ -195,7 +205,6 @@ endif
 MSC_SRC = \
             drivers/usb_msc_common.c \
             drivers/stm32/usb_msc_f4xx.c \
-            msc/usbd_msc_desc.c \
             msc/usbd_storage.c \
             msc/usbd_storage_emfat.c \
             msc/emfat.c \

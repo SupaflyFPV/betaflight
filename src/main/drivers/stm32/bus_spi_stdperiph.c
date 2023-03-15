@@ -90,11 +90,11 @@ void spiInitDevice(SPIDevice device)
     RCC_ResetCmd(spi->rcc, ENABLE);
 
     IOInit(IOGetByTag(spi->sck),  OWNER_SPI_SCK,  RESOURCE_INDEX(device));
-    IOInit(IOGetByTag(spi->miso), OWNER_SPI_MISO, RESOURCE_INDEX(device));
-    IOInit(IOGetByTag(spi->mosi), OWNER_SPI_MOSI, RESOURCE_INDEX(device));
+    IOInit(IOGetByTag(spi->miso), OWNER_SPI_SDI, RESOURCE_INDEX(device));
+    IOInit(IOGetByTag(spi->mosi), OWNER_SPI_SDO, RESOURCE_INDEX(device));
 
     IOConfigGPIOAF(IOGetByTag(spi->sck),  SPI_IO_AF_SCK_CFG, spi->af);
-    IOConfigGPIOAF(IOGetByTag(spi->miso), SPI_IO_AF_MISO_CFG, spi->af);
+    IOConfigGPIOAF(IOGetByTag(spi->miso), SPI_IO_AF_SDI_CFG, spi->af);
     IOConfigGPIOAF(IOGetByTag(spi->mosi), SPI_IO_AF_CFG, spi->af);
 
     // Init SPI hardware
@@ -381,6 +381,7 @@ void spiSequenceStart(const extDevice_t *dev)
         spiInternalStartDMA(dev);
     } else {
         busSegment_t *lastSegment = NULL;
+        bool segmentComplete;
 
         // Manually work through the segment list performing a transfer for each
         while (bus->curSegment->len) {
@@ -400,15 +401,17 @@ void spiSequenceStart(const extDevice_t *dev)
                 IOHi(dev->busType_u.spi.csnPin);
             }
 
+            segmentComplete = true;
             if (bus->curSegment->callback) {
                 switch(bus->curSegment->callback(dev->callbackArg)) {
                 case BUS_BUSY:
                     // Repeat the last DMA segment
-                    bus->curSegment--;
+                    segmentComplete = false;
                     break;
 
                 case BUS_ABORT:
                     bus->curSegment = (busSegment_t *)BUS_SPI_FREE;
+                    segmentComplete = false;
                     return;
 
                 case BUS_READY:
@@ -417,8 +420,10 @@ void spiSequenceStart(const extDevice_t *dev)
                     break;
                 }
             }
-            lastSegment = (busSegment_t *)bus->curSegment;
-            bus->curSegment++;
+            if (segmentComplete) {
+                lastSegment = (busSegment_t *)bus->curSegment;
+                bus->curSegment++;
+            }
         }
 
         // If a following transaction has been linked, start it

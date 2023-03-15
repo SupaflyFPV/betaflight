@@ -111,7 +111,7 @@ USBMSC_SRC = $(notdir $(wildcard $(USBMSC_DIR)/Src/*.c))
 EXCLUDES   = usbd_msc_storage_template.c
 USBMSC_SRC := $(filter-out ${EXCLUDES}, $(USBMSC_SRC))
 
-VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src:$(USBHID_DIR)/Src:$(USBMSC_DIR)/Src
+VPATH := $(VPATH):$(USBCDC_DIR)/Src:$(USBCORE_DIR)/Src:$(USBHID_DIR)/Src:$(USBMSC_DIR)/Src:$(STDPERIPH_DIR)/src
 
 DEVICE_STDPERIPH_SRC := $(STDPERIPH_SRC) \
                         $(USBCORE_SRC) \
@@ -131,6 +131,7 @@ INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(USBMSC_DIR)/Inc \
                    $(CMSIS_DIR)/Core/Include \
                    $(ROOT)/lib/main/STM32H7/Drivers/CMSIS/Device/ST/STM32H7xx/Include \
+                   $(ROOT)/src/main/drivers/stm32 \
                    $(ROOT)/src/main/drivers/stm32/vcp_hal
 
 #Flags
@@ -307,6 +308,7 @@ MCU_COMMON_SRC = \
             drivers/stm32/bus_quadspi_hal.c \
             drivers/stm32/bus_octospi_stm32h7xx.c \
             drivers/stm32/debug.c \
+            drivers/stm32/dma_reqmap_mcu.c \
             drivers/stm32/dma_stm32h7xx.c \
             drivers/stm32/dshot_bitbang_ll.c \
             drivers/stm32/dshot_bitbang.c \

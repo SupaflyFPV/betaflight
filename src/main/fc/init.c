@@ -63,7 +63,6 @@
 #include "drivers/nvic.h"
 #include "drivers/persistent.h"
 #include "drivers/pin_pull_up_down.h"
-#include "drivers/pwm_esc_detect.h"
 #include "drivers/pwm_output.h"
 #include "drivers/rx/rx_pwm.h"
 #include "drivers/sensor.h"
@@ -280,20 +279,6 @@ void init(void)
     targetConfiguration();
 #endif
 
-#if defined(USE_BRUSHED_ESC_AUTODETECT)
-    // Opportunistically use the first motor pin of the default configuration for detection.
-    // We are doing this as with some boards, timing seems to be important, and the later detection will fail.
-#if defined(MOTOR1_PIN)
-    ioTag_t motorIoTag = IO_TAG(MOTOR1_PIN);
-#else
-    ioTag_t motorIoTag = IO_TAG_NONE;
-#endif
-
-    if (motorIoTag) {
-        detectBrushedESC(motorIoTag);
-    }
-#endif
-
     enum {
         FLASH_INIT_ATTEMPTED                = (1 << 0),
         SD_INIT_ATTEMPTED                   = (1 << 1),
@@ -408,7 +393,7 @@ void init(void)
 #endif
 
     if (!readSuccess || !isEEPROMVersionValid() || strncasecmp(systemConfig()->boardIdentifier, TARGET_BOARD_IDENTIFIER, sizeof(TARGET_BOARD_IDENTIFIER))) {
-        resetEEPROM(false);
+        resetEEPROM();
     }
 
     systemState |= SYSTEM_STATE_CONFIG_LOADED;
@@ -417,22 +402,13 @@ void init(void)
     dbgPinInit();
 #endif
 
-#if defined(USE_BRUSHED_ESC_AUTODETECT)
-    // Now detect again with the actually configured pin for motor 1, if it is not the default pin.
-    ioTag_t configuredMotorIoTag = motorConfig()->dev.ioTags[0];
-
-    if (configuredMotorIoTag && configuredMotorIoTag != motorIoTag) {
-        detectBrushedESC(configuredMotorIoTag);
-    }
-#endif
-
     debugMode = systemConfig()->debug_mode;
 
 #ifdef TARGET_PREINIT
     targetPreInit();
 #endif
 
-#if !defined(USE_FAKE_LED)
+#if !defined(USE_VIRTUAL_LED)
     ledInit(statusLedConfig());
 #endif
     LED2_ON;
@@ -463,7 +439,7 @@ void init(void)
             bothButtonsHeld = buttonAPressed() && buttonBPressed();
             if (bothButtonsHeld) {
                 if (--secondsRemaining == 0) {
-                    resetEEPROM(false);
+                    resetEEPROM();
 #ifdef USE_PERSISTENT_OBJECTS
                     persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_NONE);
 #endif
@@ -821,17 +797,15 @@ void init(void)
     flashfsInit();
 #endif
 
-#ifdef USE_BLACKBOX
 #ifdef USE_SDCARD
-    if (blackboxConfig()->device == BLACKBOX_DEVICE_SDCARD) {
-        if (sdcardConfig()->mode) {
-            if (!(initFlags & SD_INIT_ATTEMPTED)) {
-                sdCardAndFSInit();
-                initFlags |= SD_INIT_ATTEMPTED;
-            }
+    if (sdcardConfig()->mode) {
+        if (!(initFlags & SD_INIT_ATTEMPTED)) {
+            sdCardAndFSInit();
+            initFlags |= SD_INIT_ATTEMPTED;
         }
     }
 #endif
+#ifdef USE_BLACKBOX
     blackboxInit();
 #endif
 
@@ -1016,9 +990,7 @@ void init(void)
     spiInitBusDMA();
 #endif
 
-#ifdef DEBUG
     debugInit();
-#endif
 
     unusedPinsInit();
 
