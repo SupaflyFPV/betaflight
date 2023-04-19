@@ -124,7 +124,7 @@ PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .cpu_overclock = DEFAULT_CPU_OVERCLOCK,
     .powerOnArmingGraceTime = 5,
     .boardIdentifier = TARGET_BOARD_IDENTIFIER,
-    .hseMhz = SYSTEM_HSE_VALUE,  // Only used for F4 and G4 targets
+    .hseMhz = SYSTEM_HSE_MHZ,  // Only used for F4 and G4 targets
     .configurationState = CONFIGURATION_STATE_DEFAULTS_BARE,
     .enableStickArming = false,
 );
@@ -352,7 +352,7 @@ static void validateAndFixConfig(void)
     } else
 #endif
     if (rxConfigMutable()->rssi_channel
-#if defined(USE_PWM) || defined(USE_PPM)
+#if defined(USE_RX_PWM) || defined(USE_RX_PPM)
         || featureIsConfigured(FEATURE_RX_PPM) || featureIsConfigured(FEATURE_RX_PARALLEL_PWM)
 #endif
         ) {
@@ -415,7 +415,7 @@ static void validateAndFixConfig(void)
 // clear features that are not supported.
 // I have kept them all here in one place, some could be moved to sections of code above.
 
-#ifndef USE_PPM
+#ifndef USE_RX_PPM
     featureDisableImmediate(FEATURE_RX_PPM);
 #endif
 
@@ -474,6 +474,42 @@ static void validateAndFixConfig(void)
 #if !defined(USE_ADC)
     featureDisableImmediate(FEATURE_RSSI_ADC);
 #endif
+
+// Enable features in Cloud Build
+#ifdef CLOUD_BUILD
+
+if (systemConfig()->configurationState == CONFIGURATION_STATE_DEFAULTS_BARE) {
+
+#ifdef USE_DASHBOARD
+    featureEnableImmediate(FEATURE_DASHBOARD);
+#endif
+#ifdef USE_GPS
+    featureEnableImmediate(FEATURE_GPS);
+#endif
+#ifdef USE_LED_STRIP
+    featureEnableImmediate(FEATURE_LED_STRIP);
+#endif
+#ifdef USE_OSD
+    featureEnableImmediate(FEATURE_OSD);
+#endif
+#ifdef USE_RANGEFINDER
+    featureEnableImmediate(FEATURE_RANGEFINDER);
+#endif
+#ifdef USE_SERVOS
+    featureEnableImmediate(FEATURE_CHANNEL_FORWARDING);
+    featureEnableImmediate(FEATURE_SERVO_TILT);
+#endif
+#ifdef USE_TELEMETRY
+    featureEnableImmediate(FEATURE_TELEMETRY);
+#endif
+#ifdef USE_TRANSPONDER
+    featureEnableImmediate(FEATURE_TRANSPONDER);
+#endif
+
+}
+
+#endif // CLOUD_BUILD
+
 
 #if defined(USE_BEEPER)
 #ifdef USE_TIMER
@@ -593,6 +629,10 @@ static void validateAndFixConfig(void)
     }
 #endif
 
+#ifdef USE_BLACKBOX
+    validateAndFixBlackBox();
+#endif // USE_BLACKBOX
+
 #if defined(TARGET_VALIDATECONFIG)
     // This should be done at the end of the validation
     targetValidateConfiguration();
@@ -630,8 +670,8 @@ void validateAndFixGyroConfig(void)
         // check for looptime restrictions based on motor protocol. Motor times have safety margin
         float motorUpdateRestriction;
 
-#if defined(STM32F411xE)
-        /* If bidirectional DSHOT is being used on an F411 then force DSHOT300. The motor update restrictions then applied
+#if defined(STM32F4) || defined(STM32G4)
+        /* If bidirectional DSHOT is being used on an F4 or G4 then force DSHOT300. The motor update restrictions then applied
          * will automatically consider the loop time and adjust pid_process_denom appropriately
          */
         if (motorConfig()->dev.useDshotTelemetry && (motorConfig()->dev.motorPwmProtocol == PWM_TYPE_DSHOT600)) {
@@ -687,7 +727,19 @@ void validateAndFixGyroConfig(void)
         }
     }
 
+    if (systemConfig()->activeRateProfile >= CONTROL_RATE_PROFILE_COUNT) {
+        systemConfigMutable()->activeRateProfile = 0;
+    }
+    loadControlRateProfile();
+
+    if (systemConfig()->pidProfileIndex >= PID_PROFILE_COUNT) {
+        systemConfigMutable()->pidProfileIndex = 0;
+    }
+    loadPidProfile();
+}
+
 #ifdef USE_BLACKBOX
+void validateAndFixBlackBox(void) {
 #ifndef USE_FLASHFS
     if (blackboxConfig()->device == BLACKBOX_DEVICE_FLASH) {
         blackboxConfigMutable()->device = BLACKBOX_DEVICE_NONE;
@@ -702,18 +754,8 @@ void validateAndFixGyroConfig(void)
             blackboxConfigMutable()->device = BLACKBOX_DEVICE_NONE;
         }
     }
-#endif // USE_BLACKBOX
-
-    if (systemConfig()->activeRateProfile >= CONTROL_RATE_PROFILE_COUNT) {
-        systemConfigMutable()->activeRateProfile = 0;
-    }
-    loadControlRateProfile();
-
-    if (systemConfig()->pidProfileIndex >= PID_PROFILE_COUNT) {
-        systemConfigMutable()->pidProfileIndex = 0;
-    }
-    loadPidProfile();
 }
+#endif // USE_BLACKBOX
 
 bool readEEPROM(void)
 {
@@ -755,20 +797,9 @@ void writeEEPROM(void)
     writeUnmodifiedConfigToEEPROM();
 }
 
-bool resetEEPROM(bool useCustomDefaults)
+bool resetEEPROM(void)
 {
-#if !defined(USE_CUSTOM_DEFAULTS)
-    UNUSED(useCustomDefaults);
-#else
-    if (useCustomDefaults) {
-        if (!resetConfigToCustomDefaults()) {
-            return false;
-        }
-    } else
-#endif
-    {
-        resetConfig();
-    }
+    resetConfig();
 
     writeUnmodifiedConfigToEEPROM();
 
@@ -780,7 +811,7 @@ void ensureEEPROMStructureIsValid(void)
     if (isEEPROMStructureValid()) {
         return;
     }
-    resetEEPROM(false);
+    resetEEPROM();
 }
 
 void saveConfigAndNotify(void)

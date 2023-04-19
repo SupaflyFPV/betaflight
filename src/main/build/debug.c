@@ -107,4 +107,10 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "ATTITUDE",
     "VTX_MSP",
     "GPS_DOP",
+    "FAILSAFE",
+    "GYRO_CALIBRATION",
+    "ANGLE_MODE",
+    "ANGLE_TARGET",
+    "CURRENT_ANGLE",
+    "DSHOT_TELEMETRY_COUNTS",
 };

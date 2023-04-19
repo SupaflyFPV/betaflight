@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #define TARGET_BOARD_IDENTIFIER "SG47"
 
 #define USBD_PRODUCT_STRING     "Betaflight STM32G47x"
@@ -54,12 +55,11 @@
 
 #define USE_BEEPER
 
-#ifdef USE_SDCARD
-#define USE_SDCARD_SPI
-#endif
+#undef USE_SDCARD
 
 #define USE_SPI
 #define SPI_FULL_RECONFIGURABILITY
+#define USE_SPI_DMA_ENABLE_LATE
 
 #define USE_VCP
 
@@ -73,5 +73,5 @@
 #define USE_ESCSERIAL
 
 #define USE_ADC
-
-#define USE_CUSTOM_DEFAULTS
+#define USE_EXTI
+#define USE_TIMER_UP_CONFIG

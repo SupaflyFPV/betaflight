@@ -96,7 +96,7 @@ static int crsfWriteString(displayPort_t *displayPort, uint8_t col, uint8_t row,
 
 static int crsfWriteChar(displayPort_t *displayPort, uint8_t col, uint8_t row, uint8_t attr, uint8_t c)
 {
-    char s[1];
+    char s[2];
     tfp_sprintf(s, "%c", c);
     return crsfWriteString(displayPort, col, row, attr, s);
 }
@@ -204,6 +204,8 @@ static displayPort_t *displayPortCrsfInit(void)
 {
     crsfDisplayPortSetDimensions(CRSF_DISPLAY_PORT_ROWS_MAX, CRSF_DISPLAY_PORT_COLS_MAX);
     displayInit(&crsfDisplayPort, &crsfDisplayPortVTable, DISPLAYPORT_DEVICE_TYPE_CRSF);
+
+    crsfRedraw(&crsfDisplayPort);
 
     return &crsfDisplayPort;
 }

@@ -22,6 +22,10 @@
 
 #ifdef USE_CAMERA_CONTROL
 
+#ifndef CAMERA_CONTROL_PIN
+#define CAMERA_CONTROL_PIN NONE
+#endif
+
 #include <math.h>
 
 #include "camera_control.h"
@@ -60,7 +64,7 @@ void pgResetFn_cameraControlConfig(cameraControlConfig_t *cameraControlConfig)
     cameraControlConfig->refVoltage = 330;
     cameraControlConfig->keyDelayMs = 180;
     cameraControlConfig->internalResistance = 470;
-    cameraControlConfig->ioTag = timerioTagGetByUsage(TIM_USE_CAMERA_CONTROL, 0);
+    cameraControlConfig->ioTag = IO_TAG(CAMERA_CONTROL_PIN);
     cameraControlConfig->inverted = 0;   // Output is inverted externally
     cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_ENTER] = 450;
     cameraControlConfig->buttonResistanceValues[CAMERA_CONTROL_KEY_LEFT]  = 270;

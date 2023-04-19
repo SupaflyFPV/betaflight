@@ -146,10 +146,10 @@ typedef struct pidProfile_s {
     uint16_t pidSumLimit;
     uint16_t pidSumLimitYaw;
     uint8_t pidAtMinThrottle;               // Disable/Enable pids on zero throttle. Normally even without airmode P and D would be active.
-    uint8_t levelAngleLimit;                // Max angle in degrees in level mode
+    uint8_t angle_limit;                    // Max angle in degrees in Angle mode
 
-    uint8_t horizon_tilt_effect;            // inclination factor for Horizon mode
-    uint8_t horizon_tilt_expert_mode;       // OFF or ON
+    uint8_t horizon_limit_degrees;          // in Horizon mode, zero levelling when the quad's attitude exceeds this angle
+    uint8_t horizon_ignore_sticks;          // 0 = default, meaning both stick and attitude attenuation; 1 = only attitude attenuation
 
     // Betaflight PID controller parameters
     uint8_t anti_gravity_gain;              // AntiGravity Gain (was itermAcceleratorGain)
@@ -204,6 +204,7 @@ typedef struct pidProfile_s {
     uint8_t dyn_idle_i_gain;                // I gain during active control of rpm
     uint8_t dyn_idle_d_gain;                // D gain for corrections around rapid changes in rpm
     uint8_t dyn_idle_max_increase;          // limit on maximum possible increase in motor idle drive during active control
+    uint8_t dyn_idle_start_increase;        // limit on maximum possible increase in motor idle drive with airmode not activated
 
     uint8_t feedforward_transition;         // Feedforward attenuation around centre sticks
     uint8_t feedforward_averaging;          // Number of packets to average when averaging is on
@@ -233,6 +234,8 @@ typedef struct pidProfile_s {
     uint8_t tpa_mode;                       // Controls which PID terms TPA effects
     uint8_t tpa_rate;                       // Percent reduction in P or D at full throttle
     uint16_t tpa_breakpoint;                // Breakpoint where TPA is activated
+    uint8_t angle_feedforward_smoothing_ms; // Smoothing factor for angle feedforward as time constant in milliseconds
+    uint8_t angle_earth_ref;         // Control amount of "co-ordination" from yaw into roll while pitched forward in angle mode
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
@@ -293,12 +296,12 @@ typedef struct pidRuntime_s {
     uint8_t antiGravityGain;
     float antiGravityPGain;
     pidCoefficient_t pidCoefficient[XYZ_AXIS_COUNT];
-    float levelGain;
+    float angleGain;
+    float angleFeedforwardGain;
     float horizonGain;
-    float horizonTransition;
-    float horizonCutoffDegrees;
-    float horizonFactorRatio;
-    uint8_t horizonTiltExpertMode;
+    float horizonLimitSticks;
+    float horizonLimitDegrees;
+    uint8_t horizonIgnoreSticks;
     float maxVelocity[XYZ_AXIS_COUNT];
     float itermWindupPointInv;
     bool inCrashRecoveryMode;
@@ -395,10 +398,18 @@ typedef struct pidRuntime_s {
     float feedforwardSmoothFactor;
     float feedforwardJitterFactor;
     float feedforwardBoostFactor;
+    float angleFeedforward[XYZ_AXIS_COUNT];
+    float angleTargetPrevious[XYZ_AXIS_COUNT];
+    float angleTargetDelta[XYZ_AXIS_COUNT];
+    uint8_t angleDuplicateCount[XYZ_AXIS_COUNT];
 #endif
 
 #ifdef USE_ACC
     pt3Filter_t attitudeFilter[2];  // Only for ROLL and PITCH
+    pt3Filter_t angleFeedforwardPt3[XYZ_AXIS_COUNT];
+    float angleYawSetpoint;
+    float angleEarthRef;
+    float angleTarget[2];
 #endif
 } pidRuntime_t;
 
@@ -445,7 +456,7 @@ void applyItermRelax(const int axis, const float iterm,
 void applyAbsoluteControl(const int axis, const float gyroRate, float *currentPidSetpoint, float *itermErrorRate);
 void rotateItermAndAxisError();
 float pidLevel(int axis, const pidProfile_t *pidProfile,
-    const rollAndPitchTrims_t *angleTrim, float currentPidSetpoint, float horizonLevelStrength);
+    const rollAndPitchTrims_t *angleTrim, float rawSetpoint, float horizonLevelStrength, bool newRcFrame);
 float calcHorizonLevelStrength(void);
 #endif
 void dynLpfDTermUpdate(float throttle);

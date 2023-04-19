@@ -51,6 +51,8 @@
 
 #define USE_BEEPER
 
+#define DEFAULT_MOTOR_DSHOT_SPEED PWM_TYPE_DSHOT300
+
 #ifdef USE_SDCARD
 #define USE_SDCARD_SPI
 #define USE_SDCARD_SDIO
@@ -58,6 +60,7 @@
 
 #define USE_SPI
 #define SPI_FULL_RECONFIGURABILITY
+#define USE_SPI_DMA_ENABLE_EARLY
 
 #define USE_VCP
 
@@ -72,4 +75,6 @@
 
 #define USE_ADC
 
-#define USE_CUSTOM_DEFAULTS
+#define USE_EXTI
+
+#define FLASH_PAGE_SIZE ((uint32_t)0x4000) // 16K sectors

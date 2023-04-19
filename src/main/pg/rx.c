@@ -20,7 +20,7 @@
 
 #include "platform.h"
 
-#if defined(USE_PWM) || defined(USE_PPM) || defined(USE_SERIALRX) || defined(USE_RX_MSP) || defined(USE_RX_SPI)
+#if defined(USE_RX_PWM) || defined(USE_RX_PPM) || defined(USE_SERIALRX) || defined(USE_RX_MSP) || defined(USE_RX_SPI)
 
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
@@ -33,6 +33,20 @@
 #include "fc/rc_controls.h"
 #include "rx/rx.h"
 #include "rx/rx_spi.h"
+
+#ifndef SERIALRX_PROVIDER
+
+#if defined(USE_SERIALRX_SBUS)
+#define SERIALRX_PROVIDER SERIALRX_SBUS
+#elif defined(USE_SERIALRX_GHST)
+#define SERIALRX_PROVIDER SERIALRX_GHST
+#elif defined(USE_SERIALRX_CRSF)
+#define SERIALRX_PROVIDER SERIALRX_CRSF
+#else
+#define SERIALRX_PROVIDER 0
+#endif
+
+#endif
 
 PG_REGISTER_WITH_RESET_FN(rxConfig_t, rxConfig, PG_RX_CONFIG, 4);
 void pgResetFn_rxConfig(rxConfig_t *rxConfig)

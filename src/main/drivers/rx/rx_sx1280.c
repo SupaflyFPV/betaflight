@@ -66,7 +66,6 @@ static busyIntContext_t busyIntContext;
 
 static volatile timeUs_t sx1280Processing;
 
-static volatile bool pendingISR = false;
 static volatile bool pendingDoFHSS = false;
 
 #define SX1280_BUSY_TIMEOUT_US 1000
@@ -77,7 +76,7 @@ bool sx1280IsBusy(void)
     return IORead(busy);
 }
 
-static bool sx1280PollBusy(void)
+FAST_CODE static bool sx1280PollBusy(void)
 {
     uint32_t startTime = micros();
     while (IORead(busy)) {
@@ -90,7 +89,7 @@ static bool sx1280PollBusy(void)
     return true;
 }
 
-static bool sx1280MarkBusy(void)
+FAST_CODE static bool sx1280MarkBusy(void)
 {
     // Check that there isn't already a sequence of accesses to the SX1280 in progress
     ATOMIC_BLOCK(NVIC_PRIO_MAX) {
@@ -110,7 +109,7 @@ static void sx1280ClearBusyFn(void)
 }
 
 // Switch to waiting for busy interrupt
-static bool sx1280EnableBusy(void)
+FAST_CODE static bool sx1280EnableBusy(void)
 {
     if (!sx1280MarkBusy()) {
         return false;
@@ -569,22 +568,19 @@ static void sx1280SendTelemetryBuffer(extiCallbackRec_t *cb);
 static busStatus_e sx1280TelemetryComplete(uint32_t arg);
 static void sx1280StartTransmittingDMA(extiCallbackRec_t *cb);
 
-void sx1280ISR(void)
+FAST_IRQ_HANDLER void sx1280ISR(void)
 {
     // Only attempt to access the SX1280 if it is currently idle to avoid any race condition
-    ATOMIC_BLOCK(NVIC_PRIO_MAX) {
+    ATOMIC_BLOCK(NVIC_PRIO_RX_INT_EXTI) {
         if (sx1280EnableBusy()) {
-            pendingISR = false;
             sx1280SetBusyFn(sx1280IrqGetStatus);
-        } else {
-            pendingISR = true;
         }
     }
 }
 
 // Next, the reason for the IRQ must be read
 
-static void sx1280IrqGetStatus(extiCallbackRec_t *cb)
+FAST_IRQ_HANDLER static void sx1280IrqGetStatus(extiCallbackRec_t *cb)
 {
     extDevice_t *dev = rxSpiGetDevice();
 
@@ -605,7 +601,7 @@ static void sx1280IrqGetStatus(extiCallbackRec_t *cb)
 
 // Read the IRQ status, and save it to irqStatus variable
 
-static busStatus_e sx1280IrqStatusRead(uint32_t arg)
+FAST_IRQ_HANDLER static busStatus_e sx1280IrqStatusRead(uint32_t arg)
 {
     extDevice_t *dev = (extDevice_t *)arg;
 
@@ -625,7 +621,7 @@ static busStatus_e sx1280IrqStatusRead(uint32_t arg)
 
 // Clear the IRQ bit in the Radio registers
 
-static void sx1280IrqClearStatus(extiCallbackRec_t *cb)
+FAST_IRQ_HANDLER static void sx1280IrqClearStatus(extiCallbackRec_t *cb)
 {
     extDevice_t *dev = rxSpiGetDevice();
 
@@ -647,7 +643,7 @@ static void sx1280IrqClearStatus(extiCallbackRec_t *cb)
 }
 
 // Callback follow clear of IRQ status
-static busStatus_e sx1280IrqCmdComplete(uint32_t arg)
+FAST_IRQ_HANDLER static busStatus_e sx1280IrqCmdComplete(uint32_t arg)
 {
     UNUSED(arg);
 
@@ -657,7 +653,7 @@ static busStatus_e sx1280IrqCmdComplete(uint32_t arg)
 }
 
 // Process IRQ status
-static void sx1280ProcessIrq(extiCallbackRec_t *cb)
+FAST_IRQ_HANDLER static void sx1280ProcessIrq(extiCallbackRec_t *cb)
 {
     extDevice_t *dev = rxSpiGetDevice();
 
@@ -827,6 +823,7 @@ static void sx1280SetFrequency(extiCallbackRec_t *cb)
 static busStatus_e sx1280SetFreqComplete(uint32_t arg)
 {
     UNUSED(arg);
+    pendingDoFHSS = false;
 
     if (expressLrsTelemRespReq()) {
         expressLrsDoTelem();
@@ -864,11 +861,7 @@ static busStatus_e sx1280EnableIRQs(uint32_t arg)
 {
     UNUSED(arg);
 
-    // Handle any queued interrupt processing
-    if (pendingISR) {
-        pendingISR = false;
-        sx1280SetBusyFn(sx1280IrqGetStatus);
-    } else if (pendingDoFHSS) {
+    if (pendingDoFHSS) {
         pendingDoFHSS = false;
         sx1280SetBusyFn(sx1280SetFrequency);
     } else {

@@ -68,6 +68,7 @@
 
 #define USE_SPI
 #define SPI_FULL_RECONFIGURABILITY
+#define USE_SPI_DMA_ENABLE_EARLY
 
 #define USE_VCP
 
@@ -82,4 +83,6 @@
 
 #define USE_ADC
 
-#define USE_CUSTOM_DEFAULTS
+#define USE_EXTI
+
+#define FLASH_PAGE_SIZE ((uint32_t)0x8000) // 32K sectors

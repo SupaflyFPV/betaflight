@@ -29,6 +29,7 @@
 
 #ifdef USE_DSHOT
 
+#include "build/debug.h"
 #include "build/atomic.h"
 
 #include "common/maths.h"
@@ -154,10 +155,16 @@ static uint32_t dshot_decode_eRPM_telemetry_value(uint16_t value)
 static void dshot_decode_telemetry_value(uint8_t motorIndex, uint32_t *pDecoded, dshotTelemetryType_t *pType)
 {
     uint16_t value = dshotTelemetryState.motorState[motorIndex].rawValue;
+    const unsigned motorCount = motorDeviceCount();
 
     if (dshotTelemetryState.motorState[motorIndex].telemetryTypes == DSHOT_NORMAL_TELEMETRY_MASK) {   /* Check DSHOT_TELEMETRY_TYPE_eRPM mask */
         // Decode eRPM telemetry
         *pDecoded = dshot_decode_eRPM_telemetry_value(value);
+
+        // Update debug buffer
+        if (motorIndex < motorCount && motorIndex < DEBUG16_VALUE_COUNT) {
+            DEBUG_SET(DEBUG_DSHOT_RPM_TELEMETRY, motorIndex, *pDecoded);
+        }
 
         // Set telemetry type
         *pType = DSHOT_TELEMETRY_TYPE_eRPM;
@@ -225,6 +232,11 @@ static void dshot_decode_telemetry_value(uint8_t motorIndex, uint32_t *pDecoded,
             // Decode as eRPM
             *pDecoded = dshot_decode_eRPM_telemetry_value(value);
 
+            // Update debug buffer
+            if (motorIndex < motorCount && motorIndex < DEBUG16_VALUE_COUNT) {
+                DEBUG_SET(DEBUG_DSHOT_RPM_TELEMETRY, motorIndex, *pDecoded);
+            }
+
             // Set telemetry type
             *pType = DSHOT_TELEMETRY_TYPE_eRPM;
             break;
@@ -250,7 +262,7 @@ uint16_t getDshotTelemetry(uint8_t index)
     // Process telemetry in case it haven´t been processed yet
     if (dshotTelemetryState.rawValueState == DSHOT_RAW_VALUE_STATE_NOT_PROCESSED) {
         const unsigned motorCount = motorDeviceCount();
-        uint32_t rpmTotal = 0;
+        uint32_t erpmTotal = 0;
         uint32_t rpmSamples = 0;
 
         // Decode all telemetry data now to discharge interrupt from this task
@@ -264,7 +276,7 @@ uint16_t getDshotTelemetry(uint8_t index)
                 dshotUpdateTelemetryData(k, type, value);
 
                 if (type == DSHOT_TELEMETRY_TYPE_eRPM) {
-                    rpmTotal += value;
+                    erpmTotal += value;
                     rpmSamples++;
                 }
             }
@@ -272,7 +284,7 @@ uint16_t getDshotTelemetry(uint8_t index)
 
         // Update average
         if (rpmSamples > 0) {
-            dshotTelemetryState.averageRpm = rpmTotal / rpmSamples;
+            dshotTelemetryState.averageErpm = (uint16_t)(erpmTotal / rpmSamples);
         }
 
         // Set state to processed
@@ -306,18 +318,24 @@ void dshotCleanTelemetryData(void)
     memset(&dshotTelemetryState, 0, sizeof(dshotTelemetryState));
 }
 
+
+uint32_t getDshotAverageRpm(void)
+{
+    return erpmToRpm(dshotTelemetryState.averageErpm);
+}
+
+#endif // USE_DSHOT_TELEMETRY
+
+#if defined(USE_ESC_SENSOR) || defined(USE_DSHOT_TELEMETRY)
+
+// Used with serial esc telem as well as dshot telem
 uint32_t erpmToRpm(uint16_t erpm)
 {
     //  rpm = (erpm * 100) / (motorConfig()->motorPoleCount / 2)
     return (erpm * 200) / motorConfig()->motorPoleCount;
 }
 
-uint32_t getDshotAverageRpm(void)
-{
-    return dshotTelemetryState.averageRpm;
-}
-
-#endif // USE_DSHOT_TELEMETRY
+#endif // USE_ESC_SENSOR || USE_DSHOT_TELEMETRY
 
 #ifdef USE_DSHOT_TELEMETRY_STATS
 

@@ -209,32 +209,11 @@ static bool signatureUpdated = false;
 static const char* const emptyName = "-";
 static const char* const emptyString = "";
 
-#if !defined(USE_CUSTOM_DEFAULTS)
-#define CUSTOM_DEFAULTS_START ((char*)0)
-#define CUSTOM_DEFAULTS_END ((char *)0)
-#else
-extern char __custom_defaults_start;
-extern char __custom_defaults_end;
-#define CUSTOM_DEFAULTS_START (&__custom_defaults_start)
-#define CUSTOM_DEFAULTS_END (&__custom_defaults_end)
-
-static bool processingCustomDefaults = false;
-static char cliBufferTemp[CLI_IN_BUFFER_SIZE];
-
-#define CUSTOM_DEFAULTS_START_PREFIX ("# " FC_FIRMWARE_NAME)
-
 #define MAX_CHANGESET_ID_LENGTH 8
 #define MAX_DATE_LENGTH 20
 
-static bool customDefaultsHeaderParsed = false;
-static bool customDefaultsFound = false;
-
-#endif
-
-#if defined(USE_CUSTOM_DEFAULTS_ADDRESS)
-static char __attribute__ ((section(".custom_defaults_start_address"))) *customDefaultsStart = CUSTOM_DEFAULTS_START;
-static char __attribute__ ((section(".custom_defaults_end_address"))) *customDefaultsEnd = CUSTOM_DEFAULTS_END;
-#endif
+#define ERROR_INVALID_NAME "INVALID NAME: %s"
+#define ERROR_MESSAGE "%s CANNOT BE CHANGED. CURRENT VALUE: '%s'"
 
 #ifndef USE_QUAD_MIXER_ONLY
 // sync this with mixerMode_e
@@ -298,6 +277,7 @@ static const char *mcuTypeNames[] = {
     "H723/H725",
     "G474",
     "H730",
+    "AT32F435"
 };
 
 static const char *configurationStates[] = { "UNCONFIGURED", "CUSTOM DEFAULTS", "CONFIGURED" };
@@ -710,33 +690,14 @@ static bool isReadingConfigFromCopy(void)
 
 static bool isWritingConfigToCopy(void)
 {
-    return configIsInCopy
-#if defined(USE_CUSTOM_DEFAULTS)
-        && !processingCustomDefaults
-#endif
-        ;
+    return configIsInCopy;
 }
 
-#if defined(USE_CUSTOM_DEFAULTS)
-static bool cliProcessCustomDefaults(bool quiet);
-#endif
-
-static void backupAndResetConfigs(const bool useCustomDefaults)
+static void backupAndResetConfigs(void)
 {
     backupConfigs();
-
     // reset all configs to defaults to do differencing
     resetConfig();
-
-#if defined(USE_CUSTOM_DEFAULTS)
-    if (useCustomDefaults) {
-        if (!cliProcessCustomDefaults(true)) {
-            cliPrintLine("###WARNING: NO CUSTOM DEFAULTS FOUND###");
-        }
-    }
-#else
-    UNUSED(useCustomDefaults);
-#endif
 }
 
 static uint8_t getPidProfileIndexToUse(void)
@@ -952,14 +913,7 @@ static void cliRepeat(char ch, uint8_t len)
 
 static void cliPrompt(void)
 {
-#if defined(USE_CUSTOM_DEFAULTS) && defined(DEBUG_CUSTOM_DEFAULTS)
-    if (processingCustomDefaults) {
-        cliPrint("\r\nd: #");
-    } else
-#endif
-    {
-        cliPrint("\r\n# ");
-    }
+    cliPrint("\r\n# ");
 }
 
 static void cliShowParseError(const char *cmdName)
@@ -1793,7 +1747,7 @@ static void cliMotorMix(const char *cmdName, char *cmdline)
             len = strlen(ptr);
             for (uint32_t i = 0; ; i++) {
                 if (mixerNames[i] == NULL) {
-                    cliPrintErrorLinef(cmdName, "INVALID NAME");
+                    cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
                     break;
                 }
                 if (strncasecmp(ptr, mixerNames[i], len) == 0) {
@@ -2274,7 +2228,7 @@ static void cliServoMix(const char *cmdName, char *cmdline)
             len = strlen(ptr);
             for (uint32_t i = 0; ; i++) {
                 if (mixerNames[i] == NULL) {
-                    cliPrintErrorLinef(cmdName, "INVALID NAME");
+                    cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
                     break;
                 }
                 if (strncasecmp(ptr, mixerNames[i], len) == 0) {
@@ -2456,8 +2410,8 @@ static void cliFlashInfo(const char *cmdName, char *cmdline)
 
     const flashGeometry_t *layout = flashGetGeometry();
 
-    cliPrintLinef("Flash sectors=%u, sectorSize=%u, pagesPerSector=%u, pageSize=%u, totalSize=%u",
-            layout->sectors, layout->sectorSize, layout->pagesPerSector, layout->pageSize, layout->totalSize);
+    cliPrintLinef("Flash sectors=%u, sectorSize=%u, pagesPerSector=%u, pageSize=%u, totalSize=%u JEDEC ID=0x%08x",
+            layout->sectors, layout->sectorSize, layout->pagesPerSector, layout->pageSize, layout->totalSize, layout->jedecId);
 
     for (uint8_t index = 0; index < FLASH_MAX_PARTITIONS; index++) {
         const flashPartition_t *partition;
@@ -2481,7 +2435,7 @@ static void cliFlashInfo(const char *cmdName, char *cmdline)
 }
 #endif // USE_FLASH_CHIP
 
-#ifdef USE_FLASHFS
+#if defined(USE_FLASHFS) && defined(USE_FLASH_CHIP)
 static void cliFlashErase(const char *cmdName, char *cmdline)
 {
     UNUSED(cmdName);
@@ -2579,8 +2533,8 @@ static void cliFlashRead(const char *cmdName, char *cmdline)
         cliPrintLinefeed();
     }
 }
-#endif
-#endif
+#endif // USE_FLASH_TOOLS
+#endif // USE_FLASHFS
 
 #ifdef USE_VTX_CONTROL
 static void printVtx(dumpFlags_t dumpMask, const vtxConfig_t *vtxConfig, const vtxConfig_t *vtxConfigDefault, const char *headingStr)
@@ -3120,8 +3074,6 @@ static void printCraftName(dumpFlags_t dumpMask, const pilotConfig_t *pilotConfi
 
 #if defined(USE_BOARD_INFO)
 
-#define ERROR_MESSAGE "%s CANNOT BE CHANGED. CURRENT VALUE: '%s'"
-
 static void printBoardName(dumpFlags_t dumpMask)
 {
     if (!(dumpMask & DO_DIFF) || strlen(getBoardName())) {
@@ -3303,7 +3255,7 @@ static void cliFeature(const char *cmdName, char *cmdline)
 
         for (uint32_t i = 0; ; i++) {
             if (featureNames[i] == NULL) {
-                cliPrintErrorLinef(cmdName, "INVALID NAME");
+                cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
                 break;
             }
 
@@ -3389,7 +3341,7 @@ static void processBeeperCommand(const char *cmdName, char *cmdline, uint32_t *o
 
         for (uint32_t i = 0; ; i++) {
             if (i == beeperCount) {
-                cliPrintErrorLinef(cmdName, "INVALID NAME");
+                cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
                 break;
             }
             if (strncasecmp(cmdline, beeperNameForTableIndex(i), len) == 0 && beeperModeMaskForTableIndex(i) & (allowedFlags | BEEPER_GET_FLAG(BEEPER_ALL))) {
@@ -3989,7 +3941,7 @@ static void cliMixer(const char *cmdName, char *cmdline)
 
     for (uint32_t i = 0; ; i++) {
         if (mixerNames[i] == NULL) {
-            cliPrintErrorLinef(cmdName, "INVALID NAME");
+            cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
             return;
         }
         if (strncasecmp(cmdline, mixerNames[i], len) == 0) {
@@ -4200,11 +4152,6 @@ static void cliBatch(const char *cmdName, char *cmdline)
 
 static bool prepareSave(void)
 {
-#if defined(USE_CUSTOM_DEFAULTS)
-    if (processingCustomDefaults) {
-        return true;
-    }
-#endif
 
 #ifdef USE_CLI_BATCH
     if (commandBatchActive && commandBatchError) {
@@ -4256,66 +4203,10 @@ static void cliSave(const char *cmdName, char *cmdline)
     }
 }
 
-#if defined(USE_CUSTOM_DEFAULTS)
-bool resetConfigToCustomDefaults(void)
-{
-    resetConfig();
-
-#ifdef USE_CLI_BATCH
-    commandBatchError = false;
-#endif
-
-    cliProcessCustomDefaults(true);
-
-#if defined(USE_SIMPLIFIED_TUNING)
-    applySimplifiedTuningAllProfiles();
-#endif
-
-    return prepareSave();
-}
-
-static bool customDefaultsHasNext(const char *customDefaultsPtr)
-{
-    return *customDefaultsPtr && *customDefaultsPtr != 0xFF && customDefaultsPtr < customDefaultsEnd;
-}
-
-static void parseCustomDefaultsHeader(void)
-{
-    const char *customDefaultsPtr = customDefaultsStart;
-    if (strncmp(customDefaultsPtr, CUSTOM_DEFAULTS_START_PREFIX, strlen(CUSTOM_DEFAULTS_START_PREFIX)) == 0) {
-        customDefaultsFound = true;
-
-        customDefaultsPtr = strchr(customDefaultsPtr, '\n');
-        if (customDefaultsPtr && customDefaultsHasNext(customDefaultsPtr)) {
-            customDefaultsPtr++;
-        }
-    }
-
-    customDefaultsHeaderParsed = true;
-}
-
-bool hasCustomDefaults(void)
-{
-    if (!customDefaultsHeaderParsed) {
-        parseCustomDefaultsHeader();
-    }
-
-    return customDefaultsFound;
-}
-#endif
-
 static void cliDefaults(const char *cmdName, char *cmdline)
 {
     bool saveConfigs = true;
     uint16_t parameterGroupId = 0;
-#if defined(USE_CUSTOM_DEFAULTS)
-    bool useCustomDefaults = true;
-#elif defined(USE_CUSTOM_DEFAULTS_ADDRESS)
-    // Required to keep the linker from eliminating these
-    if (customDefaultsStart != customDefaultsEnd) {
-        delay(0);
-    }
-#endif
 
     char *saveptr;
     char* tok = strtok_r(cmdline, " ", &saveptr);
@@ -4328,35 +4219,12 @@ static void cliDefaults(const char *cmdName, char *cmdline)
 
             if (!parameterGroupId) {
                 cliShowParseError(cmdName);
-                
                 return;
             }
         } else if (strcasestr(tok, "group_id")) {
             expectParameterGroupId = true;
         } else if (strcasestr(tok, "nosave")) {
             saveConfigs = false;
-#if defined(USE_CUSTOM_DEFAULTS)
-        } else if (strcasestr(tok, "bare")) {
-            useCustomDefaults = false;
-        } else if (strcasestr(tok, "show")) {
-            if (index != 0) {
-                cliShowParseError(cmdName);
-            } else if (hasCustomDefaults()) {
-                char *customDefaultsPtr = customDefaultsStart;
-                while (customDefaultsHasNext(customDefaultsPtr)) {
-                    if (*customDefaultsPtr != '\n') {
-                        cliPrintf("%c", *customDefaultsPtr++);
-                    } else {
-                        cliPrintLinefeed();
-                        customDefaultsPtr++;
-                    }
-                }
-            } else {
-                cliPrintError(cmdName, "NO CUSTOM DEFAULTS FOUND");
-            }
-
-            return;
-#endif
         } else {
             cliShowParseError(cmdName);
 
@@ -4388,12 +4256,6 @@ static void cliDefaults(const char *cmdName, char *cmdline)
     // only reset the current error state but the batch will still be active
     // for subsequent commands.
     commandBatchError = false;
-#endif
-
-#if defined(USE_CUSTOM_DEFAULTS)
-    if (useCustomDefaults) {
-        cliProcessCustomDefaults(false);
-    }
 #endif
 
 #if defined(USE_SIMPLIFIED_TUNING)
@@ -4434,7 +4296,7 @@ STATIC_UNIT_TESTED void cliGet(const char *cmdName, char *cmdline)
     pidProfileIndexToUse = getCurrentPidProfileIndex();
     rateProfileIndexToUse = getCurrentControlRateProfileIndex();
 
-    backupAndResetConfigs(true);
+    backupAndResetConfigs();
 
     for (uint32_t i = 0; i < valueTableEntryCount; i++) {
         if (strcasestr(valueTable[i].name, cmdline)) {
@@ -4471,7 +4333,7 @@ STATIC_UNIT_TESTED void cliGet(const char *cmdName, char *cmdline)
     rateProfileIndexToUse = CURRENT_PROFILE_INDEX;
 
     if (!matchedCommands) {
-        cliPrintErrorLinef(cmdName, "INVALID NAME");
+        cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
     }
 }
 
@@ -4522,7 +4384,7 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
 
         const uint16_t index = cliGetSettingIndex(cmdline, variableNameLength);
         if (index >= valueTableEntryCount) {
-            cliPrintErrorLinef(cmdName, "INVALID NAME");
+            cliPrintErrorLinef(cmdName, ERROR_INVALID_NAME, cmdline);
             return;
         }
         const clivalue_t *val = &valueTable[index];
@@ -4807,9 +4669,17 @@ static void cliStatus(const char *cmdName, char *cmdline)
 
 #if defined(USE_OSD)
     osdDisplayPortDevice_e displayPortDeviceType;
-    osdGetDisplayPort(&displayPortDeviceType);
+    displayPort_t *osdDisplayPort = osdGetDisplayPort(&displayPortDeviceType);
 
-    cliPrintLinef("OSD: %s", lookupTableOsdDisplayPortDevice[displayPortDeviceType]);
+    cliPrintLinef("OSD: %s (%u x %u)", lookupTableOsdDisplayPortDevice[displayPortDeviceType], osdDisplayPort->cols, osdDisplayPort->rows);
+#endif
+
+#ifdef BUILD_KEY
+    cliPrintf("BUILD KEY: %s", buildKey);
+#ifdef RELEASE_NAME
+    cliPrintf(" (%s)", STR(RELEASE_NAME));
+#endif
+    cliPrintLinefeed();
 #endif
 
     // Uptime and wall clock
@@ -4852,6 +4722,13 @@ static void cliStatus(const char *cmdName, char *cmdline)
 
 #ifdef USE_SDCARD
     cliSdInfo(cmdName, "");
+#endif
+
+#ifdef USE_FLASH_CHIP
+    const flashGeometry_t *layout = flashGetGeometry();
+    if (layout->jedecId != 0) {
+        cliPrintLinef("FLASH: JEDEC ID=0x%08x %uM", layout->jedecId, layout->totalSize >> 20);
+    }
 #endif
 
     cliPrint("Arming disable flags:");
@@ -4926,13 +4803,8 @@ static void cliTasks(const char *cmdName, char *cmdline)
     }
 }
 
-static void printVersion(const char *cmdName, bool printBoardInfo)
+static void printVersion(bool printBoardInfo)
 {
-#if !(defined(USE_CUSTOM_DEFAULTS))
-    UNUSED(cmdName);
-    UNUSED(printBoardInfo);
-#endif
-
     cliPrintf("# %s / %s (%s) %s %s / %s (%s) MSP API: %s",
         FC_FIRMWARE_NAME,
         targetName,
@@ -4946,26 +4818,21 @@ static void printVersion(const char *cmdName, bool printBoardInfo)
 
     cliPrintLinefeed();
 
-#if defined(USE_CUSTOM_DEFAULTS)
-    if (hasCustomDefaults()) {
-        cliPrintHashLine("config: YES");
-    } else {
-        cliPrintError(cmdName, "NO CONFIG FOUND");
-    }
-#endif // USE_CUSTOM_DEFAULTS
-
 #if defined(USE_BOARD_INFO)
     if (printBoardInfo && strlen(getManufacturerId()) && strlen(getBoardName())) {
         cliPrintLinef("# board: manufacturer_id: %s, board_name: %s", getManufacturerId(), getBoardName());
     }
+#else
+    UNUSED(printBoardInfo);
 #endif
 }
 
 static void cliVersion(const char *cmdName, char *cmdline)
 {
+    UNUSED(cmdName);
     UNUSED(cmdline);
 
-    printVersion(cmdName, true);
+    printVersion(true);
 }
 
 #ifdef USE_RC_SMOOTHING_FILTER
@@ -5037,24 +4904,24 @@ typedef struct {
     { owner, pgn, sizeof(type), offsetof(type, member), max }
 
 const cliResourceValue_t resourceTable[] = {
-#ifdef USE_BEEPER
+#if defined(USE_BEEPER)
     DEFS( OWNER_BEEPER,        PG_BEEPER_DEV_CONFIG, beeperDevConfig_t, ioTag) ,
 #endif
     DEFA( OWNER_MOTOR,         PG_MOTOR_CONFIG, motorConfig_t, dev.ioTags[0], MAX_SUPPORTED_MOTORS ),
-#ifdef USE_SERVOS
+#if defined(USE_SERVOS)
     DEFA( OWNER_SERVO,         PG_SERVO_CONFIG, servoConfig_t, dev.ioTags[0], MAX_SUPPORTED_SERVOS ),
 #endif
-#if defined(USE_PPM)
+#if defined(USE_RX_PPM)
     DEFS( OWNER_PPMINPUT,      PG_PPM_CONFIG, ppmConfig_t, ioTag ),
 #endif
-#if defined(USE_PWM)
+#if defined(USE_RX_PWM)
     DEFA( OWNER_PWMINPUT,      PG_PWM_CONFIG, pwmConfig_t, ioTags[0], PWM_INPUT_PORT_COUNT ),
 #endif
-#ifdef USE_RANGEFINDER_HCSR04
+#if defined(USE_RANGEFINDER_HCSR04)
     DEFS( OWNER_SONAR_TRIGGER, PG_SONAR_CONFIG, sonarConfig_t, triggerTag ),
     DEFS( OWNER_SONAR_ECHO,    PG_SONAR_CONFIG, sonarConfig_t, echoTag ),
 #endif
-#ifdef USE_LED_STRIP
+#if defined(USE_LED_STRIP)
     DEFS( OWNER_LED_STRIP,     PG_LED_STRIP_CONFIG, ledStripConfig_t, ioTag ),
 #endif
 #ifdef USE_UART
@@ -5078,8 +4945,8 @@ const cliResourceValue_t resourceTable[] = {
 #endif
 #ifdef USE_SPI
     DEFW( OWNER_SPI_SCK,       PG_SPI_PIN_CONFIG, spiPinConfig_t, ioTagSck, SPIDEV_COUNT ),
-    DEFW( OWNER_SPI_MISO,      PG_SPI_PIN_CONFIG, spiPinConfig_t, ioTagMiso, SPIDEV_COUNT ),
-    DEFW( OWNER_SPI_MOSI,      PG_SPI_PIN_CONFIG, spiPinConfig_t, ioTagMosi, SPIDEV_COUNT ),
+    DEFW( OWNER_SPI_SDI,      PG_SPI_PIN_CONFIG, spiPinConfig_t, ioTagMiso, SPIDEV_COUNT ),
+    DEFW( OWNER_SPI_SDO,      PG_SPI_PIN_CONFIG, spiPinConfig_t, ioTagMosi, SPIDEV_COUNT ),
 #endif
 #ifdef USE_ESCSERIAL
     DEFS( OWNER_ESCSERIAL,     PG_ESCSERIAL_CONFIG, escSerialConfig_t, ioTag ),
@@ -5337,11 +5204,11 @@ typedef struct dmaoptEntry_s {
     { device, peripheral, pgn, sizeof(type), offsetof(type, member), max, mask }
 
 dmaoptEntry_t dmaoptEntryTable[] = {
-    DEFW("SPI_MOSI", DMA_PERIPH_SPI_MOSI, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     txDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
-    DEFW("SPI_MISO", DMA_PERIPH_SPI_MISO, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     rxDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
+    DEFW("SPI_SDO", DMA_PERIPH_SPI_SDO, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     txDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
+    DEFW("SPI_SDI", DMA_PERIPH_SPI_SDI, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     rxDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
     // SPI_TX/SPI_RX for backwards compatibility with unified configs defined for 4.2.x
-    DEFW("SPI_TX",   DMA_PERIPH_SPI_MOSI, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     txDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
-    DEFW("SPI_RX",   DMA_PERIPH_SPI_MISO, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     rxDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
+    DEFW("SPI_TX",   DMA_PERIPH_SPI_SDO, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     txDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
+    DEFW("SPI_RX",   DMA_PERIPH_SPI_SDI, PG_SPI_PIN_CONFIG,     spiPinConfig_t,     rxDmaopt, SPIDEV_COUNT,                    MASK_IGNORED),
     DEFA("ADC",      DMA_PERIPH_ADC,      PG_ADC_CONFIG,         adcConfig_t,        dmaopt,   ADCDEV_COUNT,                    MASK_IGNORED),
     DEFS("SDIO",     DMA_PERIPH_SDIO,     PG_SDIO_CONFIG,        sdioConfig_t,       dmaopt),
     DEFW("UART_TX",  DMA_PERIPH_UART_TX,  PG_SERIAL_UART_CONFIG, serialUartConfig_t, txDmaopt, UARTDEV_CONFIG_MAX,              MASK_IGNORED),
@@ -5833,6 +5700,28 @@ static void alternateFunctionToString(const ioTag_t ioTag, const int index, char
     }
 }
 
+#ifdef USE_TIMER_MAP_PRINT
+static void showTimerMap(void)
+{
+    cliPrintLinefeed();
+    cliPrintLine("Timer Mapping:");
+    for (unsigned int i = 0; i < MAX_TIMER_PINMAP_COUNT; i++) {
+        const ioTag_t ioTag = timerIOConfig(i)->ioTag;
+
+        if (!ioTag) {
+            continue;
+        }
+
+        cliPrintLinef(" TIMER_PIN_MAP(%d, P%c%d, %d, %d)",
+            i,
+            IO_GPIOPortIdxByTag(ioTag) + 'A', IO_GPIOPinIdxByTag(ioTag),
+            timerIOConfig(i)->index,
+            timerIOConfig(i)->dmaopt
+        );
+    }
+}
+#endif
+
 static void showTimers(void)
 {
     cliPrintLinefeed();
@@ -5884,6 +5773,12 @@ static void cliTimer(const char *cmdName, char *cmdline)
         cliPrintErrorLinef(cmdName, "NOT IMPLEMENTED YET");
 
         return;
+#ifdef USE_TIMER_MAP_PRINT
+    } else if (strncasecmp(cmdline, "map", len) == 0) {
+        showTimerMap();
+
+        return;
+#endif
     } else if (strncasecmp(cmdline, "show", len) == 0) {
         showTimers();
 
@@ -6203,14 +6098,14 @@ static void printConfig(const char *cmdName, char *cmdline, bool doDiff)
         dumpMask = dumpMask | BARE;   // show the diff / dump without extra commands and board specific data
     }
 
-    backupAndResetConfigs((dumpMask & BARE) == 0);
+    backupAndResetConfigs();
 
 #ifdef USE_CLI_BATCH
     bool batchModeEnabled = false;
 #endif
     if ((dumpMask & DUMP_MASTER) || (dumpMask & DUMP_ALL)) {
         cliPrintHashLine("version");
-        printVersion(cmdName, false);
+        printVersion(false);
 
         if (!(dumpMask & BARE)) {
 #ifdef USE_CLI_BATCH
@@ -6477,11 +6372,7 @@ const clicmd_t cmdTable[] = {
 #ifdef USE_LED_STRIP_STATUS_MODE
         CLI_COMMAND_DEF("color", "configure colors", NULL, cliColor),
 #endif
-#if defined(USE_CUSTOM_DEFAULTS)
-    CLI_COMMAND_DEF("defaults", "reset to defaults and reboot", "{show} {nosave} {bare} {group_id <id>}", cliDefaults),
-#else
     CLI_COMMAND_DEF("defaults", "reset to defaults and reboot", "{nosave}", cliDefaults),
-#endif
     CLI_COMMAND_DEF("diff", "list configuration changes from default", "[master|profile|rates|hardware|all] {defaults|bare}", cliDiff),
 #ifdef USE_RESOURCE_MGMT
 
@@ -6654,12 +6545,6 @@ static void processCharacter(const char c)
         // enter pressed
         cliPrintLinefeed();
 
-#if defined(USE_CUSTOM_DEFAULTS) && defined(DEBUG_CUSTOM_DEFAULTS)
-        if (processingCustomDefaults) {
-            cliPrint("d: ");
-        }
-#endif
-
         // Strip comment starting with # from line
         char *p = cliBuffer;
         p = strchr(p, '#');
@@ -6780,56 +6665,6 @@ void cliProcess(void)
         processCharacterInteractive(c);
     }
 }
-
-#if defined(USE_CUSTOM_DEFAULTS)
-static bool cliProcessCustomDefaults(bool quiet)
-{
-    if (processingCustomDefaults || !hasCustomDefaults()) {
-        return false;
-    }
-
-    bufWriter_t *cliWriterTemp = NULL;
-    if (quiet
-#if !defined(DEBUG_CUSTOM_DEFAULTS)
-        || true
-#endif
-       ) {
-        cliWriterTemp = cliWriter;
-        cliWriter = NULL;
-    }
-    if (quiet) {
-        cliErrorWriter = NULL;
-    }
-
-    memcpy(cliBufferTemp, cliBuffer, sizeof(cliBuffer));
-    uint32_t bufferIndexTemp = bufferIndex;
-    bufferIndex = 0;
-    processingCustomDefaults = true;
-
-    char *customDefaultsPtr = customDefaultsStart;
-    while (customDefaultsHasNext(customDefaultsPtr)) {
-        processCharacter(*customDefaultsPtr++);
-    }
-
-    // Process a newline at the very end so that the last command gets executed,
-    // even when the file did not contain a trailing newline
-    processCharacter('\r');
-
-    processingCustomDefaults = false;
-
-    if (cliWriterTemp) {
-        cliWriter = cliWriterTemp;
-        cliErrorWriter = cliWriter;
-    }
-
-    memcpy(cliBuffer, cliBufferTemp, sizeof(cliBuffer));
-    bufferIndex = bufferIndexTemp;
-
-    systemConfigMutable()->configurationState = CONFIGURATION_STATE_DEFAULTS_CUSTOM;
-
-    return true;
-}
-#endif
 
 void cliEnter(serialPort_t *serialPort)
 {

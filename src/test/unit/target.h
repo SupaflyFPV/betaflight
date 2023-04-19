@@ -26,7 +26,7 @@
 #define USE_ACC
 #define USE_CMS
 #define CMS_MAX_DEVICE 4
-#define USE_FAKE_GYRO
+#define USE_VIRTUAL_GYRO
 #define USE_BEEPER
 #define USE_BLACKBOX
 #define USE_MAG
@@ -71,8 +71,6 @@
 #define MAX_SIMULTANEOUS_ADJUSTMENT_COUNT 6  // needed for unittest
 
 #define TARGET_BOARD_IDENTIFIER "TEST"
-
-#define DEFAULT_BLACKBOX_DEVICE     BLACKBOX_DEVICE_SERIAL
 
 #define LED_STRIP_TIMER 1
 #define SOFTSERIAL_1_TIMER 2
