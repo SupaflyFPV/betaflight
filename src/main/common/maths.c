@@ -346,3 +346,7 @@ fix12_t  qConstruct(int16_t num, int16_t den)
 {
     return (num << 12) / den;
 }
+
+float scaleUnitaryRange(float input, float from, float to) {
+    return (1.0 - input) * from + input * to;
+}

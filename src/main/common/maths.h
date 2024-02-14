@@ -175,3 +175,5 @@ static inline float constrainf(float amt, float low, float high)
     else
         return amt;
 }
+
+  float scaleUnitaryRange(float input, float from, float to);

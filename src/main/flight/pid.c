@@ -324,20 +324,23 @@ void pidAcroTrainerInit(void)
 #endif // USE_ACRO_TRAINER
 
 #ifdef USE_THRUST_LINEARIZATION
+// the math and data behind this https://www.desmos.com/calculator/ofaiocun0b
 float pidCompensateThrustLinearization(float throttle)
 {
-    if (pidRuntime.thrustLinearization != 0.0f) {
-        // for whoops where a lot of TL is needed, allow more throttle boost
-        const float throttleReversed = (1.0f - throttle);
-        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * sq(throttleReversed);
+    const float compensation = scaleUnitaryRange(throttle, pidRuntime.thrustLinearizationLow, pidRuntime.thrustLinearizationHigh);
+    if compensation != 0.0f && thrust > 0.0f {
+        throttle = (compensation - 1.0 + sqrtf((1.0 - compensation) * (1.0 - compensation) + 4.0 * compensation * throttle)) / (2.0 * compensation);
     }
     return throttle;
 }
 
 float pidApplyThrustLinearization(float motorOutput)
 {
-    motorOutput *= 1.0f + pidRuntime.thrustLinearization * sq(1.0f - motorOutput);
-    return motorOutput;
+    const float compensation = scaleUnitaryRange(motorOutput, pidRuntime.thrustLinearizationLow, pidRuntime.thrustLinearizationHigh);
+    if compensation != 0.0f && thrust > 0.0f {
+        motorOutput = (1.0 - compensation) * motorOutput + compensation * motorOutput * motorOutput;
+    }
+    return throttle;
 }
 #endif
 

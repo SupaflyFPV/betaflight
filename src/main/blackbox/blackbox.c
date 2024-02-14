@@ -1615,7 +1615,9 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THROTTLE_LIMIT_PERCENT, "%d",    currentControlRateProfile->throttle_limit_percent);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THROTTLE_BOOST, "%d",            currentPidProfile->throttle_boost);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THROTTLE_BOOST_CUTOFF, "%d",     currentPidProfile->throttle_boost_cutoff);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THRUST_LINEARIZATION,  "%d",     currentPidProfile->thrustLinearization);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THRUST_LINEARIZATIONLOW,  "%d",     currentPidProfile->thrustLinearizationLow);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THRUST_LINEARIZATIONHIGH,  "%d",     currentPidProfile->thrustLinearizationHigh);
+
 
 #ifdef USE_GPS
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GPS_PROVIDER, "%d",               gpsConfig()->provider)

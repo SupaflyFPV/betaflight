@@ -522,7 +522,8 @@ static uint8_t  cmsx_horizonLimitSticks;
 static uint8_t  cmsx_horizonLimitDegrees;
 
 static uint8_t  cmsx_throttleBoost;
-static uint8_t  cmsx_thrustLinearization;
+static uint8_t  cmsx_thrustLinearizationLow;
+static uint8_t  cmsx_thrustLinearizationHigh;
 static uint8_t  cmsx_antiGravityGain;
 static uint8_t  cmsx_motorOutputLimit;
 static int8_t   cmsx_autoProfileCellCount;
@@ -576,7 +577,9 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     cmsx_antiGravityGain   = pidProfile->anti_gravity_gain;
 
     cmsx_throttleBoost = pidProfile->throttle_boost;
-    cmsx_thrustLinearization = pidProfile->thrustLinearization;
+    cmsx_thrustLinearizationLow = pidProfile->thrustLinearizationLow;
+    cmsx_thrustLinearizationHigh = pidProfile->thrustLinearizationHigh;
+
     cmsx_motorOutputLimit = pidProfile->motor_output_limit;
     cmsx_autoProfileCellCount = pidProfile->auto_profile_cell_count;
 
@@ -634,7 +637,8 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     pidProfile->anti_gravity_gain   = cmsx_antiGravityGain;
 
     pidProfile->throttle_boost = cmsx_throttleBoost;
-    pidProfile->thrustLinearization = cmsx_thrustLinearization;
+    pidProfile->thrustLinearizationLow = cmsx_thrustLinearizationLow;
+    pidProfile->thrustLinearizationHigh = cmsx_thrustLinearizationHigh;
     pidProfile->motor_output_limit = cmsx_motorOutputLimit;
     pidProfile->auto_profile_cell_count = cmsx_autoProfileCellCount;
 

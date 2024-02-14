@@ -390,8 +390,8 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 #endif
 
 #ifdef USE_THRUST_LINEARIZATION
-    pidRuntime.thrustLinearization = pidProfile->thrustLinearization / 100.0f;
-    pidRuntime.throttleCompensateAmount = pidRuntime.thrustLinearization - 0.5f * sq(pidRuntime.thrustLinearization);
+    pidRuntime.thrustLinearizationLow = pidProfile->thrustLinearizationLow / 100.0f;
+    pidRuntime.thrustLinearizationHigh = pidProfile->thrustLinearizationHigh / 100.0f;
 #endif
 
 #if defined(USE_D_MIN)
