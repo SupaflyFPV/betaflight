@@ -56,7 +56,7 @@
 #include "drivers/dma.h"
 #include "drivers/dshot.h"
 #include "drivers/exti.h"
-#include "drivers/flash.h"
+#include "drivers/flash/flash.h"
 #include "drivers/inverter.h"
 #include "drivers/io.h"
 #include "drivers/light_led.h"
@@ -236,7 +236,7 @@ static void configureQuadSPIBusses(void)
 #ifdef USE_QUADSPI_DEVICE_1
     quadSpiInit(QUADSPIDEV_1);
 #endif
-#endif // USE_QUAD_SPI
+#endif // USE_QUADSPI
 }
 
 static void configureOctoSPIBusses(void)

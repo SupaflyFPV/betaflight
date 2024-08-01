@@ -3,7 +3,7 @@
 
 name: CI
 
-on: 
+on:
   workflow_call:
     inputs:
       release_build:
@@ -71,9 +71,9 @@ jobs:
         run: make EXTRA_FLAGS=-Werror ${{ matrix.target }}_rev
 
       - name: Publish build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: Assets
+          name: ${{ matrix.target }}
           path: obj/*.hex
           retention-days: 60
 
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get install -y libblocksruntime-dev clang-12
+        run: sudo apt-get install -y libblocksruntime-dev clang-15
 
       - name: Run sanity checks
         run: make EXTRA_FLAGS=-Werror checks

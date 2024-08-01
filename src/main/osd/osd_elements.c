@@ -267,7 +267,7 @@ typedef int (*getEscRpmOrFreqFnPtr)(int i);
 static int getEscRpm(int i)
 {
 #ifdef USE_DSHOT_TELEMETRY
-    if (motorConfig()->dev.useDshotTelemetry) {
+    if (useDshotTelemetry) {
         return lrintf(getDshotRpm(i));
     }
 #endif
@@ -318,19 +318,26 @@ int osdConvertTemperatureToSelectedUnit(int tempInDegreesCelcius)
 
 static void osdFormatAltitudeString(char * buff, int32_t altitudeCm, osdElementType_e variantType)
 {
-    const char unitSymbol = osdGetMetersToSelectedUnitSymbol();
-    unsigned decimalPlaces;
+    static const struct {
+        uint8_t decimals; 
+        bool asl;
+    } variantMap[] = {
+        [OSD_ELEMENT_TYPE_1] = { 1, false },
+        [OSD_ELEMENT_TYPE_2] = { 0, false },
+        [OSD_ELEMENT_TYPE_3] = { 1, true },
+        [OSD_ELEMENT_TYPE_4] = { 0, true },
+    };
 
-    switch (variantType) {
-    case OSD_ELEMENT_TYPE_2:  // whole number altitude (no decimal places)
-        decimalPlaces = 0;
-        break;
-    case OSD_ELEMENT_TYPE_1:  // one decimal place (default)
-    default:
-        decimalPlaces = 1;
-        break;
+    int32_t alt = altitudeCm;
+#ifdef USE_GPS
+    if (variantMap[variantType].asl) {
+        alt = getAltitudeAsl();
     }
-    osdPrintFloat(buff, SYM_ALTITUDE, osdGetMetersToSelectedUnit(altitudeCm) / 100.0f, "", decimalPlaces, true, unitSymbol);
+#endif
+    unsigned decimalPlaces = variantMap[variantType].decimals;
+    const char unitSymbol = osdGetMetersToSelectedUnitSymbol();
+
+    osdPrintFloat(buff, SYM_ALTITUDE, osdGetMetersToSelectedUnit(alt) / 100.0f, "", decimalPlaces, true, unitSymbol);
 }
 
 #ifdef USE_GPS
@@ -1151,7 +1158,7 @@ static void osdElementGpsSats(osdElementParms_t *element)
         tfp_sprintf(element->buff, "%c%cNC", SYM_SAT_L, SYM_SAT_R);
     } else {
         int pos = tfp_sprintf(element->buff, "%c%c%2d", SYM_SAT_L, SYM_SAT_R, gpsSol.numSat);
-        if (osdConfig()->gps_sats_show_hdop) { // add on the GPS module HDOP estimate
+        if (osdConfig()->gps_sats_show_pdop) { // add on the GPS module PDOP estimate
             element->buff[pos++] = ' ';
             osdPrintFloat(element->buff + pos, SYM_NONE, gpsSol.dop.pdop / 100.0f, "", 1, true, SYM_NONE);
         }
@@ -2064,7 +2071,7 @@ void osdAddActiveElements(void)
 #endif // GPS
 
 #if defined(USE_DSHOT_TELEMETRY) || defined(USE_ESC_SENSOR)
-    if ((featureIsEnabled(FEATURE_ESC_SENSOR)) || (motorConfig()->dev.useDshotTelemetry)) {
+    if ((featureIsEnabled(FEATURE_ESC_SENSOR)) || useDshotTelemetry) {
         osdAddActiveElement(OSD_ESC_TMP);
         osdAddActiveElement(OSD_ESC_RPM);
         osdAddActiveElement(OSD_ESC_RPM_FREQ);

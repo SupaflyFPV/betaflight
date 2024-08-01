@@ -51,13 +51,13 @@
 #else
 #define FAST_CODE                   __attribute__((section(".tcm_code")))
 #endif
-// Handle case where we'd prefer code to be in ITCM, but it won't fit on the F745
-#ifdef STM32F745xx
-#define FAST_CODE_PREF
-#else
-#define FAST_CODE_PREF                  __attribute__((section(".tcm_code")))
+// Handle case where we'd prefer code to be in ITCM, but it won't fit on the device
+#ifndef FAST_CODE_PREF
+#define FAST_CODE_PREF              FAST_CODE
 #endif
+
 #define FAST_CODE_NOINLINE          NOINLINE
+
 #else
 #define FAST_CODE
 #define FAST_CODE_PREF
@@ -323,37 +323,35 @@
 #endif
 #endif
 
-#if (defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25Q128FV)) && !defined(USE_FLASH_M25P16)
-#if !defined(USE_FLASH_M25P16)
+#if (defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25Q128FV) || defined(USE_FLASH_PY25Q128HA)) && !defined(USE_FLASH_M25P16)
 #define USE_FLASH_M25P16
-#endif
 #endif
 
 #if defined(USE_FLASH_W25M02G) && !defined(USE_FLASH_W25N01G)
-#if !defined(USE_FLASH_W25N01G)
 #define USE_FLASH_W25N01G
 #endif
+
+#if defined(USE_FLASH_W25N02K) || defined(USE_FLASH_W25N01G)
+#define USE_FLASH_W25N
 #endif
 
-#if (defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25N01G)) && !defined(USE_FLASH_W25M)
-#if !defined(USE_FLASH_W25M)
+#if (defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25N)) && !defined(USE_FLASH_W25M)
 #define USE_FLASH_W25M
 #endif
-#endif
 
-#if defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25M) || defined(USE_FLASH_W25N01G) || defined(USE_FLASH_W25Q128FV)
+#if defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25M) || defined(USE_FLASH_W25N) || defined(USE_FLASH_W25Q128FV)
 #if !defined(USE_FLASH_CHIP)
 #define USE_FLASH_CHIP
 #endif
 #endif
 
-#if defined(USE_SPI) && (defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25N01G) || defined(USE_FLASH_W25M02G))
+#if defined(USE_SPI) && (defined(USE_FLASH_M25P16) || defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25N) || defined(USE_FLASH_W25M02G))
 #if !defined(USE_FLASH_SPI)
 #define USE_FLASH_SPI
 #endif
 #endif
 
-#if defined(USE_QUADSPI) && (defined(USE_FLASH_W25Q128FV) || defined(USE_FLASH_W25N01G))
+#if defined(USE_QUADSPI) && (defined(USE_FLASH_W25Q128FV) || defined(USE_FLASH_W25N))
 #if !defined(USE_FLASH_QUADSPI)
 #define USE_FLASH_QUADSPI
 #endif
