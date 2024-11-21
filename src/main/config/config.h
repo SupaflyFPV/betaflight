@@ -28,8 +28,7 @@
 #define MAX_NAME_LENGTH 16u
 
 typedef enum {
-    CONFIGURATION_STATE_DEFAULTS_BARE = 0,
-    CONFIGURATION_STATE_DEFAULTS_CUSTOM,
+    CONFIGURATION_STATE_UNCONFIGURED = 0,
     CONFIGURATION_STATE_CONFIGURED,
 } configurationState_e;
 
@@ -83,8 +82,6 @@ uint8_t getCurrentControlRateProfileIndex(void);
 void changeControlRateProfile(uint8_t profileIndex);
 
 bool canSoftwareSerialBeUsed(void);
-
-uint16_t getCurrentMinthrottle(void);
 
 void resetConfig(void);
 void targetConfiguration(void);

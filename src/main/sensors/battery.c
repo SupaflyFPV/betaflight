@@ -40,6 +40,7 @@
 #include "fc/rc_controls.h"
 
 #include "flight/mixer.h"
+#include "flight/mixer_init.h"
 
 #include "io/beeper.h"
 
@@ -66,7 +67,6 @@
  *
  */
 
-#define VBAT_STABLE_MAX_DELTA 20
 #define LVC_AFFECT_TIME 10000000 //10 secs for the LVC to slowly kick in
 
 // Battery monitoring stuff
@@ -101,6 +101,10 @@ static float wattHoursDrawn;
 #define DEFAULT_VOLTAGE_METER_SOURCE VOLTAGE_METER_NONE
 #endif
 
+#ifndef DEFAULT_IBAT_LPF_PERIOD
+#define DEFAULT_IBAT_LPF_PERIOD 10
+#endif
+
 PG_REGISTER_WITH_RESET_TEMPLATE(batteryConfig_t, batteryConfig, PG_BATTERY_CONFIG, 3);
 
 PG_RESET_TEMPLATE(batteryConfig_t, batteryConfig,
@@ -129,7 +133,7 @@ PG_RESET_TEMPLATE(batteryConfig_t, batteryConfig,
 
     .vbatDisplayLpfPeriod = 30,
     .vbatSagLpfPeriod = 2,
-    .ibatLpfPeriod = 10,
+    .ibatLpfPeriod = DEFAULT_IBAT_LPF_PERIOD,
     .vbatDurationForWarning = 0,
     .vbatDurationForCritical = 0,
 );
@@ -158,8 +162,15 @@ void batteryUpdateVoltage(timeUs_t currentTimeUs)
             break;
     }
 
+    voltageStableUpdate(&voltageMeter);
+
     DEBUG_SET(DEBUG_BATTERY, 0, voltageMeter.unfiltered);
     DEBUG_SET(DEBUG_BATTERY, 1, voltageMeter.displayFiltered);
+    DEBUG_SET(DEBUG_BATTERY, 3, voltageMeter.voltageStableBits);
+    DEBUG_SET(DEBUG_BATTERY, 4, voltageIsStable(&voltageMeter) ? 1 : 0);
+    DEBUG_SET(DEBUG_BATTERY, 5, isVoltageFromBattery() ? 1 : 0);
+    DEBUG_SET(DEBUG_BATTERY, 6, voltageMeter.voltageStablePrevFiltered);
+    DEBUG_SET(DEBUG_BATTERY, 7, voltageState);
 }
 
 static void updateBatteryBeeperAlert(void)
@@ -180,14 +191,7 @@ static void updateBatteryBeeperAlert(void)
     }
 }
 
-//TODO: make all of these independent of voltage filtering for display
-
-static bool isVoltageStable(void)
-{
-    return abs(voltageMeter.displayFiltered - voltageMeter.unfiltered) <= VBAT_STABLE_MAX_DELTA;
-}
-
-static bool isVoltageFromBat(void)
+bool isVoltageFromBattery(void)
 {
     // We want to disable battery getting detected around USB voltage or 0V
 
@@ -198,8 +202,9 @@ static bool isVoltageFromBat(void)
 
 void batteryUpdatePresence(void)
 {
-
-    if ((voltageState == BATTERY_NOT_PRESENT || voltageState == BATTERY_INIT) && isVoltageFromBat() && isVoltageStable()) {
+    if ((voltageState == BATTERY_NOT_PRESENT || voltageState == BATTERY_INIT)
+        && isVoltageFromBattery()
+        && voltageIsStable(&voltageMeter)) {
         // Battery has just been connected - calculate cells, warning voltages and reset state
 
         consumptionState = voltageState = BATTERY_OK;
@@ -217,15 +222,19 @@ void batteryUpdatePresence(void)
                 changePidProfileFromCellCount(batteryCellCount);
             }
         }
+#ifdef USE_RPM_LIMIT
+        mixerResetRpmLimiter();
+#endif
         batteryWarningVoltage = batteryCellCount * batteryConfig()->vbatwarningcellvoltage;
         batteryCriticalVoltage = batteryCellCount * batteryConfig()->vbatmincellvoltage;
         batteryWarningHysteresisVoltage = (batteryWarningVoltage > batteryConfig()->vbathysteresis) ? batteryWarningVoltage - batteryConfig()->vbathysteresis : 0;
         batteryCriticalHysteresisVoltage = (batteryCriticalVoltage > batteryConfig()->vbathysteresis) ? batteryCriticalVoltage - batteryConfig()->vbathysteresis : 0;
         lowVoltageCutoff.percentage = 100;
         lowVoltageCutoff.startTime = 0;
-    } else if (voltageState != BATTERY_NOT_PRESENT && isVoltageStable() && !isVoltageFromBat()) {
+    } else if (voltageState != BATTERY_NOT_PRESENT
+               && voltageIsStable(&voltageMeter)
+               && !isVoltageFromBattery()) {
         /* battery has been disconnected - can take a while for filter cap to disharge so we use a threshold of batteryConfig()->vbatnotpresentcellvoltage */
-
         consumptionState = voltageState = BATTERY_NOT_PRESENT;
 
         batteryCellCount = 0;
@@ -237,7 +246,7 @@ void batteryUpdatePresence(void)
     }
 }
 
-void batteryUpdateWhDrawn(void) 
+void batteryUpdateWhDrawn(void)
 {
     static int32_t mAhDrawnPrev = 0;
     const int32_t mAhDrawnCurrent = getMAhDrawn();

@@ -33,12 +33,14 @@
 #include "config/feature.h"
 
 #include "drivers/dshot.h" // for DSHOT_ constants in initEscEndpoints; may be gone in the future
-#include "drivers/pwm_output.h" // for PWM_TYPE_* and others
-#include "drivers/time.h"
 #include "drivers/dshot_bitbang.h"
 #include "drivers/dshot_dpwm.h"
+#include "drivers/pwm_output.h" // for PWM_TYPE_* and others
+#include "drivers/time.h"
 
 #include "fc/rc_controls.h" // for flight3DConfig_t
+
+#include "sensors/battery.h"
 
 #include "motor.h"
 
@@ -49,11 +51,25 @@ static bool motorProtocolDshot = false;
 
 void motorShutdown(void)
 {
+    uint32_t shutdownDelayUs = 1500;
     motorDevice->vTable.shutdown();
     motorDevice->enabled = false;
     motorDevice->motorEnableTimeMs = 0;
     motorDevice->initialized = false;
-    delayMicroseconds(1500);
+
+    switch (motorConfig()->dev.motorPwmProtocol) {
+    case PWM_TYPE_STANDARD:
+    case PWM_TYPE_ONESHOT125:
+    case PWM_TYPE_ONESHOT42:
+    case PWM_TYPE_MULTISHOT:
+        // Delay 500ms will disarm esc which can prevent motor spin while reboot
+        shutdownDelayUs += 500 * 1000;
+        break;
+    default:
+        break;
+    }
+
+    delayMicroseconds(shutdownDelayUs);
 }
 
 void motorWriteAll(float *values)
@@ -114,9 +130,9 @@ unsigned motorDeviceCount(void)
     return motorDevice->count;
 }
 
-motorVTable_t motorGetVTable(void)
+motorVTable_t *motorGetVTable(void)
 {
-    return motorDevice->vTable;
+    return &motorDevice->vTable;
 }
 
 // This is not motor generic anymore; should be moved to analog pwm module
@@ -131,8 +147,9 @@ static void analogInitEndpoints(const motorConfig_t *motorConfig, float outputLi
         *deadbandMotor3dLow = flight3DConfig()->deadband3d_low;
     } else {
         *disarm = motorConfig->mincommand;
-        *outputLow = motorConfig->minthrottle;
-        *outputHigh = motorConfig->maxthrottle - ((motorConfig->maxthrottle - motorConfig->minthrottle) * (1 - outputLimit));
+        const float minThrottle = motorConfig->mincommand + motorConfig->motorIdle * 0.1f;
+        *outputLow = minThrottle;
+        *outputHigh = motorConfig->maxthrottle - ((motorConfig->maxthrottle - minThrottle) * (1 - outputLimit));
     }
 }
 
@@ -293,6 +310,11 @@ bool isMotorProtocolDshot(void)
     return motorProtocolDshot;
 }
 
+bool isMotorProtocolBidirDshot(void)
+{
+    return isMotorProtocolDshot() && useDshotTelemetry;
+}
+
 void motorDevInit(const motorDevConfig_t *motorDevConfig, uint16_t idlePulse, uint8_t motorCount)
 {
     memset(motors, 0, sizeof(motors));
@@ -343,6 +365,16 @@ void motorEnable(void)
     }
 }
 
+float motorEstimateMaxRpm(void)
+{
+    // Empirical testing found this relationship between estimated max RPM without props attached
+    // (unloaded) and measured max RPM with props attached (loaded), independent from prop size
+    float unloadedMaxRpm = 0.01f * getBatteryVoltage() * motorConfig()->kv;
+    float loadDerating = -5.44e-6f * unloadedMaxRpm + 0.944f;
+
+    return unloadedMaxRpm * loadDerating;
+}
+
 bool motorIsEnabled(void)
 {
     return motorDevice->enabled;
@@ -363,7 +395,7 @@ timeMs_t motorGetMotorEnableTimeMs(void)
 #ifdef USE_DSHOT_BITBANG
 bool isDshotBitbangActive(const motorDevConfig_t *motorDevConfig)
 {
-#ifdef STM32F4
+#if defined(STM32F4) || defined(APM32F4)
     return motorDevConfig->useDshotBitbang == DSHOT_BITBANG_ON ||
         (motorDevConfig->useDshotBitbang == DSHOT_BITBANG_AUTO && motorDevConfig->useDshotTelemetry && motorDevConfig->motorPwmProtocol != PWM_TYPE_PROSHOT1000);
 #else
@@ -372,9 +404,4 @@ bool isDshotBitbangActive(const motorDevConfig_t *motorDevConfig)
 #endif
 }
 #endif
-
-float getDigitalIdleOffset(const motorConfig_t *motorConfig)
-{
-    return CONVERT_PARAMETER_TO_PERCENT(motorConfig->digitalIdleOffsetValue * 0.01f);
-}
 #endif // USE_MOTOR

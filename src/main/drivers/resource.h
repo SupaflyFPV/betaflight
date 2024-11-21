@@ -32,7 +32,7 @@ typedef enum {
     OWNER_ADC_CURR,
     OWNER_ADC_EXT,
     OWNER_ADC_RSSI,
-    OWNER_SERIAL_TX,
+    OWNER_SERIAL_TX,   // TX must be just before RX
     OWNER_SERIAL_RX,
     OWNER_PINDEBUG,
     OWNER_TIMER,
@@ -109,6 +109,11 @@ typedef enum {
     OWNER_SWD,
     OWNER_RX_SPI_EXPRESSLRS_RESET,
     OWNER_RX_SPI_EXPRESSLRS_BUSY,
+    OWNER_SOFTSERIAL_TX,         // TX must be just before RX
+    OWNER_SOFTSERIAL_RX,
+    OWNER_LPUART_TX,             // TX must be just before RX
+    OWNER_LPUART_RX,
+    OWNER_GYRO_CLKIN,
     OWNER_TOTAL_COUNT
 } resourceOwner_e;
 
@@ -120,4 +125,5 @@ typedef struct resourceOwner_s {
 extern const char * const ownerNames[OWNER_TOTAL_COUNT];
 
 #define RESOURCE_INDEX(x) (x + 1)
+// TODO(hertz@): only used by vtx_rtc6707_soft_spi and probably for display purposes
 #define RESOURCE_SOFT_OFFSET    10

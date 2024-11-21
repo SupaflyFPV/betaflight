@@ -43,6 +43,7 @@
 #include "cms/cms.h"
 #include "cms/cms_menu_main.h"
 #include "cms/cms_menu_saveexit.h"
+#include "cms/cms_menu_quick.h"
 #include "cms/cms_types.h"
 
 #include "common/maths.h"
@@ -129,7 +130,7 @@ static displayPort_t *cmsDisplayPortSelectNext(void)
     return cmsDisplayPorts[cmsCurrentDevice];
 }
 
-bool cmsDisplayPortSelect(displayPort_t *instance)
+bool cmsDisplayPortSelect(const displayPort_t *instance)
 {
     for (unsigned i = 0; i < cmsDeviceCount; i++) {
         if (cmsDisplayPortSelectNext() == instance) {
@@ -390,7 +391,7 @@ static int cmsDrawMenuItemValue(displayPort_t *pDisplay, char *buff, uint8_t row
 #else
     colpos = smallScreen ? rightMenuColumn - maxSize : rightMenuColumn;
 #endif
-    cnt = cmsDisplayWrite(pDisplay, colpos, row, DISPLAYPORT_ATTR_NORMAL, buff);
+    cnt = cmsDisplayWrite(pDisplay, colpos, row, DISPLAYPORT_SEVERITY_NORMAL, buff);
     return cnt;
 }
 
@@ -591,7 +592,7 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
     case OME_Label:
         if (IS_PRINTVALUE(*flags) && p->data) {
             // A label with optional string, immediately following text
-            cnt = cmsDisplayWrite(pDisplay, leftMenuColumn + 1 + (uint8_t)strlen(p->text), row, DISPLAYPORT_ATTR_NORMAL, p->data);
+            cnt = cmsDisplayWrite(pDisplay, leftMenuColumn + 1 + (uint8_t)strlen(p->text), row, DISPLAYPORT_SEVERITY_NORMAL, p->data);
             CLR_PRINTVALUE(*flags);
         }
         break;
@@ -607,9 +608,9 @@ static int cmsDrawMenuEntry(displayPort_t *pDisplay, const OSD_Entry *p, uint8_t
 #ifdef CMS_MENU_DEBUG
         // Shouldn't happen. Notify creator of this menu content
 #ifdef CMS_OSD_RIGHT_ALIGNED_VALUES
-        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn - 6, row, DISPLAYPORT_ATTR_NORMAL, "BADENT");
+        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn - 6, row, DISPLAYPORT_SEVERITY_NORMAL, "BADENT");
 #else
-        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn, row, DISPLAYPORT_ATTR_NORMAL, "BADENT");
+        cnt = cmsDisplayWrite(pDisplay, rightMenuColumn, row, DISPLAYPORT_SEVERITY_NORMAL, "BADENT");
 #endif
 #endif
         break;
@@ -691,7 +692,7 @@ static bool rowIsSkippable(const OSD_Entry *row)
     if (type == OME_String) {
         return true;
     }
-    
+
     if ((type == OME_UINT8 || type == OME_INT8 ||
          type == OME_UINT16 || type == OME_INT16) &&
         ((row->flags == DYNAMIC) || rowSliderOverride(row->flags))) {
@@ -748,7 +749,7 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
 #endif
 
     if (pDisplay->cursorRow >= 0 && currentCtx.cursorRow != pDisplay->cursorRow) {
-        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + pDisplay->cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NORMAL, " ");
+        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + pDisplay->cursorRow * linesPerMenuItem, DISPLAYPORT_SEVERITY_NORMAL, " ");
     }
 
     if (room < 30) {
@@ -756,7 +757,7 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
     }
 
     if (pDisplay->cursorRow != currentCtx.cursorRow) {
-        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + currentCtx.cursorRow * linesPerMenuItem, DISPLAYPORT_ATTR_NORMAL, ">");
+        room -= cmsDisplayWrite(pDisplay, leftMenuColumn, top + currentCtx.cursorRow * linesPerMenuItem, DISPLAYPORT_SEVERITY_NORMAL, ">");
         pDisplay->cursorRow = currentCtx.cursorRow;
     }
 
@@ -778,17 +779,16 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
         if (IS_PRINTLABEL(runtimeEntryFlags[i])) {
             uint8_t coloff = leftMenuColumn;
             coloff += ((p->flags & OSD_MENU_ELEMENT_MASK) == OME_Label) ? 0 : 1;
-            room -= cmsDisplayWrite(pDisplay, coloff, top + i * linesPerMenuItem, DISPLAYPORT_ATTR_NORMAL, p->text);
+            room -= cmsDisplayWrite(pDisplay, coloff, top + i * linesPerMenuItem, DISPLAYPORT_SEVERITY_NORMAL, p->text);
             CLR_PRINTLABEL(runtimeEntryFlags[i]);
             if (room < 30) {
                 return;
             }
         }
 
-
         // Highlight values overridden by sliders
         if (rowSliderOverride(p->flags)) {
-            displayWriteChar(pDisplay, leftMenuColumn - 1, top + i * linesPerMenuItem, DISPLAYPORT_ATTR_NORMAL, 'S');
+            displayWriteChar(pDisplay, leftMenuColumn - 1, top + i * linesPerMenuItem, DISPLAYPORT_SEVERITY_NORMAL, 'S');
         }
 
     // Print values
@@ -812,11 +812,11 @@ static void cmsDrawMenu(displayPort_t *pDisplay, uint32_t currentTimeUs)
     if (displayWasCleared && leftMenuColumn > 0) {      // make sure there's room to draw the symbol
         if (currentCtx.page > 0) {
             const uint8_t symbol = displaySupportsOsdSymbols(pDisplay) ? SYM_ARROW_SMALL_UP : '^';
-            displayWriteChar(pDisplay, leftMenuColumn - 1, top, DISPLAYPORT_ATTR_NORMAL, symbol);
+            displayWriteChar(pDisplay, leftMenuColumn - 1, top, DISPLAYPORT_SEVERITY_NORMAL, symbol);
         }
          if (currentCtx.page < pageCount - 1) {
             const uint8_t symbol = displaySupportsOsdSymbols(pDisplay) ? SYM_ARROW_SMALL_DOWN : 'v';
-            displayWriteChar(pDisplay, leftMenuColumn - 1, top + pageMaxRow, DISPLAYPORT_ATTR_NORMAL, symbol);
+            displayWriteChar(pDisplay, leftMenuColumn - 1, top + pageMaxRow, DISPLAYPORT_SEVERITY_NORMAL, symbol);
         }
     }
 
@@ -845,7 +845,7 @@ const void *cmsMenuChange(displayPort_t *pDisplay, const void *ptr)
     if (pMenu != currentCtx.menu) {
         saveMenuInhibited = false;
 
-        if (currentCtx.menu) {
+        if (currentCtx.menu && pMenu != &cmsx_menuMain) {
             // If we are opening the initial top-level menu, then currentCtx.menu will be NULL and nothing to do.
             // Otherwise stack the current menu before moving to the selected menu.
             if (menuStackIdx >= CMS_MENU_STACK_LIMIT - 1) {
@@ -896,6 +896,13 @@ void cmsMenuOpen(void)
         cmsInMenu = true;
         currentCtx = (cmsCtx_t){ NULL, 0, 0 };
         startMenu = &cmsx_menuMain;
+
+#ifdef USE_OSD_QUICK_MENU
+        if (osdConfig()->osd_use_quick_menu) {
+            startMenu = &cmsx_menuQuick;
+        }
+#endif // USE_OSD_QUICK_MENU
+
         menuStackIdx = 0;
         setArmingDisabled(ARMING_DISABLED_CMS_MENU);
         displayLayerSelect(pCurrentDisplay, DISPLAYPORT_LAYER_FOREGROUND); // make sure the foreground layer is active
@@ -976,7 +983,7 @@ static void cmsTraverseGlobalExit(const CMS_Menu *pMenu)
 
 const void *cmsMenuExit(displayPort_t *pDisplay, const void *ptr)
 {
-    int exitType = (int)ptr;
+    int exitType = (intptr_t)ptr;
     switch (exitType) {
     case CMS_EXIT_SAVE:
     case CMS_EXIT_SAVEREBOOT:
@@ -1014,7 +1021,7 @@ const void *cmsMenuExit(displayPort_t *pDisplay, const void *ptr)
 
     if ((exitType == CMS_EXIT_SAVEREBOOT) || (exitType == CMS_POPUP_SAVEREBOOT) || (exitType == CMS_POPUP_EXITREBOOT)) {
         displayClearScreen(pDisplay, DISPLAY_CLEAR_WAIT);
-        cmsDisplayWrite(pDisplay, 5, 3, DISPLAYPORT_ATTR_NORMAL, "REBOOTING...");
+        cmsDisplayWrite(pDisplay, 5, 3, DISPLAYPORT_SEVERITY_NORMAL, "REBOOTING...");
 
         // Flush display
         displayRedraw(pDisplay);

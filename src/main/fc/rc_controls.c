@@ -35,7 +35,7 @@
 
 #include "config/feature.h"
 
-#include "drivers/camera_control.h"
+#include "drivers/camera_control_impl.h"
 
 #include "config/config.h"
 #include "fc/core.h"
@@ -48,6 +48,7 @@
 #include "io/beeper.h"
 #include "io/usb_cdc_hid.h"
 #include "io/dashboard.h"
+#include "io/gimbal_control.h"
 #include "io/gps.h"
 #include "io/vtx_control.h"
 
@@ -177,7 +178,7 @@ void processRcStickPositions(void)
                 // in a true signal loss situation, allow disarm only once we regain validated RxData (failsafeIsReceivingRxData = true),
                 // to avoid potentially false disarm signals soon after link recover
                 // Note that BOXFAILSAFE will also drive failsafeIsReceivingRxData false (immediately at start or end)
-                // That's why we explicitly allow disarm here BOXFAILSAFE switch is active
+                // That's why we explicitly allow disarm here if BOXFAILSAFE switch is active
                 // Note that BOXGPSRESCUE mode does not trigger failsafe - we can always disarm in that mode
                 rcDisarmTicks++;
                 if (rcDisarmTicks > 3) {
@@ -303,8 +304,7 @@ void processRcStickPositions(void)
     }
 #endif
 
-
-    if (FLIGHT_MODE(ANGLE_MODE|HORIZON_MODE)) {
+    if (FLIGHT_MODE(ANGLE_MODE | HORIZON_MODE)) {
         // in ANGLE or HORIZON mode, so use sticks to apply accelerometer trims
         rollAndPitchTrims_t accelerometerTrimsDelta;
         memset(&accelerometerTrimsDelta, 0, sizeof(accelerometerTrimsDelta));

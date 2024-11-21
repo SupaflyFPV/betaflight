@@ -41,7 +41,6 @@
 #include "drivers/osd_symbols.h"
 #include "drivers/time.h"
 
-
 // 10 MHz max SPI frequency
 #define MAX7456_MAX_SPI_CLK_HZ 10000000
 #define MAX7456_INIT_MAX_SPI_CLK_HZ 5000000
@@ -194,6 +193,7 @@ extDevice_t *dev = &max7456Device;
 
 static bool max7456DeviceDetected = false;
 static uint16_t max7456SpiClockDiv;
+static volatile bool max7456ActiveDma = false;
 
 uint16_t maxScreenSize = VIDEO_BUFFER_CHARS_PAL;
 
@@ -302,8 +302,8 @@ void max7456ReInit(void)
         } else if (VIN_IS_PAL(srdata)) {
             videoSignalReg = VIDEO_MODE_PAL | OSD_ENABLE;
         } else {
-            // No valid input signal, fallback to default (XXX NTSC for now)
-            videoSignalReg = VIDEO_MODE_NTSC | OSD_ENABLE;
+            // No valid input signal, fallback to default (PAL)
+            videoSignalReg = VIDEO_MODE_PAL | OSD_ENABLE;
         }
         break;
     }
@@ -511,7 +511,7 @@ void max7456Write(uint8_t x, uint8_t y, const char *text)
 
 bool max7456LayerSupported(displayPortLayer_e layer)
 {
-    if (layer == DISPLAYPORT_LAYER_FOREGROUND || layer == DISPLAYPORT_LAYER_BACKGROUND) {
+    if (layer == DISPLAYPORT_LAYER_FOREGROUND) {
         return true;
     } else {
         return false;
@@ -540,7 +540,7 @@ bool max7456LayerCopy(displayPortLayer_e destLayer, displayPortLayer_e sourceLay
 
 bool max7456DmaInProgress(void)
 {
-    return spiIsBusy(dev);
+    return max7456ActiveDma;
 }
 
 bool max7456BuffersSynced(void)
@@ -611,13 +611,23 @@ bool max7456ReInitIfRequired(bool forceStallCheck)
     return stalled;
 }
 
+// Called in ISR context
+busStatus_e max7456_callbackReady(uint32_t arg)
+{
+    UNUSED(arg);
+
+    max7456ActiveDma = false;
+
+    return BUS_READY;
+}
+
 // Return true if screen still being transferred
 bool max7456DrawScreen(void)
 {
     static uint16_t pos = 0;
     // This routine doesn't block so need to use static data
     static busSegment_t segments[] = {
-            {.u.link = {NULL, NULL}, 0, true, NULL},
+            {.u.link = {NULL, NULL}, 0, true, max7456_callbackReady},
             {.u.link = {NULL, NULL}, 0, true, NULL},
     };
 
@@ -705,6 +715,8 @@ bool max7456DrawScreen(void)
         if (spiBufIndex) {
             segments[0].u.buffers.txData = spiBuf;
             segments[0].len = spiBufIndex;
+
+            max7456ActiveDma = true;
 
             spiSequence(dev, &segments[0]);
 

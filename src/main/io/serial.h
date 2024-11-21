@@ -51,6 +51,7 @@ typedef enum {
     FUNCTION_LIDAR_TF            = (1 << 15), // 32768
     FUNCTION_FRSKY_OSD           = (1 << 16), // 65536
     FUNCTION_VTX_MSP             = (1 << 17), // 131072
+    FUNCTION_GIMBAL              = (1 << 18), // 262144
 } serialPortFunction_e;
 
 #define TELEMETRY_SHAREABLE_PORT_FUNCTIONS_MASK (FUNCTION_TELEMETRY_FRSKY_HUB | FUNCTION_TELEMETRY_LTM | FUNCTION_TELEMETRY_MAVLINK)
@@ -83,26 +84,44 @@ typedef enum {
     SERIAL_PORT_ALL = -2,
     SERIAL_PORT_NONE = -1,
     SERIAL_PORT_USART1 = 0,
+    SERIAL_PORT_UART1 = SERIAL_PORT_USART1,
     SERIAL_PORT_USART2,
+    SERIAL_PORT_UART2 = SERIAL_PORT_USART2,
     SERIAL_PORT_USART3,
+    SERIAL_PORT_UART3 = SERIAL_PORT_USART3,
     SERIAL_PORT_UART4,
     SERIAL_PORT_UART5,
     SERIAL_PORT_USART6,
+    SERIAL_PORT_UART6 = SERIAL_PORT_USART6,
     SERIAL_PORT_USART7,
+    SERIAL_PORT_UART7 = SERIAL_PORT_USART7,
     SERIAL_PORT_USART8,
+    SERIAL_PORT_UART8 = SERIAL_PORT_USART8,
     SERIAL_PORT_UART9,
     SERIAL_PORT_USART10,
+    SERIAL_PORT_UART10 = SERIAL_PORT_USART10,
+
     SERIAL_PORT_USB_VCP = 20,
+
     SERIAL_PORT_SOFTSERIAL1 = 30,
     SERIAL_PORT_SOFTSERIAL2,
+
     SERIAL_PORT_LPUART1 = 40,
-    SERIAL_PORT_IDENTIFIER_MAX = SERIAL_PORT_LPUART1,
 } serialPortIdentifier_e;
+
+// use value from target serial port normalization
+#define SERIAL_PORT_COUNT (SERIAL_UART_COUNT + SERIAL_LPUART_COUNT + SERIAL_SOFTSERIAL_COUNT + SERIAL_VCP_COUNT)
 
 extern const serialPortIdentifier_e serialPortIdentifiers[SERIAL_PORT_COUNT];
 
-#define SERIAL_PORT_IDENTIFIER_TO_INDEX(x) (((x) < RESOURCE_SOFT_OFFSET) ? (x) : (RESOURCE_SOFT_OFFSET + ((x) - SERIAL_PORT_SOFTSERIAL1)))
-#define SERIAL_PORT_IDENTIFIER_TO_UARTDEV(x) ((x) - SERIAL_PORT_USART1 + UARTDEV_1)
+typedef enum {
+    SERIALTYPE_INVALID = -1,
+    SERIALTYPE_USB_VCP = 0,
+    SERIALTYPE_UART,
+    SERIALTYPE_LPUART,
+    SERIALTYPE_SOFTSERIAL,
+    SERIALTYPE_COUNT
+} serialType_e;
 
 //
 // runtime
@@ -142,9 +161,8 @@ typedef void serialConsumer(uint8_t);
 //
 void serialInit(bool softserialEnabled, serialPortIdentifier_e serialPortToDisable);
 void serialRemovePort(serialPortIdentifier_e identifier);
-uint8_t serialGetAvailablePortCount(void);
 bool serialIsPortAvailable(serialPortIdentifier_e identifier);
-bool isSerialConfigValid(const serialConfig_t *serialConfig);
+bool isSerialConfigValid(serialConfig_t *serialConfig);
 const serialPortConfig_t *serialFindPortConfiguration(serialPortIdentifier_e identifier);
 serialPortConfig_t *serialFindPortConfigurationMutable(serialPortIdentifier_e identifier);
 bool doesConfigurationUsePort(serialPortIdentifier_e portIdentifier);
@@ -157,6 +175,9 @@ bool isSerialPortShared(const serialPortConfig_t *portConfig, uint16_t functionM
 void pgResetFn_serialConfig(serialConfig_t *serialConfig); //!!TODO remove need for this
 serialPortUsage_t *findSerialPortUsageByIdentifier(serialPortIdentifier_e identifier);
 int findSerialPortIndexByIdentifier(serialPortIdentifier_e identifier);
+serialPortIdentifier_e findSerialPortByName(const char* portName, int (*cmp)(const char *portName, const char *candidate));
+const char* serialName(serialPortIdentifier_e identifier, const char* notFound);
+
 //
 // runtime
 //
@@ -175,6 +196,10 @@ void waitForSerialPortToFinishTransmitting(serialPort_t *serialPort);
 
 baudRate_e lookupBaudRateIndex(uint32_t baudRate);
 
+serialType_e serialType(serialPortIdentifier_e identifier);
+
+// resource index of given identifier, or -1 if not available
+int serialResourceIndex(serialPortIdentifier_e identifier);
 
 //
 // msp/cli/bootloader

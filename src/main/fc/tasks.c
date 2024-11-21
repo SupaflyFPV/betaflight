@@ -36,7 +36,7 @@
 #include "config/feature.h"
 
 #include "drivers/accgyro/accgyro.h"
-#include "drivers/camera_control.h"
+#include "drivers/camera_control_impl.h"
 #include "drivers/compass/compass.h"
 #include "drivers/sensor.h"
 #include "drivers/serial.h"
@@ -58,11 +58,13 @@
 #include "flight/mixer.h"
 #include "flight/pid.h"
 #include "flight/position.h"
+#include "flight/alt_hold.h"
 
 #include "io/asyncfatfs/asyncfatfs.h"
 #include "io/beeper.h"
 #include "io/dashboard.h"
 #include "io/flashfs.h"
+#include "io/gimbal_control.h"
 #include "io/gps.h"
 #include "io/ledstrip.h"
 #include "io/piniobox.h"
@@ -82,6 +84,7 @@
 #include "pg/motor.h"
 
 #include "rx/rx.h"
+#include "rx/rc_stats.h"
 
 #include "scheduler/scheduler.h"
 
@@ -136,13 +139,6 @@ static void taskHandleSerial(timeUs_t currentTimeUs)
     DEBUG_SET(DEBUG_USB, 1, usbVcpIsConnected());
 #endif
 
-#ifdef USE_CLI
-    // in cli mode, all serial stuff goes to here. enter cli mode by sending #
-    if (cliMode) {
-        cliProcess();
-        return;
-    }
-#endif
     bool evaluateMspData = ARMING_FLAG(ARMED) ? MSP_SKIP_NON_MSP_DATA : MSP_EVALUATE_NON_MSP_DATA;
     mspSerialProcess(evaluateMspData, mspFcProcessCommand, mspFcProcessReply);
 }
@@ -250,8 +246,6 @@ static void taskGpsRescue(timeUs_t currentTimeUs)
 
     if (gpsRescueIsConfigured()) {
         gpsRescueUpdate();
-    } else {
-        schedulerIgnoreTaskStateTime();
     }
 }
 #endif
@@ -383,8 +377,12 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_GPS_RESCUE] = DEFINE_TASK("GPS_RESCUE", NULL, NULL, taskGpsRescue, TASK_PERIOD_HZ(TASK_GPS_RESCUE_RATE_HZ), TASK_PRIORITY_MEDIUM),
 #endif
 
+#ifdef USE_ALT_HOLD_MODE
+    [TASK_ALTHOLD] = DEFINE_TASK("ALTHOLD", NULL, NULL, updateAltHoldState, TASK_PERIOD_HZ(ALTHOLD_TASK_RATE_HZ), TASK_PRIORITY_LOW),
+#endif
+
 #ifdef USE_MAG
-    [TASK_COMPASS] = DEFINE_TASK("COMPASS", NULL, NULL, taskUpdateMag, TASK_PERIOD_HZ(10), TASK_PRIORITY_LOW),
+    [TASK_COMPASS] = DEFINE_TASK("COMPASS", NULL, NULL, taskUpdateMag, TASK_PERIOD_HZ(TASK_COMPASS_RATE_HZ), TASK_PRIORITY_LOW),
 #endif
 
 #ifdef USE_BARO
@@ -408,7 +406,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 #endif
 
 #ifdef USE_LED_STRIP
-    [TASK_LEDSTRIP] = DEFINE_TASK("LEDSTRIP", NULL, NULL, ledStripUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_LOW),
+    [TASK_LEDSTRIP] = DEFINE_TASK("LEDSTRIP", NULL, NULL, ledStripUpdate, TASK_PERIOD_HZ(TASK_LEDSTRIP_RATE_HZ), TASK_PRIORITY_LOW),
 #endif
 
 #ifdef USE_BST
@@ -449,6 +447,14 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 
 #ifdef USE_CRSF_V3
     [TASK_SPEED_NEGOTIATION] = DEFINE_TASK("SPEED_NEGOTIATION", NULL, NULL, speedNegotiationProcess, TASK_PERIOD_HZ(100), TASK_PRIORITY_LOW),
+#endif
+
+#ifdef USE_RC_STATS
+    [TASK_RC_STATS] = DEFINE_TASK("RC_STATS", NULL, NULL, rcStatsUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_LOW),
+#endif
+
+#ifdef USE_GIMBAL
+    [TASK_GIMBAL] = DEFINE_TASK("GIMBAL", NULL, NULL, gimbalUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
 #endif
 };
 
@@ -531,6 +537,10 @@ void tasksInit(void)
 
 #ifdef USE_GPS_RESCUE
     setTaskEnabled(TASK_GPS_RESCUE, featureIsEnabled(FEATURE_GPS));
+#endif
+
+#ifdef USE_ALT_HOLD_MODE
+    setTaskEnabled(TASK_ALTHOLD, true);
 #endif
 
 #ifdef USE_MAG
@@ -620,5 +630,13 @@ void tasksInit(void)
 
 #ifdef SIMULATOR_MULTITHREAD
     rescheduleTask(TASK_RX, 1);
+#endif
+
+#ifdef USE_RC_STATS
+    setTaskEnabled(TASK_RC_STATS, true);
+#endif
+
+#ifdef USE_GIMBAL
+    setTaskEnabled(TASK_GIMBAL, true);
 #endif
 }

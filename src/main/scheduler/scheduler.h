@@ -119,6 +119,9 @@ typedef enum {
 #ifdef USE_GPS_RESCUE
     TASK_GPS_RESCUE,
 #endif
+#ifdef USE_ALT_HOLD_MODE
+    TASK_ALTHOLD,
+#endif
 #ifdef USE_MAG
     TASK_COMPASS,
 #endif
@@ -175,6 +178,12 @@ typedef enum {
 #endif
 #ifdef USE_CRSF_V3
     TASK_SPEED_NEGOTIATION,
+#endif
+#ifdef USE_RC_STATS
+    TASK_RC_STATS,
+#endif
+#ifdef USE_GIMBAL
+    TASK_GIMBAL,
 #endif
 
     /* Count of real tasks */
@@ -240,6 +249,7 @@ void schedulerInit(void);
 void scheduler(void);
 timeUs_t schedulerExecuteTask(task_t *selectedTask, timeUs_t currentTimeUs);
 void taskSystemLoad(timeUs_t currentTimeUs);
+uint32_t getCpuPercentageLate(void);
 void schedulerEnableGyro(void);
 uint16_t getAverageSystemLoadPercent(void);
 float schedulerGetCycleTimeMultiplier(void);

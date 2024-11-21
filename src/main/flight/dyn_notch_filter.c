@@ -19,11 +19,11 @@
  */
 
 /* original work by Rav
- * 
+ *
  * 2018_07 updated by ctzsnooze to post filter, wider Q, different peak detection
  * coding assistance and advice from DieHertz, Rav, eTracer
  * test pilots icr4sh, UAV Tech, Flint723
- * 
+ *
  * 2021_02 updated by KarateBrot: switched FFT with SDFT, multiple notches per axis
  * test pilots: Sugar K, bizmar
  */
@@ -123,7 +123,7 @@ typedef struct dynNotch_s {
 
     int maxCenterFreq;
     float centerFreq[XYZ_AXIS_COUNT][DYN_NOTCH_COUNT_MAX];
-    
+
     timeUs_t looptimeUs;
     biquadFilter_t notch[XYZ_AXIS_COUNT][DYN_NOTCH_COUNT_MAX];
 
@@ -152,7 +152,6 @@ static FAST_DATA_ZERO_INIT int     sdftStartBin;
 static FAST_DATA_ZERO_INIT int     sdftEndBin;
 static FAST_DATA_ZERO_INIT float   sdftNoiseThreshold;
 static FAST_DATA_ZERO_INIT float   pt1LooptimeS;
-
 
 void dynNotchInit(const dynNotchConfig_t *config, const timeUs_t targetLooptimeUs)
 {
@@ -261,11 +260,11 @@ static FAST_CODE_NOINLINE void dynNotchProcess(void)
     DEBUG_SET(DEBUG_FFT_TIME, 0, state.step);
 
     switch (state.step) {
-    
+
         case STEP_WINDOW: // 4.1us (3-6us) @ F722
         {
             sdftWinSq(&sdft[state.axis], sdftData);
-            
+
             // Get total vibrational power in dyn notch range for noise floor estimate in STEP_CALC_FREQUENCIES
             sdftNoiseThreshold = 0.0f;
             for (int bin = sdftStartBin; bin <= sdftEndBin; bin++) {
@@ -359,7 +358,7 @@ static FAST_CODE_NOINLINE void dynNotchProcess(void)
                     // Convert bin to frequency: freq = bin * binResoultion (bin 0 is 0Hz)
                     const float centerFreq = constrainf(meanBin * sdftResolutionHz, dynNotch.minHz, dynNotch.maxHz);
 
-                    // PT1 style smoothing moves notch center freqs rapidly towards big peaks and slowly away, up to 10x faster 
+                    // PT1 style smoothing moves notch center freqs rapidly towards big peaks and slowly away, up to 10x faster
                     const float cutoffMult = constrainf(peaks[p].value / sdftNoiseThreshold, 1.0f, 10.0f);
                     const float gain = pt1FilterGain(DYN_NOTCH_SMOOTH_HZ * cutoffMult, pt1LooptimeS); // dynamic PT1 k value
 
@@ -375,8 +374,9 @@ static FAST_CODE_NOINLINE void dynNotchProcess(void)
             }
 
             if (state.axis == gyro.gyroDebugAxis) {
-                for (int p = 0; p < dynNotch.count && p < 3; p++) {
-                    DEBUG_SET(DEBUG_FFT_FREQ, p, lrintf(dynNotch.centerFreq[state.axis][p]));
+                for (int p = 0; p < dynNotch.count && p < DYN_NOTCH_COUNT_MAX; p++) {
+                    // debug channel 0 is reserved for pre DN gyro
+                    DEBUG_SET(DEBUG_FFT_FREQ, p + 1, lrintf(dynNotch.centerFreq[state.axis][p]));
                 }
                 DEBUG_SET(DEBUG_DYN_LPF, 1, lrintf(dynNotch.centerFreq[state.axis][0]));
             }
@@ -403,7 +403,7 @@ static FAST_CODE_NOINLINE void dynNotchProcess(void)
     state.step = (state.step + 1) % STEP_COUNT;
 }
 
-FAST_CODE float dynNotchFilter(const int axis, float value) 
+FAST_CODE float dynNotchFilter(const int axis, float value)
 {
     for (int p = 0; p < dynNotch.count; p++) {
         value = biquadFilterApplyDF1(&dynNotch.notch[axis][p], value);

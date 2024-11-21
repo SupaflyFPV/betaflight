@@ -26,10 +26,12 @@
 #include "common/maths.h"
 #include "common/sensor_alignment.h"
 #include "common/time.h"
-#include "drivers/exti.h"
-#include "drivers/bus.h"
-#include "drivers/sensor.h"
+#include "common/vector.h"
+
 #include "drivers/accgyro/accgyro_mpu.h"
+#include "drivers/bus.h"
+#include "drivers/exti.h"
+#include "drivers/sensor.h"
 
 #pragma GCC diagnostic push
 #if defined(SIMULATOR_BUILD) && defined(SIMULATOR_MULTITHREAD)
@@ -59,6 +61,7 @@ typedef enum {
     GYRO_BMI160,
     GYRO_BMI270,
     GYRO_LSM6DSO,
+    GYRO_LSM6DSV16X,
     GYRO_VIRTUAL
 } gyroHardware_e;
 
@@ -101,7 +104,7 @@ typedef struct gyroDev_s {
     extDevice_t dev;
     float scale;                                             // scalefactor
     float gyroZero[XYZ_AXIS_COUNT];
-    float gyroADC[XYZ_AXIS_COUNT];                           // gyro data after calibration and alignment
+    vector3_t gyroADC;                                       // gyro data after calibration and alignment
     int32_t gyroADCRawPrevious[XYZ_AXIS_COUNT];
     int16_t gyroADCRaw[XYZ_AXIS_COUNT];                      // raw data from sensor
     int16_t temperature;
@@ -123,7 +126,7 @@ typedef struct gyroDev_s {
     ioTag_t mpuIntExtiTag;
     uint8_t gyroHasOverflowProtection;
     gyroHardware_e gyroHardware;
-    fp_rotationMatrix_t rotationMatrix;
+    matrix33_t rotationMatrix;
     uint16_t gyroSampleRateHz;
     uint16_t accSampleRateHz;
     uint8_t accDataReg;
@@ -146,7 +149,7 @@ typedef struct accDev_s {
     bool acc_high_fsr;
     char revisionCode;                                      // a revision code for the sensor, if known
     uint8_t filler[2];
-    fp_rotationMatrix_t rotationMatrix;
+    matrix33_t rotationMatrix;
 } accDev_t;
 
 static inline void accDevLock(accDev_t *acc)

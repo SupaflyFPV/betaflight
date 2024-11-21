@@ -26,7 +26,8 @@
 
 #include "build/build_config.h"
 
-#include "axis.h"
+#include "common/axis.h"
+
 #include "maths.h"
 
 #if defined(FAST_MATH) || defined(VERY_FAST_MATH)
@@ -105,6 +106,12 @@ float acos_approx(float x)
     else
         return result;
 }
+
+float asin_approx(float x)
+{
+    return (M_PIf * 0.5f) - acos_approx(x);
+}
+
 #endif
 
 int gcd(int num, int denom)
@@ -182,44 +189,6 @@ float scaleRangef(float x, float srcFrom, float srcTo, float destFrom, float des
     return (a / b) + destFrom;
 }
 
-void buildRotationMatrix(fp_angles_t *delta, fp_rotationMatrix_t *rotation)
-{
-    float cosx, sinx, cosy, siny, cosz, sinz;
-    float coszcosx, sinzcosx, coszsinx, sinzsinx;
-
-    cosx = cos_approx(delta->angles.roll);
-    sinx = sin_approx(delta->angles.roll);
-    cosy = cos_approx(delta->angles.pitch);
-    siny = sin_approx(delta->angles.pitch);
-    cosz = cos_approx(delta->angles.yaw);
-    sinz = sin_approx(delta->angles.yaw);
-
-    coszcosx = cosz * cosx;
-    sinzcosx = sinz * cosx;
-    coszsinx = sinx * cosz;
-    sinzsinx = sinx * sinz;
-
-    rotation->m[0][X] = cosz * cosy;
-    rotation->m[0][Y] = -cosy * sinz;
-    rotation->m[0][Z] = siny;
-    rotation->m[1][X] = sinzcosx + (coszsinx * siny);
-    rotation->m[1][Y] = coszcosx - (sinzsinx * siny);
-    rotation->m[1][Z] = -sinx * cosy;
-    rotation->m[2][X] = (sinzsinx) - (coszcosx * siny);
-    rotation->m[2][Y] = (coszsinx) + (sinzcosx * siny);
-    rotation->m[2][Z] = cosy * cosx;
-}
-
-void applyMatrixRotation(float *v, fp_rotationMatrix_t *rotationMatrix)
-{
-    struct fp_vector *vDest = (struct fp_vector *)v;
-    struct fp_vector vTmp = *vDest;
-
-    vDest->X = (rotationMatrix->m[0][X] * vTmp.X + rotationMatrix->m[1][X] * vTmp.Y + rotationMatrix->m[2][X] * vTmp.Z);
-    vDest->Y = (rotationMatrix->m[0][Y] * vTmp.X + rotationMatrix->m[1][Y] * vTmp.Y + rotationMatrix->m[2][Y] * vTmp.Z);
-    vDest->Z = (rotationMatrix->m[0][Z] * vTmp.X + rotationMatrix->m[1][Z] * vTmp.Y + rotationMatrix->m[2][Z] * vTmp.Z);
-}
-
 // Quick median filter implementation
 // (c) N. Devillard - 1998
 // http://ndevilla.free.fr/median/median.pdf
@@ -229,7 +198,7 @@ void applyMatrixRotation(float *v, fp_rotationMatrix_t *rotationMatrix)
 #define QMF_SORTF(a,b) { if ((a)>(b)) QMF_SWAPF((a),(b)); }
 #define QMF_SWAPF(a,b) { float temp=(a);(a)=(b);(b)=temp; }
 
-int32_t quickMedianFilter3(int32_t * v)
+int32_t quickMedianFilter3(const int32_t * v)
 {
     int32_t p[3];
     QMF_COPY(p, v, 3);
@@ -238,7 +207,7 @@ int32_t quickMedianFilter3(int32_t * v)
     return p[1];
 }
 
-int32_t quickMedianFilter5(int32_t * v)
+int32_t quickMedianFilter5(const int32_t * v)
 {
     int32_t p[5];
     QMF_COPY(p, v, 5);
@@ -249,7 +218,7 @@ int32_t quickMedianFilter5(int32_t * v)
     return p[2];
 }
 
-int32_t quickMedianFilter7(int32_t * v)
+int32_t quickMedianFilter7(const int32_t * v)
 {
     int32_t p[7];
     QMF_COPY(p, v, 7);
@@ -262,7 +231,7 @@ int32_t quickMedianFilter7(int32_t * v)
     return p[3];
 }
 
-int32_t quickMedianFilter9(int32_t * v)
+int32_t quickMedianFilter9(const int32_t * v)
 {
     int32_t p[9];
     QMF_COPY(p, v, 9);
@@ -277,7 +246,7 @@ int32_t quickMedianFilter9(int32_t * v)
     return p[4];
 }
 
-float quickMedianFilter3f(float * v)
+float quickMedianFilter3f(const float * v)
 {
     float p[3];
     QMF_COPY(p, v, 3);
@@ -286,7 +255,7 @@ float quickMedianFilter3f(float * v)
     return p[1];
 }
 
-float quickMedianFilter5f(float * v)
+float quickMedianFilter5f(const float * v)
 {
     float p[5];
     QMF_COPY(p, v, 5);
@@ -297,7 +266,7 @@ float quickMedianFilter5f(float * v)
     return p[2];
 }
 
-float quickMedianFilter7f(float * v)
+float quickMedianFilter7f(const float * v)
 {
     float p[7];
     QMF_COPY(p, v, 7);
@@ -310,7 +279,7 @@ float quickMedianFilter7f(float * v)
     return p[3];
 }
 
-float quickMedianFilter9f(float * v)
+float quickMedianFilter9f(const float * v)
 {
     float p[9];
     QMF_COPY(p, v, 9);
@@ -325,7 +294,7 @@ float quickMedianFilter9f(float * v)
     return p[4];
 }
 
-void arraySubInt32(int32_t *dest, int32_t *array1, int32_t *array2, int count)
+void arraySubInt32(int32_t *dest, const int32_t *array1, const int32_t *array2, int count)
 {
     for (int i = 0; i < count; i++) {
         dest[i] = array1[i] - array2[i];
@@ -345,4 +314,27 @@ int16_t qMultiply(fix12_t q, int16_t input)
 fix12_t  qConstruct(int16_t num, int16_t den)
 {
     return (num << 12) / den;
+}
+
+// Cubic polynomial blending function
+static float cubicBlend(const float t)
+{
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// Smooth step-up transition function from 0 to 1
+float smoothStepUpTransition(const float x, const float center, const float width)
+{
+    const float half_width = width * 0.5f;
+    const float left_limit = center - half_width;
+    const float right_limit = center + half_width;
+
+    if (x < left_limit) {
+        return 0.0f;
+    } else if (x > right_limit) {
+        return 1.0f;
+    } else {
+        const float t = (x - left_limit) / width; // Normalize x within the range
+        return cubicBlend(t);
+    }
 }

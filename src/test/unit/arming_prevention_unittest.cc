@@ -15,6 +15,7 @@
  * along with Cleanflight.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 extern "C" {
@@ -35,6 +36,7 @@ extern "C" {
     #include "fc/rc_modes.h"
     #include "fc/runtime_config.h"
 
+    #include "flight/autopilot.h"
     #include "flight/failsafe.h"
     #include "flight/gps_rescue.h"
     #include "flight/imu.h"
@@ -76,8 +78,8 @@ extern "C" {
     PG_REGISTER(gpsConfig_t, gpsConfig, PG_GPS_CONFIG, 0);
     PG_REGISTER(gpsRescueConfig_t, gpsRescueConfig, PG_GPS_RESCUE, 0);
     PG_REGISTER(positionConfig_t, positionConfig, PG_POSITION, 0);
+    PG_REGISTER(autopilotConfig_t, autopilotConfig, PG_AUTOPILOT, 0);
 
-    float rcCommand[4];
     float rcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
     uint16_t averageSystemLoadPercent = 0;
     uint8_t cliMode = 0;
@@ -372,7 +374,7 @@ TEST(ArmingPreventionTest, RadioTurnedOnAtAnyTimeArmed)
     // expect
     EXPECT_FALSE(isUsingSticksForArming());
     EXPECT_TRUE(isArmingDisabled());
-    EXPECT_EQ(ARMING_DISABLED_BAD_RX_RECOVERY | ARMING_DISABLED_ARM_SWITCH, getArmingDisableFlags());
+    EXPECT_EQ(ARMING_DISABLED_NOT_DISARMED | ARMING_DISABLED_ARM_SWITCH, getArmingDisableFlags());
 
     // given
     // arm switch turned off by user
@@ -1051,7 +1053,7 @@ TEST(ArmingPreventionTest, Paralyze)
 extern "C" {
     uint32_t micros(void) { return simulationTime; }
     uint32_t millis(void) { return micros() / 1000; }
-    bool rxIsReceivingSignal(void) { return simulationHaveRx; }
+    bool isRxReceivingSignal(void) { return simulationHaveRx; }
 
     bool featureIsEnabled(uint32_t f) { return simulationFeatureFlags & f; }
     void warningLedFlash(void) {}
@@ -1083,7 +1085,7 @@ extern "C" {
     void failsafeStartMonitoring(void) {}
     void failsafeUpdateState(void) {}
     bool failsafeIsActive(void) { return false; }
-    bool failsafeIsReceivingRxData(void) { return false; }
+    bool failsafeIsReceivingRxData(void) { return true; }
     bool rxAreFlightChannelsValid(void) { return false; }
     void pidResetIterm(void) {}
     void updateAdjustmentStates(void) {}
@@ -1128,23 +1130,19 @@ extern "C" {
     bool isUpright(void) { return mockIsUpright; }
     void blackboxLogEvent(FlightLogEvent, union flightLogEventData_u *) {};
     void gyroFiltering(timeUs_t) {};
-    timeDelta_t rxGetFrameDelta(timeDelta_t *) { return 0; }
+    timeDelta_t rxGetFrameDelta() { return 0; }
     void updateRcRefreshRate(timeUs_t) {};
     uint16_t getAverageSystemLoadPercent(void) { return 0; }
     bool isMotorProtocolEnabled(void) { return true; }
     void pinioBoxTaskControl(void) {}
     void schedulerSetNextStateTime(timeDelta_t) {}
-    float getAltitude(void) { return 3000.0f; }
+
+    float getAltitudeCm(void) {return 0.0f;}
+    float getAltitudeDerivative(void) {return 0.0f;}
+
     float pt1FilterGain(float, float) { return 0.5f; }
     float pt2FilterGain(float, float)  { return 0.1f; }
     float pt3FilterGain(float, float)  { return 0.1f; }
-    void pt2FilterInit(pt2Filter_t *throttleDLpf, float) {
-        UNUSED(throttleDLpf);
-    }
-    float pt2FilterApply(pt2Filter_t *throttleDLpf, float) {
-        UNUSED(throttleDLpf);
-        return 0.0f;
-    }
     void pt1FilterInit(pt1Filter_t *velocityDLpf, float) {
         UNUSED(velocityDLpf);
     }
@@ -1160,4 +1158,6 @@ extern "C" {
         return 0.0f;
     }
     void getRcDeflectionAbs(void) {}
+    uint32_t getCpuPercentageLate(void) { return 0; }
+    bool crashFlipSuccessful(void) { return false; }
 }

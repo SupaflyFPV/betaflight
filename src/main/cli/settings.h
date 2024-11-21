@@ -24,7 +24,6 @@
 #include <stdbool.h>
 #include "pg/pg.h"
 
-
 typedef enum {
     TABLE_OFF_ON = 0,
     TABLE_UNIT,
@@ -33,6 +32,7 @@ typedef enum {
     TABLE_GPS_PROVIDER,
     TABLE_GPS_SBAS_MODE,
     TABLE_GPS_UBLOX_MODELS,
+    TABLE_GPS_UBLOX_UTC_STANDARD,
 #endif
 #ifdef USE_GPS_RESCUE
     TABLE_GPS_RESCUE_SANITY_CHECK,
@@ -119,9 +119,8 @@ typedef enum {
 #ifdef USE_LAUNCH_CONTROL
     TABLE_LAUNCH_CONTROL_MODE,
 #endif
-#ifdef USE_TPA_MODE
     TABLE_TPA_MODE,
-#endif
+    TABLE_SPA_MODE,
 #ifdef USE_LED_STRIP
     TABLE_LED_PROFILE,
     TABLE_LEDSTRIP_COLOR,
@@ -142,8 +141,14 @@ typedef enum {
 #endif
 #ifdef USE_RX_EXPRESSLRS
     TABLE_FREQ_DOMAIN,
-    TABLE_SWITCH_MODE,
 #endif
+#ifdef USE_ADVANCED_TPA
+    TABLE_TPA_CURVE_TYPE,
+#endif
+#ifdef USE_WING
+    TABLE_TPA_SPEED_TYPE,
+    TABLE_YAW_TYPE,
+#endif // USE_WING
     LOOKUP_TABLE_COUNT
 } lookupTableIndex_e;
 
@@ -151,7 +156,6 @@ typedef struct lookupTableEntry_s {
     const char * const *values;
     const uint8_t valueCount;
 } lookupTableEntry_t;
-
 
 #define VALUE_TYPE_OFFSET 0
 #define VALUE_SECTION_OFFSET 3
@@ -164,6 +168,7 @@ typedef enum {
     VAR_UINT16 = (2 << VALUE_TYPE_OFFSET),
     VAR_INT16 = (3 << VALUE_TYPE_OFFSET),
     VAR_UINT32 = (4 << VALUE_TYPE_OFFSET),
+    VAR_INT32 = (5 << VALUE_TYPE_OFFSET),
 
     // value section, bits 3-4
     MASTER_VALUE = (0 << VALUE_SECTION_OFFSET),
@@ -178,7 +183,6 @@ typedef enum {
     MODE_BITSET = (3 << VALUE_MODE_OFFSET),
     MODE_STRING = (4 << VALUE_MODE_OFFSET),
 } cliValueFlag_e;
-
 
 #define VALUE_TYPE_MASK (0x07)
 #define VALUE_SECTION_MASK (0x18)
@@ -219,7 +223,14 @@ typedef union {
     cliStringLengthConfig_t string;           // used for MODE_STRING
     uint8_t bitpos;                           // used for MODE_BITSET
     uint32_t u32Max;                          // used for MODE_DIRECT with VAR_UINT32
+    int32_t d32Max;                           // used for MODE_DIRECT with VAR_INT32
 } cliValueConfig_t;
+
+#ifdef __APPLE__
+#define PTR_PACKING
+#else
+#define PTR_PACKING __attribute__((packed))
+#endif
 
 typedef struct clivalue_s {
     const char *name;
@@ -228,8 +239,7 @@ typedef struct clivalue_s {
 
     pgn_t pgn;
     uint16_t offset;
-} __attribute__((packed)) clivalue_t;
-
+} PTR_PACKING clivalue_t;
 
 extern const lookupTableEntry_t lookupTables[];
 extern const uint16_t valueTableEntryCount;
@@ -266,4 +276,8 @@ extern const char * const lookupTableOffOn[];
 
 extern const char * const lookupTableSimplifiedTuningPidsMode[];
 
+extern const char * const lookupTableMixerType[];
+
 extern const char * const lookupTableCMSMenuBackgroundType[];
+
+extern const char * const lookupTableThrottleLimitType[];

@@ -23,6 +23,8 @@
 #include "common/axis.h"
 #include "common/time.h"
 #include "common/maths.h"
+#include "common/vector.h"
+
 #include "pg/pg.h"
 
 // Exported symbols
@@ -50,24 +52,26 @@ typedef union {
 #define EULER_INITIALIZE  { { 0, 0, 0 } }
 
 extern attitudeEulerAngles_t attitude;
-extern float rMat[3][3];
+extern matrix33_t rMat;
 
 typedef struct imuConfig_s {
-    uint16_t dcm_kp;                        // DCM filter proportional gain ( x 10000)
-    uint16_t dcm_ki;                        // DCM filter integral gain ( x 10000)
+    uint16_t imu_dcm_kp;          // DCM filter proportional gain ( x 10000)
+    uint16_t imu_dcm_ki;          // DCM filter integral gain ( x 10000)
     uint8_t small_angle;
     uint8_t imu_process_denom;
+    uint16_t mag_declination;     // Magnetic declination in degrees * 10
 } imuConfig_t;
 
 PG_DECLARE(imuConfig_t, imuConfig);
 
 typedef struct imuRuntimeConfig_s {
-    float dcm_ki;
-    float dcm_kp;
+    float imuDcmKi;
+    float imuDcmKp;
 } imuRuntimeConfig_t;
 
 void imuConfigure(uint16_t throttle_correction_angle, uint8_t throttle_correction_value);
 
+float getSinPitchAngle(void);
 float getCosTiltAngle(void);
 void getQuaternion(quaternion * q);
 void imuUpdateAttitude(timeUs_t currentTimeUs);
@@ -83,6 +87,6 @@ void imuSetHasNewData(uint32_t dt);
 #endif
 
 bool imuQuaternionHeadfreeOffsetSet(void);
-void imuQuaternionHeadfreeTransformVectorEarthToBody(t_fp_vector_def * v);
+void imuQuaternionHeadfreeTransformVectorEarthToBody(vector3_t *v);
 bool shouldInitializeGPSHeading(void);
 bool isUpright(void);

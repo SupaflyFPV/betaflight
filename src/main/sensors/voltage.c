@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "platform.h"
 
@@ -35,6 +36,7 @@
 
 #include "drivers/adc.h"
 
+#include "flight/mixer.h"
 #include "flight/pid.h"
 
 #include "pg/pg.h"
@@ -80,7 +82,6 @@ const uint8_t voltageMeterIds[] = {
 
 const uint8_t supportedVoltageMeterCount = ARRAYLEN(voltageMeterIds);
 
-
 //
 // ADC/ESC shared
 //
@@ -88,6 +89,9 @@ const uint8_t supportedVoltageMeterCount = ARRAYLEN(voltageMeterIds);
 void voltageMeterReset(voltageMeter_t *meter)
 {
     meter->displayFiltered = 0;
+    meter->voltageStablePrevFiltered = 0;
+    meter->voltageStableLastUpdate = 0;
+    meter->voltageStableBits = 0;
     meter->unfiltered = 0;
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
     meter->sagFiltered = 0;
@@ -101,12 +105,12 @@ void voltageMeterReset(voltageMeter_t *meter)
 #define DEFAULT_VOLTAGE_METER_SCALE 110
 #endif
 
-#ifndef VBAT_RESDIVVAL_DEFAULT
-#define VBAT_RESDIVVAL_DEFAULT 10
+#ifndef DEFAULT_VOLTAGE_METER_DIVIDER
+#define DEFAULT_VOLTAGE_METER_DIVIDER 10
 #endif
 
-#ifndef VBAT_RESDIVMULTIPLIER_DEFAULT
-#define VBAT_RESDIVMULTIPLIER_DEFAULT 1
+#ifndef DEFAULT_VOLTAGE_METER_MULTIPLIER
+#define DEFAULT_VOLTAGE_METER_MULTIPLIER 1
 #endif
 
 typedef struct voltageMeterADCState_s {
@@ -135,12 +139,11 @@ void pgResetFn_voltageSensorADCConfig(voltageSensorADCConfig_t *instance)
     for (int i = 0; i < MAX_VOLTAGE_SENSOR_ADC; i++) {
         RESET_CONFIG(voltageSensorADCConfig_t, &instance[i],
             .vbatscale = DEFAULT_VOLTAGE_METER_SCALE,
-            .vbatresdivval = VBAT_RESDIVVAL_DEFAULT,
-            .vbatresdivmultiplier = VBAT_RESDIVMULTIPLIER_DEFAULT,
+            .vbatresdivval = DEFAULT_VOLTAGE_METER_DIVIDER,
+            .vbatresdivmultiplier = DEFAULT_VOLTAGE_METER_MULTIPLIER,
         );
     }
 }
-
 
 static const uint8_t voltageMeterAdcChannelMap[] = {
     ADC_BATTERY,
@@ -235,7 +238,7 @@ void voltageMeterGenericInit(void)
     sagCompensationConfigured = false;
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
     for (unsigned i = 0; i < PID_PROFILE_COUNT; i++) {
-        if (pidProfiles(i)->vbat_sag_compensation > 0) {
+        if (pidProfiles(i)->vbat_sag_compensation > 0 && !RPM_LIMIT_ACTIVE) {
             sagCompensationConfigured = true;
         }
     }
@@ -255,8 +258,6 @@ typedef struct voltageMeterESCState_s {
 
 static voltageMeterESCState_t voltageMeterESCState;
 #endif
-
-
 
 void voltageMeterESCInit(void)
 {
@@ -310,7 +311,6 @@ void voltageMeterESCReadCombined(voltageMeter_t *voltageMeter)
 // This API is used by MSP, for configuration/status.
 //
 
-
 // the order of these much match the indexes in voltageSensorADC_e
 const uint8_t voltageMeterADCtoIDMap[MAX_VOLTAGE_SENSOR_ADC] = {
     VOLTAGE_METER_ID_BATTERY_1,
@@ -357,4 +357,29 @@ void voltageMeterRead(voltageMeterId_e id, voltageMeter_t *meter)
     {
         voltageMeterReset(meter);
     }
+}
+
+// update voltageStableBits
+// new 1 bit (= stable) is shifted in every VOLTAGE_STABLE_UPDATE_MS
+// when difference is larger than VOLTAGE_STABLE_MAX_DELTA, LSB of shift register is
+//   reset to 0 (logical AND) and voltageStablePrevFiltered is updated with new voltage value
+void voltageStableUpdate(voltageMeter_t* vm)
+{
+    const uint32_t now = millis();
+    // test voltage on each call
+    if (abs(vm->voltageStablePrevFiltered - vm->displayFiltered) > VOLTAGE_STABLE_MAX_DELTA) {
+        // reset stable voltage reference
+        vm->voltageStablePrevFiltered = vm->displayFiltered;
+        vm->voltageStableBits &= ~BIT(0);  // voltage threshold exceeded in this period, clear LSB/BIT(0)
+    }
+    if (cmp32(now, vm->voltageStableLastUpdate) >= VOLTAGE_STABLE_TICK_MS) {
+        vm->voltageStableBits = (vm->voltageStableBits << 1) | BIT(0);  // start with 'stable' state
+        vm->voltageStableLastUpdate = now;
+    }
+}
+
+// voltage is stable when it was within VOLTAGE_STABLE_MAX_DELTA for 10 update periods
+bool voltageIsStable(voltageMeter_t* vm)
+{
+    return popcount(vm->voltageStableBits & (BIT(VOLTAGE_STABLE_BITS_TOTAL + 1) - 1)) >= VOLTAGE_STABLE_BITS_THRESHOLD;
 }
