@@ -337,7 +337,7 @@ typedef struct pidProfile_s {
     uint8_t dterm_fir_taps;
     uint16_t dterm_fir_cutoff;
     uint16_t dterm_fir_transition;
-    uint8_t dterm_fir_window;
+    firWindowType_e dterm_fir_window;
     uint8_t dterm_fir_manual;
 #endif
 } pidProfile_t;

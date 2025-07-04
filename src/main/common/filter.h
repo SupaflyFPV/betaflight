@@ -149,11 +149,19 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
 // FIR filter size for the custom D-term filter
 #define FIR_DTERM_TAP_COUNT 31
 
+typedef enum {
+    FIR_WINDOW_HAMMING,
+    FIR_WINDOW_HANN,
+    FIR_WINDOW_BLACKMAN,
+    FIR_WINDOW_KAISER,
+    FIR_WINDOW_COUNT
+} firWindowType_e;
+
 // Simple FIR filter implementation for D-term filtering
 typedef struct firFilter_s {
     float buf[FIR_DTERM_TAP_COUNT];
+    float coeffs[FIR_DTERM_TAP_COUNT];
     uint8_t taps;
-    const float *coeffs;
 } firFilter_t;
 
 void firFilterInit(firFilter_t *filter);   // initialise buffer and coefficients

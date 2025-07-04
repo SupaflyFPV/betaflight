@@ -416,12 +416,12 @@ static const float firDtermCoeffs[FIR_DTERM_TAP_COUNT] = {
     0.00046730f
 };
 
-// Reset FIR filter state and assign the coefficient table
+// Reset FIR filter state and copy the coefficient table
 void firFilterInit(firFilter_t *filter)
 {
     filter->taps = FIR_DTERM_TAP_COUNT;
-    filter->coeffs = firDtermCoeffs;
     for (int i = 0; i < FIR_DTERM_TAP_COUNT; i++) {
+        filter->coeffs[i] = firDtermCoeffs[i];
         filter->buf[i] = 0.0f;
     }
 }
