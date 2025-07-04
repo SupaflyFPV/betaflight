@@ -207,6 +207,16 @@ void pidInitFilters(const pidProfile_t *pidProfile)
                 pt3FilterInit(&pidRuntime.dtermLowpass[axis].pt3Filter, pt3FilterGain(dterm_lpf1_init_hz, pidRuntime.dT));
             }
             break;
+#ifdef USE_FIR_DTERM
+        case FILTER_FIR:
+            // Initialize FIR filter for first D-term stage
+            pidRuntime.dtermLowpassApplyFn = (filterApplyFnPtr)firFilterApply;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                firFilterInit(&pidRuntime.dtermFir[axis]);
+                pidRuntime.dtermLowpass[axis].firFilter = pidRuntime.dtermFir[axis];
+            }
+            break;
+#endif
         default:
             pidRuntime.dtermLowpassApplyFn = nullFilterApply;
             break;
@@ -246,6 +256,16 @@ void pidInitFilters(const pidProfile_t *pidProfile)
                 pt3FilterInit(&pidRuntime.dtermLowpass2[axis].pt3Filter, pt3FilterGain(pidProfile->dterm_lpf2_static_hz, pidRuntime.dT));
             }
             break;
+#ifdef USE_FIR_DTERM
+        case FILTER_FIR:
+            // Initialize FIR filter for second D-term stage
+            pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)firFilterApply;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                firFilterInit(&pidRuntime.dtermFir[axis]);
+                pidRuntime.dtermLowpass2[axis].firFilter = pidRuntime.dtermFir[axis];
+            }
+            break;
+#endif
         default:
             pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
             break;
