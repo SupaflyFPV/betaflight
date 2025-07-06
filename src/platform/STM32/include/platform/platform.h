@@ -123,7 +123,6 @@
 #endif
 
 #define USE_RPM_FILTER
-#define USE_FIR_DTERM  // enable optional FIR filter for D-term
 #define USE_DYN_IDLE
 #define USE_DYN_NOTCH_FILTER
 #define USE_ADC_INTERNAL
@@ -146,7 +145,6 @@
 #define ITCM_RAM_OPTIMISATION "-O2", "-freorder-blocks-algorithm=simple"
 #define USE_FAST_DATA
 #define USE_RPM_FILTER
-#define USE_FIR_DTERM  // enable optional FIR filter for D-term
 #define USE_DYN_IDLE
 #define USE_DYN_NOTCH_FILTER
 #define USE_OVERCLOCK
@@ -170,7 +168,6 @@
 #define USE_ITCM_RAM
 #define USE_FAST_DATA
 #define USE_RPM_FILTER
-#define USE_FIR_DTERM  // enable optional FIR filter for D-term
 #define USE_DYN_IDLE
 #define USE_DYN_NOTCH_FILTER
 #define USE_ADC_INTERNAL
@@ -186,7 +183,6 @@
 
 #ifdef STM32G4
 #define USE_RPM_FILTER
-#define USE_FIR_DTERM  // enable optional FIR filter for D-term
 #define USE_DYN_IDLE
 #define USE_OVERCLOCK
 #define USE_DYN_NOTCH_FILTER

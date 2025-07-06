@@ -111,7 +111,6 @@
 #endif
 
 #define USE_RPM_FILTER
-#define USE_FIR_DTERM  // enable optional FIR filter for D-term
 #define USE_DYN_IDLE
 #define USE_DYN_NOTCH_FILTER
 #define USE_ADC_INTERNAL
