@@ -370,20 +370,7 @@ static const char * const lookupTableDtermLowpassType[] = {
     "BIQUAD",
     "PT2",
     "PT3",
-#ifdef USE_FIR_DTERM
-    "FIR", // custom FIR filter option for D-term
-#endif
 };
-
-#ifdef USE_FIR_DTERM
-// Window functions selectable for FIR coefficient generation
-static const char * const lookupTableFirWindowType[] = {
-    "HAMMING",
-    "HANN",
-    "BLACKMAN",
-    "KAISER",
-};
-#endif
 
 static const char * const lookupTableFailsafe[] = {
     "AUTO-LAND", "DROP", "GPS-RESCUE"
@@ -658,10 +645,6 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTablePwmProtocol),
     LOOKUP_TABLE_ENTRY(lookupTableLowpassType),
     LOOKUP_TABLE_ENTRY(lookupTableDtermLowpassType),
-#ifdef USE_FIR_DTERM
-    // Link FIR window lookup table so it can be accessed from CLI
-    LOOKUP_TABLE_ENTRY(lookupTableFirWindowType),
-#endif
     LOOKUP_TABLE_ENTRY(lookupTableFailsafe),
     LOOKUP_TABLE_ENTRY(lookupTableFailsafeSwitchMode),
     LOOKUP_TABLE_ENTRY(lookupTableCrashRecovery),
@@ -1234,14 +1217,6 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_DTERM_LPF2_STATIC_HZ,  VAR_INT16  | PROFILE_VALUE, .config.minmax = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_lpf2_static_hz) },
     { PARAM_NAME_DTERM_NOTCH_HZ,        VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_hz) },
     { PARAM_NAME_DTERM_NOTCH_CUTOFF,    VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_cutoff) },
-#ifdef USE_FIR_DTERM
-    // Parameters controlling the FIR D-term filter
-    { PARAM_NAME_DTERM_FIR_TAPS,       VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 1, FIR_DTERM_TAP_COUNT }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_fir_taps) },
-    { PARAM_NAME_DTERM_FIR_CUTOFF,     VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_fir_cutoff) },
-    { PARAM_NAME_DTERM_FIR_TRANSITION, VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 1, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_fir_transition) },
-    { PARAM_NAME_DTERM_FIR_WINDOW,     VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_FIR_WINDOW_TYPE }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_fir_window) },
-    { PARAM_NAME_DTERM_FIR_MANUAL,     VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_fir_manual) },
-#endif
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
     { PARAM_NAME_VBAT_SAG_COMPENSATION, VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, vbat_sag_compensation) },
 #endif

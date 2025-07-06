@@ -101,13 +101,6 @@
 #define PARAM_NAME_DTERM_LPF2_STATIC_HZ "dterm_lpf2_static_hz"
 #define PARAM_NAME_DTERM_NOTCH_HZ "dterm_notch_hz"
 #define PARAM_NAME_DTERM_NOTCH_CUTOFF "dterm_notch_cutoff"
-#ifdef USE_FIR_DTERM
-#define PARAM_NAME_DTERM_FIR_TAPS "dterm_fir_taps"        // number of FIR coefficients
-#define PARAM_NAME_DTERM_FIR_CUTOFF "dterm_fir_cutoff"    // filter cutoff frequency
-#define PARAM_NAME_DTERM_FIR_TRANSITION "dterm_fir_transition" // transition width
-#define PARAM_NAME_DTERM_FIR_WINDOW "dterm_fir_window"    // window function
-#define PARAM_NAME_DTERM_FIR_MANUAL "dterm_fir_manual"    // manual coefficient mode
-#endif
 #define PARAM_NAME_VBAT_SAG_COMPENSATION "vbat_sag_compensation"
 #define PARAM_NAME_PID_AT_MIN_THROTTLE "pid_at_min_throttle"
 #define PARAM_NAME_ANTI_GRAVITY_GAIN "anti_gravity_gain"

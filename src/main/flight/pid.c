@@ -267,14 +267,6 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
-#ifdef USE_FIR_DTERM
-        // Default FIR filter configuration
-        .dterm_fir_taps = 31,
-        .dterm_fir_cutoff = 150,
-        .dterm_fir_transition = 50,
-        .dterm_fir_window = FIR_WINDOW_HAMMING,
-        .dterm_fir_manual = 0,
-#endif
     );
 }
 
@@ -1414,10 +1406,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
             float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-#ifdef USE_FIR_DTERM
-            // Filter the derivative using the FIR filter when enabled
             delta = firFilterApply(&pidRuntime.dtermFir[axis], delta);
-#endif
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)

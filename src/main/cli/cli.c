@@ -6052,41 +6052,6 @@ static void cliTimer(const char *cmdName, char *cmdline)
         return;
     }
 }
-#ifdef USE_FIR_DTERM
-// CLI command handler for inspecting or editing the FIR D-term coefficients
-static void cliDtermFir(const char *cmdName, char *cmdline)
-{
-    char *pch = strtok(cmdline, " ");
-    if (!pch || strcasecmp(pch, "show") == 0) {
-        for (int i = 0; i < pidRuntime.dtermFir[FD_ROLL].taps; i++) {
-            cliPrintLinef("%d: %.6f", i, pidRuntime.dtermFir[FD_ROLL].coeffs[i]);
-        }
-        return;
-    }
-
-    if (strcasecmp(pch, "set") == 0) {
-        char *idxStr = strtok(NULL, " ");
-        char *valStr = strtok(NULL, " ");
-        if (!idxStr || !valStr) {
-            cliShowParseError(cmdName);
-            return;
-        }
-        int idx = atoi(idxStr);
-        float val = strtof(valStr, NULL);
-        if (idx < 0 || idx >= FIR_DTERM_TAP_COUNT) {
-            cliShowParseError(cmdName);
-            return;
-        }
-        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-            pidRuntime.dtermFir[axis].coeffs[idx] = val;
-        }
-        currentPidProfile->dterm_fir_manual = 1;
-        return;
-    }
-
-    cliShowParseError(cmdName);
-}
-#endif
 #endif
 
 #if defined(USE_RESOURCE_MGMT)
@@ -6696,10 +6661,6 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("tasks", "show task stats", NULL, cliTasks),
 #ifdef USE_TIMER_MGMT
     CLI_COMMAND_DEF("timer", "show/set timers", "<> | <pin> list | <pin> [af<alternate function>|none|<option(deprecated)>] | list | show", cliTimer),
-#endif
-#ifdef USE_FIR_DTERM
-    // Register FIR D-term coefficient management command
-    CLI_COMMAND_DEF("dfir", "show/set dterm FIR taps", "show | set <index> <value>", cliDtermFir),
 #endif
     CLI_COMMAND_DEF("version", "show version", NULL, cliVersion),
 #ifdef USE_VTX_CONTROL

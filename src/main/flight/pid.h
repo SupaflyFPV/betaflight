@@ -332,14 +332,6 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
-#ifdef USE_FIR_DTERM
-    // Settings for optional FIR filter used on D-term
-    uint8_t dterm_fir_taps;
-    uint16_t dterm_fir_cutoff;
-    uint16_t dterm_fir_transition;
-    firWindowType_e dterm_fir_window;
-    uint8_t dterm_fir_manual;
-#endif
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
@@ -371,9 +363,7 @@ typedef union dtermLowpass_u {
     biquadFilter_t biquadFilter;
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
-#ifdef USE_FIR_DTERM
     firFilter_t firFilter; // FIR filter variant
-#endif
 } dtermLowpass_t;
 
 typedef struct pidCoefficient_s {
@@ -404,9 +394,7 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
-#ifdef USE_FIR_DTERM
     firFilter_t dtermFir[XYZ_AXIS_COUNT]; // per-axis FIR filter state
-#endif
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;

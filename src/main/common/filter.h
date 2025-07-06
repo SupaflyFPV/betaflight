@@ -32,9 +32,6 @@ typedef enum {
     FILTER_BIQUAD,
     FILTER_PT2,
     FILTER_PT3,
-#ifdef USE_FIR_DTERM
-    FILTER_FIR,
-#endif
 } lowpassFilterType_e;
 
 typedef enum {
@@ -145,17 +142,8 @@ void meanAccumulatorInit(meanAccumulator_t *filter);
 void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
 
-#ifdef USE_FIR_DTERM
 // FIR filter size for the custom D-term filter
 #define FIR_DTERM_TAP_COUNT 31
-
-typedef enum {
-    FIR_WINDOW_HAMMING,
-    FIR_WINDOW_HANN,
-    FIR_WINDOW_BLACKMAN,
-    FIR_WINDOW_KAISER,
-    FIR_WINDOW_COUNT
-} firWindowType_e;
 
 // Simple FIR filter implementation for D-term filtering
 typedef struct firFilter_s {
@@ -166,4 +154,3 @@ typedef struct firFilter_s {
 
 void firFilterInit(firFilter_t *filter);   // initialise buffer and coefficients
 float firFilterApply(firFilter_t *filter, float input); // process one sample
-#endif

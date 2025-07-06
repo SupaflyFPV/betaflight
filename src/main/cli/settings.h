@@ -66,10 +66,6 @@ typedef enum {
     TABLE_MOTOR_PWM_PROTOCOL,
     TABLE_GYRO_LPF_TYPE,
     TABLE_DTERM_LPF_TYPE,
-#ifdef USE_FIR_DTERM
-    // Table for selectable FIR window types
-    TABLE_FIR_WINDOW_TYPE,
-#endif
     TABLE_FAILSAFE,
     TABLE_FAILSAFE_SWITCH_MODE,
     TABLE_CRASH_RECOVERY,
