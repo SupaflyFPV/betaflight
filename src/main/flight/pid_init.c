@@ -28,6 +28,8 @@
 #include "build/build_config.h"
 #include "build/debug.h"
 
+#include "config/config.h"
+
 #include "common/axis.h"
 #include "common/filter.h"
 
