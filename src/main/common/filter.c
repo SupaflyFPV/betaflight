@@ -268,7 +268,6 @@ void cheby2FilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refr
     p2r *= w0; p2i *= w0;
 
     const float zr = (fs2 * fs2 - zMag * zMag) / (fs2 * fs2 + zMag * zMag);
-    const float zi = (2.0f * fs2 * zMag) / (fs2 * fs2 + zMag * zMag);
 
     float numr = fs2 + p1r;
     float numi = p1i;
