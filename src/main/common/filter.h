@@ -121,6 +121,7 @@ void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refr
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
 void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
 void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
+void cheby2FilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
 float biquadFilterApplyDF1(biquadFilter_t *filter, float input);
 float biquadFilterApplyDF1Weighted(biquadFilter_t *filter, float input);
 float biquadFilterApply(biquadFilter_t *filter, float input);

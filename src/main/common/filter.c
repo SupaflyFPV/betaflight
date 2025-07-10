@@ -232,6 +232,68 @@ FAST_CODE void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, u
     biquadFilterUpdate(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
 }
 
+// Chebyshev type II second order low pass filter setup
+void cheby2FilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
+{
+    const float sampleRate = 1000000.0f / refreshRate;
+    const float fs2 = 2.0f * sampleRate;
+
+    const float rs = 40.0f; // stopband attenuation in dB
+    const float epsilon = 1.0f / sqrtf(powf(10.0f, 0.1f * rs) - 1.0f);
+    const float mu = asinhf(1.0f / epsilon) * 0.5f;
+
+    const float w0 = 2.0f * M_PIf * filterFreq;
+
+    const float zMag = sqrtf(2.0f) * w0;
+
+    const float angle = M_PIf / 4.0f;
+    const float pRe = -cos_approx(angle);
+    const float pIm = sin_approx(angle);
+    const float sh = sinhf(mu);
+    const float ch = coshf(mu);
+
+    float p1r = sh * pRe;
+    float p1i = ch * pIm;
+    float p2r = p1r;
+    float p2i = -p1i;
+
+    float denom = p1r * p1r + p1i * p1i;
+    p1r /= denom;
+    p1i = -p1i / denom;
+    denom = p2r * p2r + p2i * p2i;
+    p2r /= denom;
+    p2i = -p2i / denom;
+
+    p1r *= w0; p1i *= w0;
+    p2r *= w0; p2i *= w0;
+
+    const float zr = (fs2 * fs2 - zMag * zMag) / (fs2 * fs2 + zMag * zMag);
+    const float zi = (2.0f * fs2 * zMag) / (fs2 * fs2 + zMag * zMag);
+
+    float numr = fs2 + p1r;
+    float numi = p1i;
+    float denr = fs2 - p1r;
+    float deni = -p1i;
+    denom = denr * denr + deni * deni;
+    const float pr = (numr * denr + numi * deni) / denom;
+    const float pi = (numi * denr - numr * deni) / denom;
+
+    const float kAnalog = 0.1f;
+    const float prodZ = fs2 * fs2 + zMag * zMag;
+    const float prodP = (fs2 - p1r) * (fs2 - p1r) + p1i * p1i;
+    const float k = kAnalog * (prodZ / prodP);
+
+    filter->b0 = k;
+    filter->b1 = -2.0f * zr * k;
+    filter->b2 = k;
+    filter->a1 = -2.0f * pr;
+    filter->a2 = pr * pr + pi * pi;
+
+    filter->x1 = filter->x2 = 0.0f;
+    filter->y1 = filter->y2 = 0.0f;
+    filter->weight = 1.0f;
+}
+
 /* Computes a biquadFilter_t filter on a sample (slightly less precise than df2 but works in dynamic mode) */
 FAST_CODE float biquadFilterApplyDF1(biquadFilter_t *filter, float input)
 {
