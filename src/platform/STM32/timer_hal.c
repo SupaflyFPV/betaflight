@@ -36,7 +36,7 @@
 #include "drivers/io.h"
 #include "drivers/dma.h"
 
-#include "drivers/rcc.h"
+#include "platform/rcc.h"
 
 #include "drivers/timer.h"
 #include "drivers/timer_impl.h"
@@ -292,6 +292,11 @@ int8_t timerGetNumberByIndex(uint8_t index)
     }
 }
 
+int8_t timerGetIndexByNumber(uint8_t number)
+{
+    return TIM_N(number) & USED_TIMERS ? popcount((TIM_N(number) - 1) & USED_TIMERS) : -1;
+}
+
 int8_t timerGetTIMNumber(const TIM_TypeDef *tim)
 {
     uint8_t index = lookupTimerIndex(tim);
@@ -329,7 +334,7 @@ uint8_t timerInputIrq(const TIM_TypeDef *tim)
     return 0;
 }
 
-void timerNVICConfigure(uint8_t irq)
+static void timerNVICConfigure(uint8_t irq)
 {
     HAL_NVIC_SetPriority(irq, NVIC_PRIORITY_BASE(NVIC_PRIO_TIMER), NVIC_PRIORITY_SUB(NVIC_PRIO_TIMER));
     HAL_NVIC_EnableIRQ(irq);
@@ -1251,4 +1256,43 @@ HAL_StatusTypeDef DMA_SetCurrDataCounter(TIM_HandleTypeDef *htim, uint32_t Chann
     /* Return function status */
     return HAL_OK;
 }
+
+void timerReset(TIM_TypeDef *timer)
+{
+    LL_TIM_DeInit(timer);
+}
+
+void timerSetPeriod(TIM_TypeDef *timer, uint32_t period)
+{
+    timer->ARR = period;
+}
+
+uint32_t timerGetPeriod(TIM_TypeDef *timer)
+{
+    return timer->ARR;
+}
+
+void timerSetCounter(TIM_TypeDef *timer, uint32_t counter)
+{
+    timer->CNT = counter;
+}
+
+void timerDisable(TIM_TypeDef *timer)
+{
+    LL_TIM_DisableIT_UPDATE(timer);
+    LL_TIM_DisableCounter(timer);
+}
+
+void timerEnable(TIM_TypeDef *timer)
+{
+    LL_TIM_EnableCounter(timer);
+    LL_TIM_GenerateEvent_UPDATE(timer);
+}
+
+void timerEnableInterrupt(TIM_TypeDef *timer)
+{
+    LL_TIM_ClearFlag_UPDATE(timer);
+    LL_TIM_EnableIT_UPDATE(timer);
+}
+
 #endif

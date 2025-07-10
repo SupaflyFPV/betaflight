@@ -82,6 +82,9 @@ typedef enum {
 #ifdef USE_RANGEFINDER
     TABLE_RANGEFINDER_HARDWARE,
 #endif
+#ifdef USE_OPTICALFLOW
+    TABLE_OPTICALFLOW_HARDWARE,
+#endif
 #ifdef USE_GYRO_OVERFLOW_CHECK
     TABLE_GYRO_OVERFLOW_CHECK,
 #endif
@@ -91,9 +94,6 @@ typedef enum {
 #endif
 #ifdef USE_LED_STRIP
     TABLE_RGB_GRB,
-#endif
-#ifdef USE_MULTI_GYRO
-    TABLE_GYRO,
 #endif
     TABLE_THROTTLE_LIMIT_TYPE,
 #if defined(USE_VIDEO_SYSTEM)
@@ -259,6 +259,8 @@ extern const char * const lookupTableMagHardware[];
 //extern const uint8_t lookupTableMagHardwareEntryCount;
 
 extern const char * const lookupTableRangefinderHardware[];
+
+extern const char * const lookupTableOpticalflowHardware[];
 
 extern const char * const lookupTableLedstripColors[];
 

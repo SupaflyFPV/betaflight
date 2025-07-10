@@ -114,7 +114,8 @@ const char * const osdTimerSourceNames[] = {
     "ON TIME  ",
     "TOTAL ARM",
     "LAST ARM ",
-    "ON/ARM   "
+    "ON/ARM   ",
+    "LAUNCH TIME",
 };
 
 #define OSD_LOGO_ROWS 4
@@ -127,6 +128,8 @@ const char * const osdTimerSourceNames[] = {
 #define IS_MID(X) (rcData[X] > 1250 && rcData[X] < 1750)
 
 timeUs_t osdFlyTime = 0;
+timeUs_t osdLaunchTime = 0;
+
 #if defined(USE_ACC)
 float osdGForce = 0;
 #endif
@@ -278,7 +281,7 @@ bool osdWarnGetState(uint8_t warningIndex)
 }
 
 #ifdef USE_OSD_PROFILES
-void setOsdProfile(uint8_t value)
+static void setOsdProfile(uint8_t value)
 {
     // 1 ->> 001
     // 2 ->> 010
@@ -453,7 +456,7 @@ void pgResetFn_osdElementConfig(osdElementConfig_t *osdElementConfig)
     for (unsigned i = 1; i <= OSD_PROFILE_COUNT; i++) {
         profileFlags |= OSD_PROFILE_FLAG(i);
     }
-    osdElementConfig->item_pos[OSD_WARNINGS] = OSD_POS((midCol - 6), (midRow + 3)) | profileFlags;
+    osdElementConfig->item_pos[OSD_WARNINGS] = OSD_POS((midCol - OSD_WARNINGS_PREFFERED_SIZE / 2), (midRow + 3)) | profileFlags;
 
     // Default to old fixed positions for these elements
     osdElementConfig->item_pos[OSD_CROSSHAIRS]         = OSD_POS((midCol - 2), (midRow - 1));
@@ -1193,7 +1196,7 @@ static timeDelta_t osdShowArmed(void)
         uint8_t midRow = osdDisplayPort->rows / 2;
         uint8_t midCol = osdDisplayPort->cols / 2;
         osdDrawLogo(midCol - (OSD_LOGO_COLS) / 2, midRow - 5, osdConfig()->arming_logo);
-        ret = osdConfig()->logo_on_arming_duration * 1e5;
+        ret = osdConfig()->logo_on_arming_duration * 100 * 1000; // convert to microseconds
     } else {
         ret = (REFRESH_1S / 2);
     }
@@ -1240,9 +1243,16 @@ STATIC_UNIT_TESTED bool osdProcessStats1(timeUs_t currentTimeUs)
 
     if (ARMING_FLAG(ARMED)) {
         osdUpdateStats();
-        timeUs_t deltaT = currentTimeUs - lastTimeUs;
+        int deltaT = cmpTimeUs(currentTimeUs, lastTimeUs);
         osdFlyTime += deltaT;
         stats.armed_time += deltaT;
+#ifdef USE_LAUNCH_CONTROL
+        if (!isLaunchControlActive()) {
+            osdLaunchTime += deltaT;
+        } else {
+            osdLaunchTime = 0;
+        }
+#endif
     } else if (osdStatsEnabled) {  // handle showing/hiding stats based on OSD disable switch position
         if (displayIsGrabbed(osdDisplayPort)) {
             osdStatsEnabled = false;
@@ -1279,7 +1289,7 @@ STATIC_UNIT_TESTED bool osdProcessStats1(timeUs_t currentTimeUs)
     return refreshStatsRequired;
 }
 
-void osdProcessStats2(timeUs_t currentTimeUs)
+static void osdProcessStats2(timeUs_t currentTimeUs)
 {
     displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
@@ -1307,14 +1317,14 @@ void osdProcessStats2(timeUs_t currentTimeUs)
 #endif
 }
 
-void osdProcessStats3(void)
+static void osdProcessStats3(void)
 {
 #if defined(USE_ACC)
     osdGForce = 0.0f;
     if (sensors(SENSOR_ACC)
        && (VISIBLE(osdElementConfig()->item_pos[OSD_G_FORCE]) || osdStatGetState(OSD_STAT_MAX_G_FORCE))) {
             // only calculate the G force if the element is visible or the stat is enabled
-        osdGForce = vector3Norm(&acc.accADC) * acc.dev.acc_1G_rec;
+        osdGForce = acc.accMagnitude;
     }
 #endif
 }

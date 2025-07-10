@@ -34,11 +34,12 @@
 #include "drivers/nvic.h"
 
 #include "drivers/io.h"
-#include "drivers/rcc.h"
 #include "drivers/system.h"
 
 #include "drivers/timer.h"
 #include "drivers/timer_impl.h"
+
+#include "platform/rcc.h"
 
 #define TIM_N(n) (1 << (n))
 
@@ -273,6 +274,11 @@ int8_t timerGetNumberByIndex(uint8_t index)
     }
 }
 
+int8_t timerGetIndexByNumber(uint8_t number)
+{
+    return TIM_N(number) & USED_TIMERS ? popcount((TIM_N(number) - 1) & USED_TIMERS) : -1;
+}
+
 int8_t timerGetTIMNumber(const TIM_TypeDef *tim)
 {
     const uint8_t index = lookupTimerIndex(tim);
@@ -310,7 +316,7 @@ uint8_t timerInputIrq(const TIM_TypeDef *tim)
     return 0;
 }
 
-void timerNVICConfigure(uint8_t irq)
+static void timerNVICConfigure(uint8_t irq)
 {
     NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -837,10 +843,6 @@ void timerInit(void)
 {
     memset(timerConfig, 0, sizeof(timerConfig));
 
-#if defined(PARTIAL_REMAP_TIM3)
-    GPIO_PinRemapConfig(GPIO_PartialRemap_TIM3, ENABLE);
-#endif
-
     /* enable the timer peripherals */
     for (unsigned i = 0; i < TIMER_CHANNEL_COUNT; i++) {
         RCC_ClockCmd(timerRCC(TIMER_HARDWARE[i].tim), ENABLE);
@@ -958,4 +960,43 @@ uint16_t timerGetPrescalerByDesiredHertz(TIM_TypeDef *tim, uint32_t hz)
     }
     return (uint16_t)((timerClock(tim) + hz / 2 ) / hz) - 1;
 }
+
+void timerReset(TIM_TypeDef *timer)
+{
+    TIM_DeInit(timer);
+}
+
+void timerSetPeriod(TIM_TypeDef *timer, uint32_t period)
+{
+    timer->ARR = period;
+}
+
+uint32_t timerGetPeriod(TIM_TypeDef *timer)
+{
+    return timer->ARR;
+}
+
+void timerSetCounter(TIM_TypeDef *timer, uint32_t counter)
+{
+    timer->CNT = counter;
+}
+
+void timerDisable(TIM_TypeDef *timer)
+{
+    TIM_ITConfig(timer, TIM_IT_Update, DISABLE);
+    TIM_Cmd(timer, DISABLE);
+}
+
+void timerEnable(TIM_TypeDef *timer)
+{
+    TIM_Cmd(timer, ENABLE);
+    TIM_GenerateEvent(timer, TIM_EventSource_Update);
+}
+
+void timerEnableInterrupt(TIM_TypeDef *timer)
+{
+    TIM_ClearFlag(timer, TIM_FLAG_Update);
+    TIM_ITConfig(timer, TIM_IT_Update, ENABLE);
+}
+
 #endif

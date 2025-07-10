@@ -127,7 +127,7 @@ voltageMeterADCState_t voltageMeterADCStates[MAX_VOLTAGE_SENSOR_ADC];
 
 static bool sagCompensationConfigured;
 
-voltageMeterADCState_t *getVoltageMeterADC(uint8_t index)
+LOCAL_UNUSED_FUNCTION static voltageMeterADCState_t *getVoltageMeterADC(uint8_t index)
 {
     return &voltageMeterADCStates[index];
 }
@@ -190,6 +190,7 @@ void voltageMeterADCRefresh(void)
 #endif
 #else
         UNUSED(voltageAdcToVoltage);
+        UNUSED(voltageMeterAdcChannelMap);
 
         state->voltageDisplayFiltered = 0;
         state->voltageUnfiltered = 0;

@@ -242,11 +242,11 @@ void batteryUpdatePresence(void)
         batteryCriticalVoltage = 0;
         batteryWarningHysteresisVoltage = 0;
         batteryCriticalHysteresisVoltage = 0;
-        wattHoursDrawn = 0.0;
+        wattHoursDrawn = 0.0f;
     }
 }
 
-void batteryUpdateWhDrawn(void)
+static void batteryUpdateWhDrawn(void)
 {
     static int32_t mAhDrawnPrev = 0;
     const int32_t mAhDrawnCurrent = getMAhDrawn();

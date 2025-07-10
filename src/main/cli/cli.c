@@ -68,8 +68,6 @@ bool cliMode = false;
 #include "drivers/dma_reqmap.h"
 #include "drivers/dshot.h"
 #include "drivers/dshot_command.h"
-#include "drivers/dshot_dpwm.h"
-#include "drivers/pwm_output_dshot_shared.h"
 #include "drivers/camera_control_impl.h"
 #include "drivers/compass/compass.h"
 #include "drivers/display.h"
@@ -104,7 +102,6 @@ bool cliMode = false;
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
-#include "flight/autopilot.h"
 #include "flight/failsafe.h"
 #include "flight/imu.h"
 #include "flight/mixer.h"
@@ -140,6 +137,7 @@ bool cliMode = false;
 #include "pg/max7456.h"
 #include "pg/mco.h"
 #include "pg/motor.h"
+#include "pg/pilot.h"
 #include "pg/pinio.h"
 #include "pg/pin_pull_up_down.h"
 #include "pg/pg.h"
@@ -210,6 +208,7 @@ static bool signatureUpdated = false;
 #endif // USE_BOARD_INFO
 
 static const char* const emptyName = "-";
+static const char* const invalidName = "INVALID";
 
 #define MAX_CHANGESET_ID_LENGTH 8
 #define MAX_DATE_LENGTH 20
@@ -225,7 +224,8 @@ static const char * const mixerNames[] = {
     "FLYING_WING", "Y4", "HEX6X", "OCTOX8", "OCTOFLATP", "OCTOFLATX",
     "AIRPLANE", "HELI_120_CCPM", "HELI_90_DEG", "VTAIL4",
     "HEX6H", "PPM_TO_SERVO", "DUALCOPTER", "SINGLECOPTER",
-    "ATAIL4", "CUSTOM", "CUSTOMAIRPLANE", "CUSTOMTRI", "QUADX1234", NULL
+    "ATAIL4", "CUSTOM", "CUSTOMAIRPLANE", "CUSTOMTRI", "QUADX1234",
+    "OCTOX8P", NULL
 };
 #endif
 
@@ -240,6 +240,7 @@ static const char * const featureNames[] = {
     _R(FEATURE_SOFTSERIAL, "SOFTSERIAL"),
     _R(FEATURE_GPS, "GPS"),
     _R(FEATURE_RANGEFINDER, "RANGEFINDER"),
+    _R(FEATURE_OPTICALFLOW, "OPTICALFLOW"),
     _R(FEATURE_TELEMETRY, "TELEMETRY"),
     _R(FEATURE_3D, "3D"),
     _R(FEATURE_RX_PARALLEL_PWM, "RX_PARALLEL_PWM"),
@@ -273,33 +274,9 @@ static const char *const sensorTypeNames[] = {
 #define SENSOR_NAMES_MASK (SENSOR_GYRO | SENSOR_ACC | SENSOR_BARO | SENSOR_MAG | SENSOR_RANGEFINDER)
 
 static const char * const *sensorHardwareNames[] = {
-    lookupTableGyroHardware, lookupTableAccHardware, lookupTableBaroHardware, lookupTableMagHardware, lookupTableRangefinderHardware
+    lookupTableGyroHardware, lookupTableAccHardware, lookupTableBaroHardware, lookupTableMagHardware, lookupTableRangefinderHardware, lookupTableOpticalflowHardware
 };
 #endif // USE_SENSOR_NAMES
-
-// Needs to be aligned with mcuTypeId_e
-static const char *mcuTypeNames[] = {
-    "SIMULATOR",
-    "F40X",
-    "F411",
-    "F446",
-    "F722",
-    "F745",
-    "F746",
-    "F765",
-    "H750",
-    "H743 (Rev Unknown)",
-    "H743 (Rev.Y)",
-    "H743 (Rev.X)",
-    "H743 (Rev.V)",
-    "H7A3",
-    "H723/H725",
-    "G474",
-    "H730",
-    "AT32F435",
-    "APM32F405",
-    "APM32F407",
-};
 
 static const char *configurationStates[] = {
     [CONFIGURATION_STATE_UNCONFIGURED] = "UNCONFIGURED",
@@ -363,31 +340,37 @@ static void cliWriterFlush(void)
     cliWriterFlushInternal(cliWriter);
 }
 
-void cliPrint(const char *str)
+#ifdef USE_CLI_DEBUG_PRINT
+#define CLI_DEBUG_EXPORT /* empty */
+#else
+#define CLI_DEBUG_EXPORT static
+#endif
+
+CLI_DEBUG_EXPORT void cliPrint(const char *str)
 {
     cliPrintInternal(cliWriter, str);
 }
 
-void cliPrintLinefeed(void)
+CLI_DEBUG_EXPORT void cliPrintLinefeed(void)
 {
     cliPrint("\r\n");
 }
 
-void cliPrintLine(const char *str)
+CLI_DEBUG_EXPORT void cliPrintLine(const char *str)
 {
     cliPrint(str);
     cliPrintLinefeed();
 }
 
-#ifdef MINIMAL_CLI
-#define cliPrintHashLine(str)
-#else
 static void cliPrintHashLine(const char *str)
 {
+#ifndef MINIMAL_CLI
     cliPrint("\r\n# ");
     cliPrintLine(str);
-}
+#else
+    UNUSED(str);
 #endif
+}
 
 static void cliPutp(void *p, char ch)
 {
@@ -439,7 +422,7 @@ static bool cliDefaultPrintLinef(dumpFlags_t dumpMask, bool equalsDefault, const
     }
 }
 
-void cliPrintf(const char *format, ...)
+CLI_DEBUG_EXPORT void cliPrintf(const char *format, ...)
 {
     va_list va;
     va_start(va, format);
@@ -447,7 +430,7 @@ void cliPrintf(const char *format, ...)
     va_end(va);
 }
 
-void cliPrintLinef(const char *format, ...)
+CLI_DEBUG_EXPORT void cliPrintLinef(const char *format, ...)
 {
     va_list va;
     va_start(va, format);
@@ -1274,7 +1257,7 @@ static void cliAux(const char *cmdName, char *cmdline)
 
 static void printSerial(dumpFlags_t dumpMask, const serialConfig_t *serialConfig, const serialConfig_t *serialConfigDefault, const char *headingStr)
 {
-    const char *format = "serial %d %d %ld %ld %ld %ld";
+    const char *format = "serial %s %d %ld %ld %ld %ld";
     headingStr = cliPrintSectionHeading(dumpMask, false, headingStr);
     for (unsigned i = 0; i < ARRAYLEN(serialConfig->portConfigs); i++) {
         if (!serialIsPortAvailable(serialConfig->portConfigs[i].identifier)) {
@@ -1285,7 +1268,7 @@ static void printSerial(dumpFlags_t dumpMask, const serialConfig_t *serialConfig
             equalsDefault = !memcmp(&serialConfig->portConfigs[i], &serialConfigDefault->portConfigs[i], sizeof(serialConfig->portConfigs[i]));
             headingStr = cliPrintSectionHeading(dumpMask, !equalsDefault, headingStr);
             cliDefaultPrintLinef(dumpMask, equalsDefault, format,
-                serialConfigDefault->portConfigs[i].identifier,
+                serialName(serialConfigDefault->portConfigs[i].identifier, invalidName),
                 serialConfigDefault->portConfigs[i].functionMask,
                 baudRates[serialConfigDefault->portConfigs[i].msp_baudrateIndex],
                 baudRates[serialConfigDefault->portConfigs[i].gps_baudrateIndex],
@@ -1294,7 +1277,7 @@ static void printSerial(dumpFlags_t dumpMask, const serialConfig_t *serialConfig
             );
         }
         cliDumpPrintLinef(dumpMask, equalsDefault, format,
-            serialConfig->portConfigs[i].identifier,
+            serialName(serialConfig->portConfigs[i].identifier, invalidName),
             serialConfig->portConfigs[i].functionMask,
             baudRates[serialConfig->portConfigs[i].msp_baudrateIndex],
             baudRates[serialConfig->portConfigs[i].gps_baudrateIndex],
@@ -1306,40 +1289,58 @@ static void printSerial(dumpFlags_t dumpMask, const serialConfig_t *serialConfig
 
 static void cliSerial(const char *cmdName, char *cmdline)
 {
-    const char *format = "serial %d %d %ld %ld %ld %ld";
+    const char *format = "serial %s %d %ld %ld %ld %ld";
     if (isEmpty(cmdline)) {
         printSerial(DUMP_MASTER, serialConfig(), NULL, NULL);
         return;
     }
+
     serialPortConfig_t portConfig;
     memset(&portConfig, 0 , sizeof(portConfig));
 
     uint8_t validArgumentCount = 0;
 
-    const char *ptr = cmdline;
-
-    int val = atoi(ptr++);
-    serialPortConfig_t *currentConfig = serialFindPortConfigurationMutable(val);
-
-    if (currentConfig) {
-        portConfig.identifier = val;
-        validArgumentCount++;
+    char *ptr = cmdline;
+    char *tok = strsep(&ptr, " ");
+    serialPortIdentifier_e identifier = findSerialPortByName(tok, strcasecmp);
+    if (identifier == SERIAL_PORT_NONE) {
+        char *eptr;
+        identifier = strtoul(tok, &eptr, 10);
+        if (*eptr) {
+            // parsing ended before end of token indicating an invalid identifier
+            identifier = SERIAL_PORT_NONE;
+        } else {
+            // correction for legacy configuration where UART1 == 0
+            if (identifier >= SERIAL_PORT_LEGACY_START_IDENTIFIER && identifier < SERIAL_PORT_START_IDENTIFIER) {
+                identifier += SERIAL_PORT_UART1;
+            }
+       }
     }
 
-    ptr = nextArg(ptr);
-    if (ptr) {
-        val = strtoul(ptr, NULL, 10);
+    serialPortConfig_t *currentConfig = serialFindPortConfigurationMutable(identifier);
+
+    if (!currentConfig) {
+        cliShowParseError(cmdName);
+        return;
+    }
+
+    portConfig.identifier = identifier;
+    validArgumentCount++;
+
+    tok = strsep(&ptr, " ");
+    if (tok) {
+        int val = strtoul(tok, NULL, 10);
         portConfig.functionMask = val;
         validArgumentCount++;
     }
 
     for (int i = 0; i < 4; i ++) {
-        ptr = nextArg(ptr);
-        if (!ptr) {
+        tok = strsep(&ptr, " ");
+        if (!tok) {
             break;
         }
 
-        val = atoi(ptr);
+        int val = atoi(tok);
 
         uint8_t baudRateIndex = lookupBaudRateIndex(val);
         if (baudRates[baudRateIndex] != (uint32_t) val) {
@@ -1354,7 +1355,7 @@ static void cliSerial(const char *cmdName, char *cmdline)
             portConfig.msp_baudrateIndex = baudRateIndex;
             break;
         case 1:
-            if (baudRateIndex < BAUD_9600 || baudRateIndex > BAUD_115200) {
+            if (baudRateIndex < BAUD_9600 || baudRateIndex > BAUD_230400) {
                 continue;
             }
             portConfig.gps_baudrateIndex = baudRateIndex;
@@ -1384,14 +1385,13 @@ static void cliSerial(const char *cmdName, char *cmdline)
     memcpy(currentConfig, &portConfig, sizeof(portConfig));
 
     cliDumpPrintLinef(0, false, format,
-        portConfig.identifier,
+        serialName(portConfig.identifier, invalidName),
         portConfig.functionMask,
         baudRates[portConfig.msp_baudrateIndex],
         baudRates[portConfig.gps_baudrateIndex],
         baudRates[portConfig.telemetry_baudrateIndex],
         baudRates[portConfig.blackbox_baudrateIndex]
         );
-
 }
 
 #if defined(USE_SERIAL_PASSTHROUGH)
@@ -1535,7 +1535,7 @@ static void cliSerialPassthrough(const char *cmdName, char *cmdline)
             cliPrintLinef("Invalid port%d %d", i + 1, ports[i].id);
             return;
         } else {
-            cliPrintLinef("Port%d: %s", i + 1, serialName(ports[i].id, "<invalid>"));
+            cliPrintLinef("Port%d: %s", i + 1, serialName(ports[i].id, invalidName));
         }
     }
 
@@ -1628,7 +1628,7 @@ static void cliSerialPassthrough(const char *cmdName, char *cmdline)
 
     cliPrintLinef("Forwarding, power cycle %sto exit.", resetMessage);
 
-    if ((ports[1].id == SERIAL_PORT_USB_VCP)) {
+    if (ports[1].id == SERIAL_PORT_USB_VCP) {
         do {
             if (port1ResetOnDtr) {
                 serialSetCtrlLineStateCb(ports[1].port, cbCtrlLine_reset, NULL);
@@ -3235,7 +3235,7 @@ static void cliManufacturerId(const char *cmdName, char *cmdline)
 }
 
 #if defined(USE_SIGNATURE)
-static void writeSignature(char *signatureStr, uint8_t *signature)
+static void writeSignature(char *signatureStr, const uint8_t *signature)
 {
     for (unsigned i = 0; i < SIGNATURE_LENGTH; i++) {
         tfp_sprintf(&signatureStr[2 * i], "%02x", signature[i]);
@@ -3675,18 +3675,12 @@ static void cliDumpGyroRegisters(const char *cmdName, char *cmdline)
     UNUSED(cmdName);
     UNUSED(cmdline);
 
-#ifdef USE_MULTI_GYRO
-    if ((gyroConfig()->gyro_to_use == GYRO_CONFIG_USE_GYRO_1) || (gyroConfig()->gyro_to_use == GYRO_CONFIG_USE_GYRO_BOTH)) {
-        cliPrintLinef("\r\n# Gyro 1");
-        cliPrintGyroRegisters(GYRO_CONFIG_USE_GYRO_1);
+    for (int i = 0; i < GYRO_COUNT; i++) {
+        if (gyroConfig()->gyro_enabled_bitmask & GYRO_MASK(i)) {
+            cliPrintLinef("\r\n# Gyro %d", i + 1);
+            cliPrintGyroRegisters(i);  // assuming this takes a 0-based gyro index
+        }
     }
-    if ((gyroConfig()->gyro_to_use == GYRO_CONFIG_USE_GYRO_2) || (gyroConfig()->gyro_to_use == GYRO_CONFIG_USE_GYRO_BOTH)) {
-        cliPrintLinef("\r\n# Gyro 2");
-        cliPrintGyroRegisters(GYRO_CONFIG_USE_GYRO_2);
-    }
-#else
-    cliPrintGyroRegisters(GYRO_CONFIG_USE_GYRO_1);
-#endif
 }
 #endif
 
@@ -4276,7 +4270,7 @@ static bool prepareSave(void)
     return true;
 }
 
-bool tryPrepareSave(const char *cmdName)
+static bool tryPrepareSave(const char *cmdName)
 {
     bool success = prepareSave();
 #if defined(USE_CLI_BATCH)
@@ -4450,7 +4444,7 @@ static uint8_t getWordLength(const char *bufBegin, const char *bufEnd)
     return bufEnd - bufBegin;
 }
 
-uint16_t cliGetSettingIndex(const char *name, size_t length)
+STATIC_UNIT_TESTED uint16_t cliGetSettingIndex(const char *name, size_t length)
 {
     for (uint32_t i = 0; i < valueTableEntryCount; i++) {
         const char *settingName = valueTable[i].name;
@@ -4671,15 +4665,6 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
     }
 }
 
-static const char *getMcuTypeById(mcuTypeId_e id)
-{
-    if (id < ARRAYLEN(mcuTypeNames)) {
-        return mcuTypeNames[id];
-    } else {
-        return "UNKNOWN";
-    }
-}
-
 static void cliStatus(const char *cmdName, char *cmdline)
 {
     UNUSED(cmdName);
@@ -4687,9 +4672,9 @@ static void cliStatus(const char *cmdName, char *cmdline)
 
     // MCU type, clock, vrefint, core temperature
 
-    cliPrintf("MCU %s Clock=%dMHz", getMcuTypeById(getMcuTypeId()), (SystemCoreClock / 1000000));
+    cliPrintf("MCU %s Clock=%dMHz", getMcuTypeName(), (SystemCoreClock / 1000000));
 
-#if defined(STM32F4) || defined(STM32G4) || defined(APM32F4)
+#if PLATFORM_TRAIT_CONFIG_HSE
     // Only F4 and G4 is capable of switching between HSE/HSI (for now)
     int sysclkSource = SystemSYSCLKSource();
 
@@ -4752,14 +4737,18 @@ static void cliStatus(const char *cmdName, char *cmdline)
         }
     }
 #ifdef USE_SPI
-    if (gyroActiveDev()->gyroModeSPI != GYRO_EXTI_NO_INT) {
-        cliPrintf(" locked");
-    }
-    if (gyroActiveDev()->gyroModeSPI == GYRO_EXTI_INT_DMA) {
-        cliPrintf(" dma");
-    }
-    if (spiGetExtDeviceCount(&gyroActiveDev()->dev) > 1) {
-        cliPrintf(" shared");
+    if (!gyroActiveDev()) {
+        cliPrintf(" not active");
+    } else {
+        if (gyroActiveDev()->gyroModeSPI != GYRO_EXTI_NO_INT) {
+            cliPrintf(" locked");
+        }
+        if (gyroActiveDev()->gyroModeSPI == GYRO_EXTI_INT_DMA) {
+            cliPrintf(" dma");
+        }
+        if (spiGetExtDeviceCount(&gyroActiveDev()->dev) > 1) {
+            cliPrintf(" shared");
+        }
     }
 #endif
     cliPrintLinefeed();
@@ -4865,7 +4854,7 @@ if (buildKey) {
             if (!gpsPortConfig) {
                 cliPrint("NO PORT, ");
             } else {
-                cliPrintf("UART%d %ld (set to ", (gpsPortConfig->identifier + 1), baudRates[getGpsPortActualBaudRateIndex()]);
+                cliPrintf("%s %ld (set to ", serialName(gpsPortConfig->identifier, invalidName), baudRates[getGpsPortActualBaudRateIndex()]);
                 if (gpsConfig()->autoBaud == GPS_AUTOBAUD_ON) {
                     cliPrint("AUTO");
                 } else {
@@ -4893,9 +4882,9 @@ if (buildKey) {
     cliPrint("Arming disable flags:");
     armingDisableFlags_e flags = getArmingDisableFlags();
     while (flags) {
-        const int bitpos = ffs(flags) - 1;
-        flags &= ~(1 << bitpos);
-        cliPrintf(" %s", armingDisableFlagNames[bitpos]);
+        const armingDisableFlags_e flag = 1 << (ffs(flags) - 1);
+        flags &= ~flag;
+        cliPrintf(" %s", getArmingDisableFlagName(flag));
     }
     cliPrintLinefeed();
 }
@@ -5010,9 +4999,9 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
         if (rcSmoothingAutoCalculate()) {
             cliPrint("# Detected Rx frequency: ");
             if (getRxRateValid()) {
-	            cliPrintLinef("%dHz", lrintf(rcSmoothingData->smoothedRxRateHz));
+                cliPrintLinef("%dHz", lrintf(rcSmoothingData->smoothedRxRateHz));
             } else {
-            	cliPrintLine("NO SIGNAL");
+                cliPrintLine("NO SIGNAL");
             }
         }
         cliPrintf("# Active setpoint cutoff: %dhz ", rcSmoothingData->setpointCutoffFrequency);
@@ -5106,7 +5095,9 @@ const cliResourceValue_t resourceTable[] = {
     DEFW( OWNER_I2C_SCL,       PG_I2C_CONFIG, i2cConfig_t, ioTagScl, I2CDEV_COUNT ),
     DEFW( OWNER_I2C_SDA,       PG_I2C_CONFIG, i2cConfig_t, ioTagSda, I2CDEV_COUNT ),
 #endif
-    DEFA( OWNER_LED,           PG_STATUS_LED_CONFIG, statusLedConfig_t, ioTags[0], STATUS_LED_NUMBER ),
+#if !defined(USE_VIRTUAL_LED)
+    DEFA( OWNER_LED,           PG_STATUS_LED_CONFIG, statusLedConfig_t, ioTags[0], STATUS_LED_COUNT ),
+#endif
 #ifdef USE_SPEKTRUM_BIND
     DEFS( OWNER_RX_BIND,       PG_RX_CONFIG, rxConfig_t, spektrum_bind_pin_override_ioTag ),
     DEFS( OWNER_RX_BIND_PLUG,  PG_RX_CONFIG, rxConfig_t, spektrum_bind_plug_ioTag ),
@@ -5314,7 +5305,7 @@ static bool strToPin(char *ptr, ioTag_t *tag)
 
             char *end;
             const long pin = strtol(ptr, &end, 10);
-            if (end != ptr && pin >= 0 && pin < 16) {
+            if (end != ptr && pin >= 0 && pin < DEFIO_PORT_PINS) {
                 *tag = DEFIO_TAG_MAKE(port, pin);
 
                 return true;
@@ -5336,7 +5327,7 @@ static void showDma(void)
     cliPrintLine("Currently active DMA:");
     cliRepeat('-', 20);
 #endif
-    for (int i = 1; i <= DMA_LAST_HANDLER; i++) {
+    for (int i = DMA_FIRST_HANDLER; i <= DMA_LAST_HANDLER; i++) {
         const resourceOwner_t *owner = dmaGetOwner(i);
 
         cliPrintf(DMA_OUTPUT_STRING, DMA_DEVICE_NO(i), DMA_DEVICE_INDEX(i));
@@ -5409,15 +5400,11 @@ dmaoptEntry_t dmaoptEntryTable[] = {
 #define DMA_OPT_UI_INDEX(i) ((i) + 1)
 #define DMA_OPT_STRING_BUFSIZE 5
 
-#if defined(STM32H7) || defined(STM32G4) || defined(AT32F435)
-#define DMA_CHANREQ_STRING "Request"
-#else
+#if !defined(DMA_CHANREQ_STRING)
 #define DMA_CHANREQ_STRING "Channel"
 #endif
 
-#if defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(APM32F4)
-#define DMA_STCH_STRING    "Stream"
-#else
+#if !defined(DMA_STCH_STRING)
 #define DMA_STCH_STRING    "Channel"
 #endif
 
@@ -5432,6 +5419,35 @@ static void optToString(int optval, char *buf)
     }
 }
 
+static int getDmaOptDisplayNumber(dmaoptEntry_t *entry, int index)
+{
+    if (entry->peripheral == DMA_PERIPH_TIMUP) {
+        const int dispNum = timerGetNumberByIndex(index);
+        if (!(TIM_N(dispNum) & entry->presenceMask)) {
+            return -1;
+        }
+        return dispNum;
+    }
+    return DMA_OPT_UI_INDEX(index);
+}
+
+static int displayNumberToDmaOptIndex(dmaoptEntry_t *entry, int dispNum)
+{
+    if (dispNum < 0) {
+        return -1;
+    }
+
+    if (entry->peripheral == DMA_PERIPH_TIMUP) {
+        if (!(entry->presenceMask & TIM_N(dispNum))) {
+            return -1;
+        }
+        return timerGetIndexByNumber(dispNum);
+    }
+
+    const int index = dispNum - 1;
+    return (index < 0 ||  index >= entry->maxIndex) ? -1 : index;
+}
+
 static void printPeripheralDmaoptDetails(dmaoptEntry_t *entry, int index, const dmaoptValue_t dmaopt, const bool equalsDefault, const dumpFlags_t dumpMask, printFn *printValue)
 {
     // We compute number to display for different peripherals in advance.
@@ -5439,12 +5455,9 @@ static void printPeripheralDmaoptDetails(dmaoptEntry_t *entry, int index, const 
     // Note that using timerGetNumberByIndex is not a generic solution,
     // but we are lucky that TIMUP is the only peripheral with non-contiguous numbering.
 
-    int uiIndex;
-
-    if (entry->presenceMask) {
-        uiIndex = timerGetNumberByIndex(index);
-    } else {
-        uiIndex = DMA_OPT_UI_INDEX(index);
+    int uiIndex = getDmaOptDisplayNumber(entry, index);
+    if (uiIndex == -1) {
+        return;
     }
 
     if (dmaopt != DMA_OPT_UNUSED) {
@@ -5654,8 +5667,8 @@ static void cliDmaopt(const char *cmdName, char *cmdline)
     const timerHardware_t *timer = NULL;
     pch = strtok_r(NULL, " ", &saveptr);
     if (entry) {
-        index = pch ? (atoi(pch) - 1) : -1;
-        if (index < 0 || index >= entry->maxIndex || (entry->presenceMask != MASK_IGNORED && !(entry->presenceMask & BIT(index + 1)))) {
+        index = displayNumberToDmaOptIndex(entry, pch ? atoi(pch) : -1);
+        if (index == -1) {
             cliPrintErrorLinef(cmdName, "BAD INDEX: '%s'", pch ? pch : "");
             return;
         }
@@ -5720,7 +5733,7 @@ static void cliDmaopt(const char *cmdName, char *cmdline)
 
             if (entry) {
                 if (!dmaGetChannelSpecByPeripheral(entry->peripheral, index, optval)) {
-                    cliPrintErrorLinef(cmdName, "INVALID DMA OPTION FOR %s %d: '%s'", entry->device, DMA_OPT_UI_INDEX(index), pch);
+                    cliPrintErrorLinef(cmdName, "INVALID DMA OPTION FOR %s %d: '%s'", entry->device, getDmaOptDisplayNumber(entry, index), pch);
 
                     return;
                 }
@@ -5743,7 +5756,7 @@ static void cliDmaopt(const char *cmdName, char *cmdline)
             if (entry) {
                 *optaddr = optval;
 
-                cliPrintLinef("# dma %s %d: changed from %s to %s", entry->device, DMA_OPT_UI_INDEX(index), orgvalString, optvalString);
+                cliPrintLinef("# dma %s %d: changed from %s to %s", entry->device, getDmaOptDisplayNumber(entry, index), orgvalString, optvalString);
             } else {
 #if defined(USE_TIMER_MGMT)
                 timerIoConfig->dmaopt = optval;
@@ -5753,7 +5766,7 @@ static void cliDmaopt(const char *cmdName, char *cmdline)
             }
         } else {
             if (entry) {
-                cliPrintLinef("# dma %s %d: no change: %s", entry->device, DMA_OPT_UI_INDEX(index), orgvalString);
+                cliPrintLinef("# dma %s %d: no change: %s", entry->device, getDmaOptDisplayNumber(entry, index), orgvalString);
             } else {
                 cliPrintLinef("# dma %c%02d: no change: %s", IO_GPIOPortIdxByTag(ioTag) + 'A', IO_GPIOPinIdxByTag(ioTag),orgvalString);
             }
@@ -5775,7 +5788,9 @@ static void cliDma(const char *cmdName, char* cmdline)
 #if defined(USE_DMA_SPEC)
     cliDmaopt(cmdName, cmdline);
 #else
-    cliShowParseError(cmdName);
+    UNUSED(cmdName);
+    // the only option is show, so make that the default behaviour
+    showDma();
 #endif
 }
 #endif
@@ -6597,7 +6612,7 @@ const clicmd_t cmdTable[] = {
 #endif
     CLI_COMMAND_DEF("flash_info", "show flash chip info", NULL, cliFlashInfo),
 #if defined(USE_FLASH_TOOLS) && defined(USE_FLASHFS)
-    CLI_COMMAND_DEF("flash_read", NULL, "<length> <address>", cliFlashRead),
+    CLI_COMMAND_DEF("flash_read", NULL, "<address> <length>", cliFlashRead),
     CLI_COMMAND_DEF("flash_scan", "scan flash device for errors", NULL, cliFlashVerify),
     CLI_COMMAND_DEF("flash_write", NULL, "<address> <message>", cliFlashWrite),
 #endif
@@ -6906,7 +6921,7 @@ void cliEnter(serialPort_t *serialPort, bool interactive)
         setPrintfSerialPort(cliPort);
     }
 
-    bufWriterInit(&cliWriterDesc, cliWriteBuffer, sizeof(cliWriteBuffer), (bufWrite_t)serialWriteBufShim, serialPort);
+    bufWriterInit(&cliWriterDesc, cliWriteBuffer, sizeof(cliWriteBuffer), (bufWrite_t)serialWriteBufBlockingShim, serialPort);
     cliErrorWriter = cliWriter = &cliWriterDesc;
 
     if (interactive) {

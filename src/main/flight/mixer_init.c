@@ -268,7 +268,7 @@ const mixer_t mixers[] = {
     { 1, true,  NULL },                // MIXER_SINGLECOPTER
     { 4, false, mixerAtail4 },         // MIXER_ATAIL4
     { 0, false, NULL },                // MIXER_CUSTOM
-    { 2, true,  NULL },                // MIXER_CUSTOM_AIRPLANE
+    { 1, true,  NULL },                // MIXER_CUSTOM_AIRPLANE
     { 3, true,  NULL },                // MIXER_CUSTOM_TRI
     { 4, false, mixerQuadX1234 },      // MIXER_QUADX_1234
     { 8, false, mixerOctoX8P },        // MIXER_OCTOX8P
@@ -371,7 +371,7 @@ void mixerInitProfile(void)
     mixerRuntime.rpmLimiterPGain = mixerConfig()->rpm_limit_p * 15e-6f;
     mixerRuntime.rpmLimiterIGain = mixerConfig()->rpm_limit_i * 1e-3f * pidGetDT();
     mixerRuntime.rpmLimiterDGain = mixerConfig()->rpm_limit_d * 3e-7f * pidGetPidFrequency();
-    mixerRuntime.rpmLimiterI = 0.0;
+    mixerRuntime.rpmLimiterI = 0.0f;
     pt1FilterInit(&mixerRuntime.rpmLimiterAverageRpmFilter, pt1FilterGain(6.0f, pidGetDT()));
     pt1FilterInit(&mixerRuntime.rpmLimiterThrottleScaleOffsetFilter, pt1FilterGain(2.0f, pidGetDT()));
     mixerResetRpmLimiter();
@@ -385,7 +385,7 @@ void mixerInitProfile(void)
 #ifdef USE_RPM_LIMIT
 void mixerResetRpmLimiter(void)
 {
-    mixerRuntime.rpmLimiterI = 0.0;
+    mixerRuntime.rpmLimiterI = 0.0f;
     mixerRuntime.rpmLimiterThrottleScale = constrainf(mixerRuntime.rpmLimiterRpmLimit / motorEstimateMaxRpm(), 0.0f, 1.0f);
     mixerRuntime.rpmLimiterInitialThrottleScale = mixerRuntime.rpmLimiterThrottleScale;
 }
@@ -396,7 +396,7 @@ void mixerResetRpmLimiter(void)
 // Create a custom mixer for launch control based on the current settings
 // but disable the front motors. We don't care about roll or yaw because they
 // are limited in the PID controller.
-void loadLaunchControlMixer(void)
+static void loadLaunchControlMixer(void)
 {
     for (int i = 0; i < MAX_SUPPORTED_MOTORS; i++) {
         mixerRuntime.launchControlMixer[i] = mixerRuntime.currentMixer[i];

@@ -1,19 +1,20 @@
 /*
- * This file is part of Cleanflight and Betaflight.
+ * This file is part of Betaflight.
  *
- * Cleanflight and Betaflight are free software. You can redistribute
- * this software and/or modify this software under the terms of the
- * GNU General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option)
- * any later version.
+ * Betaflight is free software. You can redistribute this software
+ * and/or modify this software under the terms of the GNU General
+ * Public License as published by the Free Software Foundation,
+ * either version 3 of the License, or (at your option) any later
+ * version.
  *
- * Cleanflight and Betaflight are distributed in the hope that they
- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * Betaflight is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
  * See the GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this software.
+ * You should have received a copy of the GNU General Public
+ * License along with this software.
  *
  * If not, see <http://www.gnu.org/licenses/>.
  */
@@ -335,5 +336,5 @@
 
 #define FULL_TIMER_CHANNEL_COUNT 78
 #define USED_TIMERS ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(6) | TIM_N(7) | TIM_N(8) | TIM_N(9) | TIM_N(10) | TIM_N(11) | TIM_N(12) | TIM_N(13) | TIM_N(14) )
-#define HARDWARE_TIMER_DEFINITION_COUNT 14
+#define HARDWARE_TIMER_DEFINITION_COUNT BITCOUNT(USED_TIMERS)
 

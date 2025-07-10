@@ -105,7 +105,7 @@ static uint8_t previousProfileColorIndex = COLOR_UNDEFINED;
 // Decay the estimated max task duration by 1/(1 << LED_EXEC_TIME_SHIFT) on every invocation
 #define LED_EXEC_TIME_SHIFT             7
 
-#define PROFILE_COLOR_UPDATE_INTERVAL_US 1e6  // normally updates when color changes but this is a 1 second forced update
+#define PROFILE_COLOR_UPDATE_INTERVAL_US 1e6f  // normally updates when color changes but this is a 1 second forced update
 
 #define VISUAL_BEEPER_COLOR COLOR_WHITE
 
@@ -286,7 +286,7 @@ enum ledBarIds {
 };
 static uint8_t ledBarStates[LED_BAR_COUNT] = {0};
 
-void updateLedBars(void)
+static void updateLedBars(void)
 {
     memset(ledBarStates, 0, sizeof(ledBarStates));
     for (int ledIndex = 0; ledIndex < ledCounts.count; ledIndex++) {
@@ -1193,7 +1193,7 @@ static applyLayerFn_timed* layerTable[] = {
     [timRing] = &applyLedThrustRingLayer
 };
 
-bool isOverlayTypeUsed(ledOverlayId_e overlayType)
+static bool isOverlayTypeUsed(ledOverlayId_e overlayType)
 {
     for (int ledIndex = 0; ledIndex < ledCounts.count; ledIndex++) {
         const ledConfig_t *ledConfig = &ledStripStatusModeConfig()->ledConfigs[ledIndex];
@@ -1586,6 +1586,18 @@ void setLedProfile(uint8_t profile)
 {
     if (profile < LED_PROFILE_COUNT) {
         ledStripConfigMutable()->ledstrip_profile = profile;
+    }
+}
+
+uint8_t getLedBrightness(void)
+{
+    return ledStripConfig()->ledstrip_brightness;
+}
+
+void setLedBrightness(uint8_t brightness)
+{
+    if ( brightness <= 100 ) {
+        ledStripConfigMutable()->ledstrip_brightness = brightness;
     }
 }
 #endif
