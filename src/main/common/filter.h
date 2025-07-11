@@ -143,7 +143,7 @@ void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
 
 // FIR filter size for the custom D-term filter
-#define FIR_DTERM_TAP_COUNT 37
+#define FIR_DTERM_TAP_COUNT 27
 
 // Simple FIR filter implementation for D-term filtering
 typedef struct firFilter_s {
