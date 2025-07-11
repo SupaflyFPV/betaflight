@@ -44,6 +44,7 @@ Betaflight has the following features:
 * OLED Displays - Display information on: Battery voltage/current/mAh, profile, rate profile, mode, version, sensors, etc
 * In-flight manual PID tuning and rate adjustment
 * PID and filter tuning using sliders
+* Optional 4th‑order PT4 lowpass filter for gyro and D‑term noise reduction
 * Rate profiles and in-flight selection of them
 * Configurable serial ports for Serial RX, Telemetry, ESC telemetry, MSP, GPS, OSD, Sonar, etc - Use most devices on any port, softserial included
 * VTX support for Unify Pro and IRC Tramp
