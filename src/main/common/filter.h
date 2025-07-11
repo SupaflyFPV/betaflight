@@ -32,6 +32,7 @@ typedef enum {
     FILTER_BIQUAD,
     FILTER_PT2,
     FILTER_PT3,
+    FILTER_PT4,
 } lowpassFilterType_e;
 
 typedef enum {
@@ -57,6 +58,14 @@ typedef struct pt3Filter_s {
     float state2;
     float k;
 } pt3Filter_t;
+
+typedef struct pt4Filter_s {
+    float state;
+    float state1;
+    float state2;
+    float state3;
+    float k;
+} pt4Filter_t;
 
 /* this holds the data required to update samples thru a filter */
 typedef struct biquadFilter_s {
@@ -114,6 +123,12 @@ float pt3FilterGainFromDelay(float delay, float dT);
 void pt3FilterInit(pt3Filter_t *filter, float k);
 void pt3FilterUpdateCutoff(pt3Filter_t *filter, float k);
 float pt3FilterApply(pt3Filter_t *filter, float input);
+
+float pt4FilterGain(float f_cut, float dT);
+float pt4FilterGainFromDelay(float delay, float dT);
+void pt4FilterInit(pt4Filter_t *filter, float k);
+void pt4FilterUpdateCutoff(pt4Filter_t *filter, float k);
+float pt4FilterApply(pt4Filter_t *filter, float input);
 
 float filterGetNotchQ(float centerFreq, float cutoffFreq);
 

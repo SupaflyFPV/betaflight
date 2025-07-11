@@ -58,6 +58,7 @@ typedef union gyroLowpassFilter_u {
     biquadFilter_t biquadFilterState;
     pt2Filter_t pt2FilterState;
     pt3Filter_t pt3FilterState;
+    pt4Filter_t pt4FilterState;
 } gyroLowpassFilter_t;
 
 typedef struct gyroCalibration_s {
@@ -136,6 +137,7 @@ enum {
     DYN_LPF_BIQUAD,
     DYN_LPF_PT2,
     DYN_LPF_PT3,
+    DYN_LPF_PT4,
 };
 
 typedef enum {

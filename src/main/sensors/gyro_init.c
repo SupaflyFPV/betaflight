@@ -191,6 +191,13 @@ static bool gyroInitLowpassFilterLpf(int slot, int type, uint16_t lpfHz, uint32_
             }
             ret = true;
             break;
+        case FILTER_PT4:
+            *lowpassFilterApplyFn = (filterApplyFnPtr) pt4FilterApply;
+            for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+                pt4FilterInit(&lowpassFilter[axis].pt4FilterState, pt4FilterGain(lpfHz, gyroDt));
+            }
+            ret = true;
+            break;
         }
     }
     return ret;
@@ -212,6 +219,9 @@ static void dynLpfFilterInit(void)
             break;
         case FILTER_PT3:
             gyro.dynLpfFilter = DYN_LPF_PT3;
+            break;
+        case FILTER_PT4:
+            gyro.dynLpfFilter = DYN_LPF_PT4;
             break;
         default:
             gyro.dynLpfFilter = DYN_LPF_NONE;
