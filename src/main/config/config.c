@@ -92,6 +92,7 @@
 #include "sensors/gyro.h"
 
 #include "config.h"
+#include "common/filter.h"
 
 static bool configIsDirty; /* someone indicated that the config is modified and it is not yet saved */
 
@@ -114,6 +115,7 @@ PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .task_statistics = true,
     .rateProfile6PosSwitch = false,
     .cpu_overclock = DEFAULT_CPU_OVERCLOCK,
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
     .powerOnArmingGraceTime = 5,
     .boardIdentifier = TARGET_BOARD_IDENTIFIER,
     .hseMhz = SYSTEM_HSE_MHZ,  // Only used for F4 and G4 targets

@@ -88,6 +88,7 @@ extern float rcCommand[4];
 typedef union rcSmoothingFilterState_u {
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
+    biquadFilter_t biquadFilter;
 } rcSmoothingFilterState_t;
 
 typedef struct rcSmoothingFilter_s {

@@ -92,6 +92,7 @@ typedef enum {
 #ifdef USE_OVERCLOCK
     TABLE_OVERCLOCK,
 #endif
+    TABLE_BIQUAD_RESPONSE,
 #ifdef USE_LED_STRIP
     TABLE_RGB_GRB,
 #endif
