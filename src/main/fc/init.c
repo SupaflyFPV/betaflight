@@ -37,6 +37,7 @@
 #include "common/axis.h"
 #include "common/color.h"
 #include "common/maths.h"
+#include "common/filter.h"
 #include "common/printf_serial.h"
 
 #include "config/config.h"
@@ -409,6 +410,7 @@ void init(void)
 #endif
 
     debugMode = systemConfig()->debug_mode;
+    setBiquadResponse(systemConfig()->biquad_response);
 
 #ifdef TARGET_PREINIT
     targetPreInit();
