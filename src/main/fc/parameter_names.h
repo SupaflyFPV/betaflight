@@ -156,6 +156,7 @@
 #define PARAM_NAME_RPM_FILTER_MIN_HZ "rpm_filter_min_hz"
 #define PARAM_NAME_RPM_FILTER_FADE_RANGE_HZ "rpm_filter_fade_range_hz"
 #define PARAM_NAME_RPM_FILTER_LPF_HZ "rpm_filter_lpf_hz"
+#define PARAM_NAME_BIQUAD_RESPONSE "biquad_response"
 
 #define PARAM_NAME_ALTITUDE_SOURCE "altitude_source"
 #define PARAM_NAME_ALTITUDE_PREFER_BARO "altitude_prefer_baro"
