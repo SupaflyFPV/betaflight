@@ -370,6 +370,7 @@ static const char * const lookupTableDtermLowpassType[] = {
     "BIQUAD",
     "PT2",
     "PT3",
+    "FIR",
 };
 
 static const char * const lookupTableFailsafe[] = {

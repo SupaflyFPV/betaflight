@@ -363,6 +363,7 @@ typedef union dtermLowpass_u {
     biquadFilter_t biquadFilter;
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
+    firFilter_t firFilter; // FIR filter variant
 } dtermLowpass_t;
 
 typedef struct pidCoefficient_s {
@@ -393,6 +394,7 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
+    firFilter_t dtermFir[XYZ_AXIS_COUNT]; // per-axis FIR filter state
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;

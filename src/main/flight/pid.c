@@ -29,10 +29,10 @@
 #include "build/build_config.h"
 #include "build/debug.h"
 
+#include "config/config.h"
+
 #include "common/axis.h"
 #include "common/filter.h"
-
-#include "config/config.h"
 #include "config/config_reset.h"
 #include "config/simplified_tuning.h"
 
@@ -1405,7 +1405,10 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // This is done to avoid DTerm spikes that occur with dynamically
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            if (pidProfile->dterm_lpf2_type == FILTER_FIR) {
+                delta = firFilterApply(&pidRuntime.dtermFir[axis], delta);
+            }
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)

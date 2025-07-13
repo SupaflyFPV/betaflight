@@ -28,6 +28,8 @@
 #include "build/build_config.h"
 #include "build/debug.h"
 
+#include "config/config.h"
+
 #include "common/axis.h"
 #include "common/filter.h"
 
@@ -244,6 +246,12 @@ void pidInitFilters(const pidProfile_t *pidProfile)
             pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)pt3FilterApply;
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
                 pt3FilterInit(&pidRuntime.dtermLowpass2[axis].pt3Filter, pt3FilterGain(pidProfile->dterm_lpf2_static_hz, pidRuntime.dT));
+            }
+            break;
+        case FILTER_FIR:
+            pidRuntime.dtermLowpass2ApplyFn = nullFilterApply; // FIR applied on D-term delta
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                firFilterInit(&pidRuntime.dtermFir[axis]);
             }
             break;
         default:

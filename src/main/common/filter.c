@@ -403,3 +403,39 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
     }
     return defaultValue;
 }
+
+// Precomputed coefficients for the optional FIR D-term filter
+static const float firDtermCoeffs[FIR_DTERM_TAP_COUNT] = {
+    0.00397841f, 0.00451541f, 0.00596535f, 0.00832416f, 0.01154369f,
+    0.01553284f, 0.02016077f, 0.02526224f, 0.03064480f, 0.03609748f,
+    0.04140049f, 0.04633558f, 0.05069643f, 0.05429854f, 0.05698816f,
+    0.05864978f, 0.05921175f, 0.05864978f, 0.05698816f, 0.05429854f,
+    0.05069643f, 0.04633558f, 0.04140049f, 0.03609748f, 0.03064480f,
+    0.02526224f, 0.02016077f, 0.01553284f, 0.01154369f, 0.00832416f,
+    0.00596535f, 0.00451541f, 0.00397841f
+};
+
+// Reset FIR filter state and copy the coefficient table
+void firFilterInit(firFilter_t *filter)
+{
+    filter->taps = FIR_DTERM_TAP_COUNT;
+    for (int i = 0; i < FIR_DTERM_TAP_COUNT; i++) {
+        filter->coeffs[i] = firDtermCoeffs[i];
+        filter->buf[i] = 0.0f;
+    }
+}
+
+// Apply the FIR convolution for a single sample
+float firFilterApply(firFilter_t *filter, float input)
+{
+    for (int i = filter->taps - 1; i > 0; i--) {
+        filter->buf[i] = filter->buf[i - 1];
+    }
+    filter->buf[0] = input;
+
+    float acc = 0.0f;
+    for (int i = 0; i < filter->taps; i++) {
+        acc += filter->buf[i] * filter->coeffs[i];
+    }
+    return acc;
+}
