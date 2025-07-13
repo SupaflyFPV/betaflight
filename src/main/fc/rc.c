@@ -299,7 +299,10 @@ static void scaleRawSetpointToFpvCamAngle(void)
  * stick velocity.
  * Low stick velocity => high cutoff (low latency).
  * High stick velocity => low cutoff (more smoothing).
- * Selected axis cutoff is logged via DEBUG_RC_SMOOTHING[3].
+ * Selected axis stick value is logged before and after smoothing via
+ * DEBUG_RC_SMOOTHING[0] and DEBUG_RC_SMOOTHING[1] respectively.
+ * The active cutoff frequency for the selected axis is logged in
+ * DEBUG_RC_SMOOTHING[2] and the detected RX rate in [3].
  */
 static FAST_CODE void applyVelocityBasedSmoothing(float *input)
 {
@@ -458,8 +461,6 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
         }
     }
 
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 1, smoothingData->setpointCutoffFrequency);
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 2, smoothingData->feedforwardCutoffFrequency);
 }
 
 // Determine if we need to caclulate filter cutoffs. If not then we can avoid
@@ -564,13 +565,15 @@ static FAST_CODE void processRcSmoothingFilter(void)
                 DEBUG_SET(DEBUG_RC_INTERPOLATION, i, ((lrintf(rxDataToSmooth[i])) - 1000));
             }
         }
+        // log unsmoothed stick value for selected axis
+        DEBUG_SET(DEBUG_RC_SMOOTHING, 0, lrintf(rxDataToSmooth[rcSmoothingData.debugAxis]));
     }
-
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 0, rcSmoothingData.smoothedRxRateHz);
 
     // update PT3 cutoff based on stick velocity
     applyVelocityBasedSmoothing(rxDataToSmooth);
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, lrintf(rcDynamicSmooth.cutoff[rcSmoothingData.debugAxis]));
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 2, lrintf(rcDynamicSmooth.cutoff[rcSmoothingData.debugAxis]));
+
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, lrintf(rcSmoothingData.smoothedRxRateHz));
 
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
@@ -582,6 +585,9 @@ static FAST_CODE void processRcSmoothingFilter(void)
             *dst = rxDataToSmooth[i];
         }
     }
+
+    // log smoothed stick value for selected axis
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 1, lrintf(setpointRate[rcSmoothingData.debugAxis]));
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         // Feedforward smoothing
