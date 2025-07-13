@@ -53,9 +53,12 @@
 #include "sensors/gyro.h"
 
 #include "rc.h"
+#include "common/filter.h"
 
 #define RX_INTERVAL_MIN_US     950 // 0.950ms to fit 1kHz without an issue
 #define RX_INTERVAL_MAX_US   65500 // 65.5ms or 15.26hz
+#define RC_VELOCITY_LPF_HZ      30.0f   // cutoff for velocity lowpass filter
+#define RC_VELOCITY_EPSILON     0.001f  // ignore tiny stick movement
 
 typedef float (applyRatesFn)(const int axis, float rcCommandf, const float rcCommandfAbs);
 // note that rcCommand[] is an external float
@@ -111,10 +114,14 @@ static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
 static float rcDeflectionSmoothed[3];
 #endif // USE_RC_SMOOTHING_FILTER
 
-/* Tracks previous stick values for velocity based smoothing */
+/*
+ * Tracks previous stick values and filtered deltas for
+ * velocity-based RC smoothing.
+ */
 typedef struct {
-    float prev[3];      // previous stick value per axis
-    bool initialized;   // true once initial values captured
+    float prev[FLIGHT_DYNAMICS_INDEX_COUNT];         // previous stick value per axis
+    pt1Filter_t deltaFilter[FLIGHT_DYNAMICS_INDEX_COUNT]; // filter state for stick velocity
+    bool initialized;                                // true once initial values captured
 } rcDynamicSmooth_t;
 
 static FAST_DATA_ZERO_INIT rcDynamicSmooth_t rcDynamicSmooth;
@@ -305,16 +312,22 @@ static FAST_CODE void applyVelocityBasedSmoothing(float *input)
 
     if (!rcDynamicSmooth.initialized) {
         rcDynamicSmooth.initialized = true;
-        for (int axis = 0; axis < 3; axis++) {
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
             rcDynamicSmooth.prev[axis] = input[axis];
+            pt1FilterInit(&rcDynamicSmooth.deltaFilter[axis], pt1FilterGain(RC_VELOCITY_LPF_HZ, dT));
         }
     }
 
-    for (int axis = 0; axis < 3; axis++) {
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         const float delta = input[axis] - rcDynamicSmooth.prev[axis];
         rcDynamicSmooth.prev[axis] = input[axis];
 
-        float norm = fabsf(delta) / sensitivity;
+        const float vel = pt1FilterApply(&rcDynamicSmooth.deltaFilter[axis], delta);
+        if (fabsf(vel) < RC_VELOCITY_EPSILON) {
+            continue;
+        }
+
+        float norm = fabsf(vel) / sensitivity;
         norm = constrainf(norm, 0.0f, 1.0f);
         const float cutoff = minHz + (maxHz - minHz) * norm;
         const float k = pt3FilterGain(cutoff, dT);
@@ -810,7 +823,7 @@ FAST_CODE_NOINLINE void updateRcCommands(void)
 {
     isRxDataNew = true;
 
-    for (int axis = 0; axis < 3; axis++) {
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         float rc = constrainf(rcData[axis] - rxConfig()->midrc, -500.0f, 500.0f); // -500 to 500
         float rcDeadband = 0;
         if (axis == ROLL || axis == PITCH) {
