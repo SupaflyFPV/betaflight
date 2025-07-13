@@ -111,6 +111,14 @@ static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
 static float rcDeflectionSmoothed[3];
 #endif // USE_RC_SMOOTHING_FILTER
 
+/* Tracks previous stick values for velocity based smoothing */
+typedef struct {
+    float prev[3];      // previous stick value per axis
+    bool initialized;   // true once initial values captured
+} rcDynamicSmooth_t;
+
+static FAST_DATA_ZERO_INIT rcDynamicSmooth_t rcDynamicSmooth;
+
 float getSetpointRate(int axis)
 {
 #ifdef USE_RC_SMOOTHING_FILTER
@@ -276,6 +284,42 @@ static void scaleRawSetpointToFpvCamAngle(void)
     float yaw = rawSetpoint[YAW];
     rawSetpoint[ROLL] = constrainf(roll * cosFactor -  yaw * sinFactor, SETPOINT_RATE_LIMIT_MIN, SETPOINT_RATE_LIMIT_MAX);
     rawSetpoint[YAW]  = constrainf(yaw  * cosFactor + roll * sinFactor, SETPOINT_RATE_LIMIT_MIN, SETPOINT_RATE_LIMIT_MAX);
+}
+
+/*
+ * Dynamically modulate the RC smoothing PT3 filter cutoff based on
+ * stick velocity.
+ * Low stick velocity => high cutoff (low latency).
+ * High stick velocity => low cutoff (more smoothing).
+ */
+static FAST_CODE void applyVelocityBasedSmoothing(float *input)
+{
+    if (!rxConfig()->rc_smoothing_sensitivity || !rxConfig()->rc_smoothing_cutoff_max) {
+        return;
+    }
+
+    const float dT = targetPidLooptime * 1e-6f;
+    const float minHz = rxConfig()->rc_smoothing_cutoff_min;
+    const float maxHz = MAX(rxConfig()->rc_smoothing_cutoff_max, minHz);
+    const float sensitivity = rxConfig()->rc_smoothing_sensitivity;
+
+    if (!rcDynamicSmooth.initialized) {
+        rcDynamicSmooth.initialized = true;
+        for (int axis = 0; axis < 3; axis++) {
+            rcDynamicSmooth.prev[axis] = input[axis];
+        }
+    }
+
+    for (int axis = 0; axis < 3; axis++) {
+        const float delta = input[axis] - rcDynamicSmooth.prev[axis];
+        rcDynamicSmooth.prev[axis] = input[axis];
+
+        float norm = fabsf(delta) / sensitivity;
+        norm = constrainf(norm, 0.0f, 1.0f);
+        const float cutoff = minHz + (maxHz - minHz) * norm;
+        const float k = pt3FilterGain(cutoff, dT);
+        pt3FilterUpdateCutoff(&rcSmoothingData.filterSetpoint[axis], k);
+    }
 }
 
 void updateRcRefreshRate(timeUs_t currentTimeUs, bool rxReceivingSignal)
@@ -506,6 +550,9 @@ static FAST_CODE void processRcSmoothingFilter(void)
 
     DEBUG_SET(DEBUG_RC_SMOOTHING, 0, rcSmoothingData.smoothedRxRateHz);
     DEBUG_SET(DEBUG_RC_SMOOTHING, 3, rcSmoothingData.sampleCount);
+
+    // update PT3 cutoff based on stick velocity
+    applyVelocityBasedSmoothing(rxDataToSmooth);
 
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
