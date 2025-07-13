@@ -1406,11 +1406,9 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
             float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-#ifdef USE_FIR_DTERM
             if (pidProfile->dterm_lpf2_type == FILTER_FIR) {
                 delta = firFilterApply(&pidRuntime.dtermFir[axis], delta);
             }
-#endif
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)

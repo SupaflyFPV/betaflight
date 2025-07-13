@@ -405,7 +405,6 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
 }
 
 // Precomputed coefficients for the optional FIR D-term filter
-#ifdef USE_FIR_DTERM
 static const float firDtermCoeffs[FIR_DTERM_TAP_COUNT] = {
     0.00397841f, 0.00451541f, 0.00596535f, 0.00832416f, 0.01154369f,
     0.01553284f, 0.02016077f, 0.02526224f, 0.03064480f, 0.03609748f,
@@ -440,5 +439,3 @@ float firFilterApply(firFilter_t *filter, float input)
     }
     return acc;
 }
-
-#endif

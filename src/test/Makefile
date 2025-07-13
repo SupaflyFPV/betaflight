@@ -427,7 +427,6 @@ pid_unittest_DEFINES := \
                 USE_LAUNCH_CONTROL= \
                 USE_FEEDFORWARD= \
                 USE_ADVANCED_TPA= \
-                USE_FIR_DTERM= \
 
 rcdevice_unittest_DEFINES := \
 		USE_RCDEVICE=

@@ -248,14 +248,12 @@ void pidInitFilters(const pidProfile_t *pidProfile)
                 pt3FilterInit(&pidRuntime.dtermLowpass2[axis].pt3Filter, pt3FilterGain(pidProfile->dterm_lpf2_static_hz, pidRuntime.dT));
             }
             break;
-#ifdef USE_FIR_DTERM
         case FILTER_FIR:
             pidRuntime.dtermLowpass2ApplyFn = nullFilterApply; // FIR applied on D-term delta
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
                 firFilterInit(&pidRuntime.dtermFir[axis]);
             }
             break;
-#endif
         default:
             pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
             break;
