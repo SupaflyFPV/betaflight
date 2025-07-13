@@ -121,6 +121,7 @@ static float rcDeflectionSmoothed[3];
 typedef struct {
     float prev[FLIGHT_DYNAMICS_INDEX_COUNT];         // previous stick value per axis
     pt1Filter_t deltaFilter[FLIGHT_DYNAMICS_INDEX_COUNT]; // filter state for stick velocity
+    float cutoff[FLIGHT_DYNAMICS_INDEX_COUNT];       // last computed PT3 cutoff per axis
     bool initialized;                                // true once initial values captured
 } rcDynamicSmooth_t;
 
@@ -298,6 +299,7 @@ static void scaleRawSetpointToFpvCamAngle(void)
  * stick velocity.
  * Low stick velocity => high cutoff (low latency).
  * High stick velocity => low cutoff (more smoothing).
+ * Selected axis cutoff is logged via DEBUG_RC_SMOOTHING[3].
  */
 static FAST_CODE void applyVelocityBasedSmoothing(float *input)
 {
@@ -314,6 +316,7 @@ static FAST_CODE void applyVelocityBasedSmoothing(float *input)
         rcDynamicSmooth.initialized = true;
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
             rcDynamicSmooth.prev[axis] = input[axis];
+            rcDynamicSmooth.cutoff[axis] = minHz;
             pt1FilterInit(&rcDynamicSmooth.deltaFilter[axis], pt1FilterGain(RC_VELOCITY_LPF_HZ, dT));
         }
     }
@@ -330,6 +333,8 @@ static FAST_CODE void applyVelocityBasedSmoothing(float *input)
         float norm = fabsf(vel) / sensitivity;
         norm = constrainf(norm, 0.0f, 1.0f);
         const float cutoff = minHz + (maxHz - minHz) * norm;
+        rcDynamicSmooth.cutoff[axis] = cutoff;
+
         const float k = pt3FilterGain(cutoff, dT);
         pt3FilterUpdateCutoff(&rcSmoothingData.filterSetpoint[axis], k);
     }
@@ -562,10 +567,10 @@ static FAST_CODE void processRcSmoothingFilter(void)
     }
 
     DEBUG_SET(DEBUG_RC_SMOOTHING, 0, rcSmoothingData.smoothedRxRateHz);
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, rcSmoothingData.sampleCount);
 
     // update PT3 cutoff based on stick velocity
     applyVelocityBasedSmoothing(rxDataToSmooth);
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, lrintf(rcDynamicSmooth.cutoff[rcSmoothingData.debugAxis]));
 
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {

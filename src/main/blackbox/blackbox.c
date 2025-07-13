@@ -1762,6 +1762,9 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_SMOOTHING_THROTTLE_CUTOFF, "%d",    rcSmoothingData->throttleCutoffSetting);
 
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_SMOOTHING_DEBUG_AXIS, "%d",         rcSmoothingData->debugAxis);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_DYNAMIC_SMOOTHING_CUTOFF_MIN, "%d", rxConfig()->rc_smoothing_cutoff_min);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_DYNAMIC_SMOOTHING_CUTOFF_MAX, "%d", rxConfig()->rc_smoothing_cutoff_max);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_DYNAMIC_SMOOTHING_SENSITIVITY, "%d", rxConfig()->rc_smoothing_sensitivity);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_RC_SMOOTHING_ACTIVE_CUTOFFS, "%d,%d,%d", rcSmoothingData->feedforwardCutoffFrequency,
                                                                             rcSmoothingData->setpointCutoffFrequency,
                                                                             rcSmoothingData->throttleCutoffFrequency);

@@ -5022,6 +5022,8 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
         } else {
             cliPrintLine("(auto)");
         }
+        cliPrintLinef("# Dynamic cutoff range: %dhz-%dhz", rxConfig()->rc_smoothing_cutoff_min, rxConfig()->rc_smoothing_cutoff_max);
+        cliPrintLinef("# Velocity sensitivity: %d", rxConfig()->rc_smoothing_sensitivity);
     } else {
         cliPrintLine("OFF");
     }
