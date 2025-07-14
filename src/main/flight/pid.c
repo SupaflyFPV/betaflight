@@ -31,6 +31,7 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
+#include "common/sg_filter.h"
 
 #include "config/config.h"
 #include "config/config_reset.h"
@@ -267,6 +268,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
+        .dterm_derivative_type = DERIVATIVE_SIMPLE,
+        .dterm_sg_window = 5,
+        .dterm_sg_order = 2,
     );
 }
 
@@ -1112,7 +1116,6 @@ NOINLINE static void applySpa(int axis, const pidProfile_t *pidProfile)
 // Based on 2DOF reference design (matlab)
 void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTimeUs)
 {
-    static float previousGyroRateDterm[XYZ_AXIS_COUNT];
     static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
 
     calculateSpaValues(pidProfile);
@@ -1405,7 +1408,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // This is done to avoid DTerm spikes that occur with dynamically
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            const float delta = pidRuntime.dtermDerivativeApplyFn((filter_t *)&pidRuntime.dtermDerivative[axis], gyroRateDterm[axis]);
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
@@ -1452,7 +1455,6 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             }
         }
 
-        previousGyroRateDterm[axis] = gyroRateDterm[axis];
 
         // -----calculate feedforward component
 

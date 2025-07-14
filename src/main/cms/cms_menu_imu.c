@@ -36,6 +36,7 @@
 #include "cms/cms.h"
 #include "cms/cms_types.h"
 #include "cms/cms_menu_imu.h"
+#include "common/sg_filter.h"
 
 #include "common/utils.h"
 
@@ -910,6 +911,9 @@ static uint16_t cmsx_dterm_lpf2_static_hz;
 static uint16_t cmsx_dterm_notch_hz;
 static uint16_t cmsx_dterm_notch_cutoff;
 static uint16_t cmsx_yaw_lowpass_hz;
+static uint8_t cmsx_dterm_derivative_type;
+static uint8_t cmsx_sg_window;
+static uint8_t cmsx_sg_order;
 
 static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
 {
@@ -922,6 +926,9 @@ static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
     cmsx_dterm_notch_hz         = pidProfile->dterm_notch_hz;
     cmsx_dterm_notch_cutoff     = pidProfile->dterm_notch_cutoff;
     cmsx_yaw_lowpass_hz         = pidProfile->yaw_lowpass_hz;
+    cmsx_dterm_derivative_type  = pidProfile->dterm_derivative_type;
+    cmsx_sg_window              = pidProfile->dterm_sg_window;
+    cmsx_sg_order               = pidProfile->dterm_sg_order;
 
     return NULL;
 }
@@ -938,6 +945,9 @@ static const void *cmsx_FilterPerProfileWriteback(displayPort_t *pDisp, const OS
     pidProfile->dterm_notch_hz        = cmsx_dterm_notch_hz;
     pidProfile->dterm_notch_cutoff    = cmsx_dterm_notch_cutoff;
     pidProfile->yaw_lowpass_hz        = cmsx_yaw_lowpass_hz;
+    pidProfile->dterm_derivative_type = cmsx_dterm_derivative_type;
+    pidProfile->dterm_sg_window       = cmsx_sg_window;
+    pidProfile->dterm_sg_order        = cmsx_sg_order;
 
     return NULL;
 }
@@ -951,6 +961,9 @@ static const OSD_Entry cmsx_menuFilterPerProfileEntries[] =
     { "DTERM NF",   OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_hz,       0, LPF_MAX_HZ, 1 } },
     { "DTERM NFCO", OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_cutoff,   0, LPF_MAX_HZ, 1 } },
     { "YAW LPF",    OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_yaw_lowpass_hz,       0, 500, 1 } },
+    { "DERIV TYPE", OME_UINT8 | MODE_LOOKUP, NULL, &(OSD_UINT8_t){ &cmsx_dterm_derivative_type, 0, 1, 1 } },
+    { "SG WINDOW",  OME_UINT8, NULL, &(OSD_UINT8_t){ &cmsx_sg_window, 3, SG_FILTER_MAX_WINDOW, 1 } },
+    { "SG ORDER",   OME_UINT8, NULL, &(OSD_UINT8_t){ &cmsx_sg_order, 1, SG_FILTER_MAX_ORDER, 1 } },
 
     { "BACK", OME_Back, NULL, NULL },
     { NULL, OME_END, NULL, NULL}

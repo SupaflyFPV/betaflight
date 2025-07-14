@@ -30,6 +30,7 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
+#include "common/sg_filter.h"
 
 #include "drivers/dshot_command.h"
 
@@ -214,6 +215,15 @@ void pidInitFilters(const pidProfile_t *pidProfile)
     } else {
         pidRuntime.dtermLowpassApplyFn = nullFilterApply;
     }
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        if (pidProfile->dterm_derivative_type == DERIVATIVE_SG) {
+            sgFilterInit(&pidRuntime.dtermDerivative[axis], pidProfile->dterm_sg_window, pidProfile->dterm_sg_order, pidRuntime.pidFrequency);
+        } else {
+            sgFilterInitDiff(&pidRuntime.dtermDerivative[axis], pidRuntime.pidFrequency);
+        }
+    }
+    pidRuntime.dtermDerivativeApplyFn = (pidProfile->dterm_derivative_type == DERIVATIVE_SG) ? (filterApplyFnPtr)sgFilterApply : (filterApplyFnPtr)sgFilterApplyDiff;
 
     //2nd Dterm Lowpass Filter
     if (pidProfile->dterm_lpf2_static_hz > 0) {

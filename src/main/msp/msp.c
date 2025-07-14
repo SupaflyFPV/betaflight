@@ -1934,6 +1934,9 @@ case MSP_NAME:
 #else
         sbufWriteU8(dst, 0);
 #endif
+        sbufWriteU8(dst, currentPidProfile->dterm_derivative_type);
+        sbufWriteU8(dst, currentPidProfile->dterm_sg_window);
+        sbufWriteU8(dst, currentPidProfile->dterm_sg_order);
         break;
 
     case MSP_PID_ADVANCED:
@@ -3148,6 +3151,11 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 #else
             sbufReadU8(src);
 #endif
+            if (sbufBytesRemaining(src) >= 3) {
+                currentPidProfile->dterm_derivative_type = sbufReadU8(src);
+                currentPidProfile->dterm_sg_window = sbufReadU8(src);
+                currentPidProfile->dterm_sg_order = sbufReadU8(src);
+            }
         }
 
         // reinitialize the gyro filters with the new values

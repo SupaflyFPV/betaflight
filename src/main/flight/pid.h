@@ -25,6 +25,7 @@
 #include "common/axis.h"
 #include "common/chirp.h"
 #include "common/filter.h"
+#include "common/sg_filter.h"
 #include "common/pwl.h"
 #include "common/time.h"
 
@@ -332,6 +333,9 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
+    uint8_t dterm_derivative_type;          // derivative filter type
+    uint8_t dterm_sg_window;                // SG filter window size
+    uint8_t dterm_sg_order;                 // SG filter polynomial order
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
@@ -363,7 +367,13 @@ typedef union dtermLowpass_u {
     biquadFilter_t biquadFilter;
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
+    sgFilter_t sgFilter;
 } dtermLowpass_t;
+
+typedef enum {
+    DERIVATIVE_SIMPLE = 0,
+    DERIVATIVE_SG,
+} derivativeFilterType_e;
 
 typedef struct pidCoefficient_s {
     float Kp;
@@ -393,6 +403,8 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
+    filterApplyFnPtr dtermDerivativeApplyFn;
+    sgFilter_t dtermDerivative[XYZ_AXIS_COUNT];
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;
