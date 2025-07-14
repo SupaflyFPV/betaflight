@@ -94,7 +94,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define ACRO_TRAINER_SETPOINT_LIMIT       1000.0f // Limit the correcting setpoint
 #endif // USE_ACRO_TRAINER
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, MAX_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 4);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, MAX_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 5);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -146,6 +146,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .throttle_boost_cutoff = 15,
         .iterm_rotation = true,
         .smart_feedforward = false,
+        .legacy_setpoint_weight = false,
         .iterm_relax = ITERM_RELAX_OFF,
         .iterm_relax_cutoff = 11,
         .iterm_relax_type = ITERM_RELAX_GYRO,
@@ -374,6 +375,7 @@ static FAST_RAM_ZERO_INIT bool itermRotation;
 #if defined(USE_SMART_FEEDFORWARD)
 static FAST_RAM_ZERO_INIT bool smartFeedforward;
 #endif
+static FAST_RAM_ZERO_INIT bool legacySetpointWeight;
 #if defined(USE_ABSOLUTE_CONTROL)
 static FAST_RAM_ZERO_INIT float axisError[XYZ_AXIS_COUNT];
 static FAST_RAM_ZERO_INIT float acGain;
@@ -408,7 +410,12 @@ void pidInitConfig(const pidProfile_t *pidProfile)
         pidCoefficient[axis].Kd = DTERM_SCALE * pidProfile->pid[axis].D;
     }
 
-    dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
+    legacySetpointWeight = pidProfile->legacy_setpoint_weight;
+    if (legacySetpointWeight) {
+        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 127.0f;
+    } else {
+        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
+    }
     if (pidProfile->setpointRelaxRatio == 0) {
         relaxFactor = 0;
     } else {
@@ -913,18 +920,6 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, const rollAndPitchT
             // no transition if relaxFactor == 0
             float transition = relaxFactor > 0 ? MIN(1.f, getRcDeflectionAbs(axis) * relaxFactor) : 1;
 
-            // Divide rate change by dT to get differential (ie dr/dt).
-            // dT is fixed and calculated from the target PID loop time
-            // This is done to avoid DTerm spikes that occur with dynamically
-            // calculated deltaT whenever another task causes the PID
-            // loop execution to be delayed.
-            const float delta =
-                - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidFrequency;
-
-            detectAndSetCrashRecovery(pidProfile->crash_recovery, axis, currentTimeUs, delta, errorRate);
-
-            pidData[axis].D = pidCoefficient[axis].Kd * delta * tpaFactor;
-
             float pidSetpointDelta = currentPidSetpoint - previousPidSetpoint[axis];
 
 #ifdef USE_RC_SMOOTHING_FILTER
@@ -946,24 +941,38 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, const rollAndPitchT
             }
 #endif // USE_RC_SMOOTHING_FILTER
 
-            const float pidFeedForward =
-                pidCoefficient[axis].Kd * dynCd * transition * pidSetpointDelta * tpaFactor * pidFrequency;
+            float delta;
+            if (legacySetpointWeight) {
+                delta = (dynCd * transition * pidSetpointDelta - (gyroRateDterm[axis] - previousGyroRateDterm[axis])) * pidFrequency;
+            } else {
+                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidFrequency;
+            }
+
+            detectAndSetCrashRecovery(pidProfile->crash_recovery, axis, currentTimeUs, delta, errorRate);
+
+            pidData[axis].D = pidCoefficient[axis].Kd * delta * tpaFactor;
+
+            if (!legacySetpointWeight) {
+                const float pidFeedForward =
+                    pidCoefficient[axis].Kd * dynCd * transition * pidSetpointDelta * tpaFactor * pidFrequency;
 #if defined(USE_SMART_FEEDFORWARD)
-            bool addFeedforward = true;
-            if (smartFeedforward) {
-                if (pidData[axis].P * pidFeedForward > 0) {
-                    if (ABS(pidFeedForward) > ABS(pidData[axis].P)) {
-                        pidData[axis].P = 0;
-                    } else {
-                        addFeedforward = false;
+                bool addFeedforward = true;
+                if (smartFeedforward) {
+                    if (pidData[axis].P * pidFeedForward > 0) {
+                        if (ABS(pidFeedForward) > ABS(pidData[axis].P)) {
+                            pidData[axis].P = 0;
+                        } else {
+                            addFeedforward = false;
+                        }
                     }
                 }
-            }
-            if (addFeedforward)
+                if (addFeedforward)
 #endif
-            {
-                pidData[axis].D += pidFeedForward;
+                {
+                    pidData[axis].D += pidFeedForward;
+                }
             }
+
             previousGyroRateDterm[axis] = gyroRateDterm[axis];
             previousPidSetpoint[axis] = currentPidSetpoint;
 
