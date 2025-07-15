@@ -90,6 +90,10 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
+FAST_DATA_ZERO_INIT float dtermSetpointWeight;
+FAST_DATA_ZERO_INIT bool legacySetpointWeight;
+FAST_DATA_ZERO_INIT float relaxFactor;
+
 PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 4);
 
 #ifndef DEFAULT_PID_PROCESS_DENOM
@@ -124,7 +128,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 11);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 13);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -267,6 +271,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
+        .setpointRelaxRatio = 0,
+        .dtermSetpointWeight = 60,
+        .legacy_setpoint_weight = false,
     );
 }
 
@@ -1400,13 +1407,18 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            // Divide rate change by dT to get differential (ie dr/dt).
-            // dT is fixed and calculated from the target PID loop time
-            // This is done to avoid DTerm spikes that occur with dynamically
-            // calculated deltaT whenever another task causes the PID
-            // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-            float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+            float delta;
+            float preTpaD;
+            float pidFeedForward = 0.0f;
+            if (legacySetpointWeight) {
+                delta = (dtermSetpointWeight * pidSetpointDelta - (gyroRateDterm[axis] - previousGyroRateDterm[axis])) * pidRuntime.pidFrequency;
+                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+            } else {
+                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+                float transition = relaxFactor > 0 ? MIN(1.0f, getRcDeflectionAbs(axis) * relaxFactor) : 1.0f;
+                pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * transition * pidSetpointDelta * pidRuntime.pidFrequency;
+            }
 
 #if defined(USE_ACC)
             if (cmpTimeUs(currentTimeUs, levelModeStartTimeUs) > CRASH_RECOVERY_DETECTION_DELAY_US) {
@@ -1440,6 +1452,9 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
 
             pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D);
+            if (!legacySetpointWeight) {
+                pidData[axis].D += pidFeedForward * getTpaFactor(pidProfile, axis, TERM_D);
+            }
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {
@@ -1462,8 +1477,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         pidRuntime.oldSetpointCorrection[axis] = setpointCorrection;
 #endif
         // no feedforward in launch control
-        const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
-        pidData[axis].F = feedforwardGain * pidSetpointDelta;
+        if (legacySetpointWeight) {
+            pidData[axis].F = 0;
+        } else {
+            const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
+            pidData[axis].F = feedforwardGain * pidSetpointDelta;
+        }
 
 #ifdef USE_YAW_SPIN_RECOVERY
         if (yawSpinActive) {

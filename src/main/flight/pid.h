@@ -332,6 +332,10 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
+    uint8_t setpointRelaxRatio;             // Setpoint weight relaxation effect
+
+    uint16_t dtermSetpointWeight;           // Setpoint weight for D-term (legacy mode)
+    uint8_t legacy_setpoint_weight;         // Use legacy D-term setpoint weighting
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
@@ -562,6 +566,9 @@ extern uint32_t targetPidLooptime;
 
 extern float throttleBoost;
 extern pt1Filter_t throttleLpf;
+extern float dtermSetpointWeight;
+extern float relaxFactor;
+extern bool legacySetpointWeight;
 
 void resetPidProfile(pidProfile_t *profile);
 

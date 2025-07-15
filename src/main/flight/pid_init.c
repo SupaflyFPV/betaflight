@@ -408,6 +408,19 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 #ifdef USE_ACC
     pidRuntime.angleEarthRef = pidProfile->angle_earth_ref / 100.0f;
 #endif
+
+    legacySetpointWeight = pidProfile->legacy_setpoint_weight;
+    if (legacySetpointWeight) {
+        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 127.0f;
+    } else {
+        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
+    }
+
+    if (pidProfile->setpointRelaxRatio == 0) {
+        relaxFactor = 0.0f;
+    } else {
+        relaxFactor = 100.0f / pidProfile->setpointRelaxRatio;
+    }
     pidRuntime.horizonGain = MIN(pidProfile->pid[PID_LEVEL].I / 100.0f, 1.0f);
     pidRuntime.horizonIgnoreSticks = (pidProfile->horizon_ignore_sticks) ? 1.0f : 0.0f;
 
