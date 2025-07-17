@@ -65,6 +65,10 @@ typedef struct biquadFilter_s {
     float weight;
 } biquadFilter_t;
 
+typedef struct cheby2Filter_s {
+    biquadFilter_t stage[3];
+} cheby2Filter_t;
+
 typedef struct phaseComp_s {
     float b0, b1, a1;
     float x1, y1;
@@ -121,7 +125,8 @@ void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refr
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
 void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
 void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
-void cheby2FilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
+void cheby2FilterInit(cheby2Filter_t *filter);
+float cheby2FilterApply(cheby2Filter_t *filter, float input);
 float biquadFilterApplyDF1(biquadFilter_t *filter, float input);
 float biquadFilterApplyDF1Weighted(biquadFilter_t *filter, float input);
 float biquadFilterApply(biquadFilter_t *filter, float input);
