@@ -363,6 +363,7 @@ typedef union dtermLowpass_u {
     biquadFilter_t biquadFilter;
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
+    cheby2Filter_t cheby2Filter;
 } dtermLowpass_t;
 
 typedef struct pidCoefficient_s {

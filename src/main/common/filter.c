@@ -156,6 +156,36 @@ FAST_CODE float pt3FilterApply(pt3Filter_t *filter, float input)
     return filter->state;
 }
 
+// Chebyshev II 3rd order low pass filter at 220Hz
+static const float sosCheby220[][6] = {
+    { 0.02336f,  0.02336f,  0.0f,    1.0f, -0.862342f,  0.0f },
+    { 1.00000f, -1.96039f,  1.0f,    1.0f, -1.895619f,  0.909063f }
+};
+
+void cheby2FilterInit(cheby2Filter_t *filter)
+{
+    memset(filter, 0, sizeof(*filter));
+
+    filter->stage[0].b0 = sosCheby220[0][0];
+    filter->stage[0].b1 = sosCheby220[0][1];
+    filter->stage[0].b2 = sosCheby220[0][2];
+    filter->stage[0].a1 = sosCheby220[0][4];
+    filter->stage[0].a2 = sosCheby220[0][5];
+
+    filter->stage[1].b0 = sosCheby220[1][0];
+    filter->stage[1].b1 = sosCheby220[1][1];
+    filter->stage[1].b2 = sosCheby220[1][2];
+    filter->stage[1].a1 = sosCheby220[1][4];
+    filter->stage[1].a2 = sosCheby220[1][5];
+}
+
+FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
+{
+    float out = biquadFilterApplyDF1(&filter->stage[0], input);
+    out = biquadFilterApplyDF1(&filter->stage[1], out);
+    return out;
+}
+
 // Biquad filter
 
 // get notch filter Q given center frequency (f0) and lower cutoff frequency (f1)
