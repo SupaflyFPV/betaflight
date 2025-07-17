@@ -59,9 +59,6 @@ typedef struct pt3Filter_s {
     float k;
 } pt3Filter_t;
 
-typedef struct cheby2Filter_s {
-    biquadFilter_t stage[2];
-} cheby2Filter_t;
 
 /* this holds the data required to update samples thru a filter */
 typedef struct biquadFilter_s {
@@ -69,6 +66,10 @@ typedef struct biquadFilter_s {
     float x1, x2, y1, y2;
     float weight;
 } biquadFilter_t;
+
+typedef struct cheby2Filter_s {
+    biquadFilter_t stage[2];
+} cheby2Filter_t;
 
 typedef struct phaseComp_s {
     float b0, b1, a1;
