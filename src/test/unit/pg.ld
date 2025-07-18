@@ -19,4 +19,4 @@ SECTIONS {
     PROVIDE_HIDDEN (___pg_resetdata_end = . );
   }
 }
-INSERT AFTER .rodata;
+/* gold linker used in CI does not understand INSERT AFTER; omit directive */

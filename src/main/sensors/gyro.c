@@ -115,7 +115,6 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
         // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
     gyroConfig->gyro_lpf2_type = FILTER_PT1;
     gyroConfig->gyro_lpf2_static_hz = GYRO_LPF2_HZ_DEFAULT;
-    gyroConfig->gyro_cheby2_order = 3;
     gyroConfig->gyro_high_fsr = false;
     gyroConfig->gyro_soft_notch_hz_1 = 0;
     gyroConfig->gyro_soft_notch_cutoff_1 = 0;

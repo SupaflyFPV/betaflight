@@ -363,6 +363,7 @@ static const char * const lookupTableLowpassType[] = {
     "BIQUAD",
     "PT2",
     "PT3",
+    "PT4",
     "CHEBY2",
 };
 
@@ -371,6 +372,7 @@ static const char * const lookupTableDtermLowpassType[] = {
     "BIQUAD",
     "PT2",
     "PT3",
+    "PT4",
     "CHEBY2",
 };
 
@@ -747,7 +749,6 @@ const clivalue_t valueTable[] = {
 
     { PARAM_NAME_GYRO_LPF1_TYPE,      VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO_LPF_TYPE }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_lpf1_type) },
     { PARAM_NAME_GYRO_LPF1_STATIC_HZ, VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_lpf1_static_hz) },
-    { PARAM_NAME_GYRO_CHEBY_ORDER,    VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 2, 5 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_cheby2_order) },
 
     { PARAM_NAME_GYRO_LPF2_TYPE,      VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO_LPF_TYPE }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_lpf2_type) },
     { PARAM_NAME_GYRO_LPF2_STATIC_HZ, VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = { 0,  LPF_MAX_HZ }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_lpf2_static_hz) },

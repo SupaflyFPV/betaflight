@@ -191,13 +191,6 @@ static bool gyroInitLowpassFilterLpf(int slot, int type, uint16_t lpfHz, uint32_
             }
             ret = true;
             break;
-        case FILTER_CHEBY2:
-            *lowpassFilterApplyFn = (filterApplyFnPtr) cheby2FilterApply;
-            for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                cheby2FilterInit(&lowpassFilter[axis].cheby2FilterState, gyroConfig()->gyro_cheby2_order, lpfHz, looptime);
-            }
-            ret = true;
-            break;
         }
     }
     return ret;
@@ -219,9 +212,6 @@ static void dynLpfFilterInit(void)
             break;
         case FILTER_PT3:
             gyro.dynLpfFilter = DYN_LPF_PT3;
-            break;
-        case FILTER_CHEBY2:
-            gyro.dynLpfFilter = DYN_LPF_NONE;
             break;
         default:
             gyro.dynLpfFilter = DYN_LPF_NONE;

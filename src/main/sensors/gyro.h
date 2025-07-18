@@ -58,7 +58,6 @@ typedef union gyroLowpassFilter_u {
     biquadFilter_t biquadFilterState;
     pt2Filter_t pt2FilterState;
     pt3Filter_t pt3FilterState;
-    cheby2Filter_t cheby2FilterState;
 } gyroLowpassFilter_t;
 
 typedef struct gyroCalibration_s {
@@ -168,7 +167,6 @@ typedef struct gyroConfig_s {
     // Lowpass primary/secondary
     uint8_t gyro_lpf1_type;
     uint8_t gyro_lpf2_type;
-    uint8_t gyro_cheby2_order;
 
     uint8_t yaw_spin_recovery;
     int16_t yaw_spin_threshold;

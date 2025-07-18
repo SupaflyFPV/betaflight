@@ -25,7 +25,6 @@
 #define PARAM_NAME_GYRO_LPF1_STATIC_HZ "gyro_lpf1_static_hz"
 #define PARAM_NAME_GYRO_LPF2_TYPE "gyro_lpf2_type"
 #define PARAM_NAME_GYRO_LPF2_STATIC_HZ "gyro_lpf2_static_hz"
-#define PARAM_NAME_GYRO_CHEBY_ORDER "gyro_cheby_order"
 #define PARAM_NAME_GYRO_ENABLE_MASK "gyro_enable_bitmask"
 #define PARAM_NAME_DYN_NOTCH_MAX_HZ "dyn_notch_max_hz"
 #define PARAM_NAME_DYN_NOTCH_COUNT "dyn_notch_count"

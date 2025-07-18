@@ -207,6 +207,12 @@ void pidInitFilters(const pidProfile_t *pidProfile)
                 pt3FilterInit(&pidRuntime.dtermLowpass[axis].pt3Filter, pt3FilterGain(dterm_lpf1_init_hz, pidRuntime.dT));
             }
             break;
+        case FILTER_PT4:
+            pidRuntime.dtermLowpassApplyFn = (filterApplyFnPtr)pt4FilterApply;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                pt4FilterInit(&pidRuntime.dtermLowpass[axis].pt4Filter, pt4FilterGain(dterm_lpf1_init_hz, pidRuntime.dT));
+            }
+            break;
         case FILTER_CHEBY2:
             pidRuntime.dtermLowpassApplyFn = (filterApplyFnPtr)cheby2FilterApply;
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
@@ -250,6 +256,12 @@ void pidInitFilters(const pidProfile_t *pidProfile)
             pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)pt3FilterApply;
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
                 pt3FilterInit(&pidRuntime.dtermLowpass2[axis].pt3Filter, pt3FilterGain(pidProfile->dterm_lpf2_static_hz, pidRuntime.dT));
+            }
+            break;
+        case FILTER_PT4:
+            pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)pt4FilterApply;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                pt4FilterInit(&pidRuntime.dtermLowpass2[axis].pt4Filter, pt4FilterGain(pidProfile->dterm_lpf2_static_hz, pidRuntime.dT));
             }
             break;
         case FILTER_CHEBY2:
@@ -504,6 +516,9 @@ void pidInitConfig(const pidProfile_t *pidProfile)
             pidRuntime.dynLpfFilter = DYN_LPF_PT2;
             break;
         case FILTER_PT3:
+            pidRuntime.dynLpfFilter = DYN_LPF_PT3;
+            break;
+        case FILTER_PT4:
             pidRuntime.dynLpfFilter = DYN_LPF_PT3;
             break;
         case FILTER_CHEBY2:
