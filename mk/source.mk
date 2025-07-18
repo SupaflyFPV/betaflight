@@ -6,6 +6,7 @@ PG_SRC = \
             pg/autopilot_wing.c \
             pg/beeper.c \
             pg/beeper_dev.c \
+            pg/biquad.c \
             pg/board.c \
             pg/bus_i2c.c \
             pg/bus_quadspi.c \
