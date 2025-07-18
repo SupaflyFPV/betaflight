@@ -168,6 +168,7 @@ typedef struct gyroConfig_s {
     // Lowpass primary/secondary
     uint8_t gyro_lpf1_type;
     uint8_t gyro_lpf2_type;
+    uint8_t gyro_cheby2_order;
 
     uint8_t yaw_spin_recovery;
     int16_t yaw_spin_threshold;

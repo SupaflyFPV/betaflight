@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
+#include <complex.h>
 
 #include "platform.h"
 
@@ -156,33 +157,123 @@ FAST_CODE float pt3FilterApply(pt3Filter_t *filter, float input)
     return filter->state;
 }
 
-// Chebyshev II 3rd order low pass filter at 220Hz
-static const float sosCheby220[][6] = {
-    { 0.02336f,  0.02336f,  0.0f,    1.0f, -0.862342f,  0.0f },
-    { 1.00000f, -1.96039f,  1.0f,    1.0f, -1.895619f,  0.909063f }
-};
-
-void cheby2FilterInit(cheby2Filter_t *filter)
+static void cheby2Ap(int order, float Rs, complex float *z, complex float *p, float *k)
 {
+    const float de = 1.0f / sqrtf(powf(10.0f, 0.1f * Rs) - 1.0f);
+    const float mu = asinhf(1.0f / de) / order;
+
+    for (int i = 0; i < order; i++) {
+        const float m = -order + 1 + 2 * i;
+        const float theta = M_PIf * m / (2.0f * order);
+        z[i] = -conjf(I * (1.0f / sin_approx(theta)));
+
+        complex float p0 = -cexpf(I * theta);
+        p0 = sinhf(mu) * crealf(p0) + I * coshf(mu) * cimagf(p0);
+        p[i] = 1.0f / p0;
+    }
+
+    complex float num = 1.0f;
+    complex float den = 1.0f;
+    for (int i = 0; i < order; i++) {
+        num *= -p[i];
+        den *= -z[i];
+    }
+    *k = crealf(num / den);
+}
+
+static void lp2lpZpk(complex float *z, complex float *p, float *k, int order, float wo)
+{
+    for (int i = 0; i < order; i++) {
+        z[i] *= wo;
+        p[i] *= wo;
+    }
+    (void)order; // gain unchanged when number of poles == zeros
+    (void)k;
+}
+
+static void bilinearZpk(complex float *z, complex float *p, float *k, int order, float fs)
+{
+    const float fs2 = 2.0f * fs;
+
+    for (int i = 0; i < order; i++) {
+        z[i] = (fs2 + z[i]) / (fs2 - z[i]);
+        p[i] = (fs2 + p[i]) / (fs2 - p[i]);
+    }
+
+    complex float num = 1.0f;
+    complex float den = 1.0f;
+    for (int i = 0; i < order; i++) {
+        num *= (fs2 - z[i]);
+        den *= (fs2 - p[i]);
+    }
+    *k *= crealf(num / den);
+}
+
+void cheby2FilterInit(cheby2Filter_t *filter, uint8_t order, float cutoffFreq, uint32_t looptimeUs)
+{
+    if (order < 2) {
+        order = 2;
+    }
+    if (order > CHEBY2_MAX_ORDER) {
+        order = CHEBY2_MAX_ORDER;
+    }
+
+    const float fs = 1000000.0f / looptimeUs;
+
+    complex float z[CHEBY2_MAX_ORDER];
+    complex float p[CHEBY2_MAX_ORDER];
+    float k = 1.0f;
+
+    cheby2Ap(order, 20.0f, z, p, &k);
+
+    const float warped = 2.0f * fs * tanf(M_PIf * cutoffFreq / fs);
+    lp2lpZpk(z, p, &k, order, warped);
+    bilinearZpk(z, p, &k, order, fs);
+
     memset(filter, 0, sizeof(*filter));
 
-    filter->stage[0].b0 = sosCheby220[0][0];
-    filter->stage[0].b1 = sosCheby220[0][1];
-    filter->stage[0].b2 = sosCheby220[0][2];
-    filter->stage[0].a1 = sosCheby220[0][4];
-    filter->stage[0].a2 = sosCheby220[0][5];
+    int stageIndex = 0;
+    int workingOrder = order;
 
-    filter->stage[1].b0 = sosCheby220[1][0];
-    filter->stage[1].b1 = sosCheby220[1][1];
-    filter->stage[1].b2 = sosCheby220[1][2];
-    filter->stage[1].a1 = sosCheby220[1][4];
-    filter->stage[1].a2 = sosCheby220[1][5];
+    if (order % 2) {
+        const float realZero = crealf(z[order - 1]);
+        const float realPole = crealf(p[order / 2]);
+
+        biquadFilter_t *s = &filter->stage[stageIndex++];
+        s->b0 = k;
+        s->b1 = -k * realZero;
+        s->b2 = 0.0f;
+        s->a1 = -realPole;
+        s->a2 = 0.0f;
+
+        k = 1.0f;
+        workingOrder -= 1;
+    }
+
+    const int half = workingOrder / 2;
+    for (int i = 0; i < half; i++) {
+        const complex float zc = z[i];
+        const complex float pc = p[i];
+
+        biquadFilter_t *s = &filter->stage[stageIndex++];
+        s->b0 = k;
+        s->b1 = -2.0f * crealf(zc) * k;
+        s->b2 = crealf(zc * conjf(zc)) * k;
+        s->a1 = -2.0f * crealf(pc);
+        s->a2 = crealf(pc * conjf(pc));
+
+        k = 1.0f;
+    }
+
+    filter->stageCount = stageIndex;
 }
 
 FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
 {
-    float out = biquadFilterApplyDF1(&filter->stage[0], input);
-    out = biquadFilterApplyDF1(&filter->stage[1], out);
+    float out = input;
+    for (int i = 0; i < filter->stageCount; i++) {
+        out = biquadFilterApplyDF1(&filter->stage[i], out);
+    }
     return out;
 }
 

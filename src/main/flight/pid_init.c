@@ -210,7 +210,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         case FILTER_CHEBY2:
             pidRuntime.dtermLowpassApplyFn = (filterApplyFnPtr)cheby2FilterApply;
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-                cheby2FilterInit(&pidRuntime.dtermLowpass[axis].cheby2Filter);
+                cheby2FilterInit(&pidRuntime.dtermLowpass[axis].cheby2Filter, pidProfile->dterm_cheby2_order, dterm_lpf1_init_hz, targetPidLooptime);
             }
             break;
         default:
@@ -255,7 +255,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         case FILTER_CHEBY2:
             pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)cheby2FilterApply;
             for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-                cheby2FilterInit(&pidRuntime.dtermLowpass2[axis].cheby2Filter);
+                cheby2FilterInit(&pidRuntime.dtermLowpass2[axis].cheby2Filter, pidProfile->dterm_cheby2_order, pidProfile->dterm_lpf2_static_hz, targetPidLooptime);
             }
             break;
         default:

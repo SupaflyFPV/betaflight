@@ -67,8 +67,12 @@ typedef struct biquadFilter_s {
     float weight;
 } biquadFilter_t;
 
+#define CHEBY2_MAX_ORDER 5
+#define CHEBY2_MAX_STAGES ((CHEBY2_MAX_ORDER + 1) / 2)
+
 typedef struct cheby2Filter_s {
-    biquadFilter_t stage[2];
+    uint8_t stageCount;
+    biquadFilter_t stage[CHEBY2_MAX_STAGES];
 } cheby2Filter_t;
 
 typedef struct phaseComp_s {
@@ -121,7 +125,7 @@ void pt3FilterInit(pt3Filter_t *filter, float k);
 void pt3FilterUpdateCutoff(pt3Filter_t *filter, float k);
 float pt3FilterApply(pt3Filter_t *filter, float input);
 
-void cheby2FilterInit(cheby2Filter_t *filter);
+void cheby2FilterInit(cheby2Filter_t *filter, uint8_t order, float cutoffFreq, uint32_t looptimeUs);
 float cheby2FilterApply(cheby2Filter_t *filter, float input);
 
 float filterGetNotchQ(float centerFreq, float cutoffFreq);
