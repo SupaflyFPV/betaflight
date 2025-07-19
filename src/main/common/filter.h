@@ -95,6 +95,14 @@ typedef struct meanAccumulator_s {
     int32_t count;
 } meanAccumulator_t;
 
+typedef struct {
+    biquadFilter_t stage[2];
+    int stageCount;
+} cheby2Filter_t;
+
+void cheby2FilterInit(cheby2Filter_t *filter);
+float cheby2FilterApply(cheby2Filter_t *filter, float input);
+
 float nullFilterApply(filter_t *filter, float input);
 
 float pt1FilterGain(float f_cut, float dT);
