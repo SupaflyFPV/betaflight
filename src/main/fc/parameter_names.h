@@ -147,6 +147,7 @@
 #define PARAM_NAME_SIMPLIFIED_PITCH_PI_GAIN "simplified_pitch_pi_gain"
 #define PARAM_NAME_SIMPLIFIED_DTERM_FILTER "simplified_dterm_filter"
 #define PARAM_NAME_SIMPLIFIED_DTERM_FILTER_MULTIPLIER "simplified_dterm_filter_multiplier"
+#define PARAM_NAME_DTERM_CHEBY2_FILTER "dterm_cheby2_filter"
 #define PARAM_NAME_SIMPLIFIED_GYRO_FILTER "simplified_gyro_filter"
 #define PARAM_NAME_SIMPLIFIED_GYRO_FILTER_MULTIPLIER "simplified_gyro_filter_multiplier"
 #define PARAM_NAME_DEBUG_MODE "debug_mode"
