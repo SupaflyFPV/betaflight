@@ -389,6 +389,7 @@ typedef struct pidRuntime_s {
     float previousPidSetpoint[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermNotchApplyFn;
     biquadFilter_t dtermNotch[XYZ_AXIS_COUNT];
+    cheby2Filter_t dtermCheby2[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpassApplyFn;
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
