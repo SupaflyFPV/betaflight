@@ -70,6 +70,10 @@
 #define DTERM_LPF1_DYN_MAX_HZ_DEFAULT 150
 #define DTERM_LPF2_HZ_DEFAULT 150
 
+#define DTERM_SG_FILTER_DEFAULT 0
+#define DTERM_HAMPEL_WINDOW_DEFAULT 0
+#define DTERM_HAMPEL_THRESHOLD_DEFAULT 3
+
 #define TPA_MAX 100
 
 #ifdef USE_WING
@@ -286,6 +290,10 @@ typedef struct pidProfile_s {
     uint8_t simplified_dterm_filter_multiplier;
     uint8_t simplified_pitch_pi_gain;
 
+    uint8_t dterm_sg_window;
+    uint8_t dterm_hampel_window;
+    uint8_t dterm_hampel_threshold;
+
     uint8_t anti_gravity_cutoff_hz;
     uint8_t anti_gravity_p_gain;
     uint8_t tpa_mode;                       // Controls which PID terms TPA effects
@@ -393,6 +401,11 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
+    sgFilter_t dtermSgFilter[XYZ_AXIS_COUNT];
+    hampelFilter_t dtermHampelFilter[XYZ_AXIS_COUNT];
+    uint8_t dtermSgWindow;
+    uint8_t dtermHampelWindow;
+    uint8_t dtermHampelThreshold;
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;

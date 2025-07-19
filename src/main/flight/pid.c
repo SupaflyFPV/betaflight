@@ -223,6 +223,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .simplified_pitch_pi_gain = SIMPLIFIED_TUNING_DEFAULT,
         .simplified_dterm_filter = true,
         .simplified_dterm_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT,
+        .dterm_sg_window = DTERM_SG_FILTER_DEFAULT,
+        .dterm_hampel_window = DTERM_HAMPEL_WINDOW_DEFAULT,
+        .dterm_hampel_threshold = DTERM_HAMPEL_THRESHOLD_DEFAULT,
         .anti_gravity_cutoff_hz = 5,
         .anti_gravity_p_gain = 100,
         .tpa_mode = TPA_MODE_D,
@@ -1183,7 +1186,16 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
     // Precalculate gyro delta for D-term here, this allows loop unrolling
     float gyroRateDterm[XYZ_AXIS_COUNT];
     for (int axis = FD_ROLL; axis <= FD_YAW; ++axis) {
-        gyroRateDterm[axis] = gyro.gyroADCf[axis];
+        float sample = gyro.gyroADCf[axis];
+        if (pidRuntime.dtermHampelWindow) {
+            sample = hampelFilterApply(&pidRuntime.dtermHampelFilter[axis], sample, pidRuntime.dtermHampelThreshold);
+        }
+
+        if (pidRuntime.dtermSgWindow) {
+            gyroRateDterm[axis] = sgFilterApply(&pidRuntime.dtermSgFilter[axis], sample) * pidRuntime.pidFrequency;
+        } else {
+            gyroRateDterm[axis] = sample;
+        }
 
         // Log the unfiltered D for ROLL and PITCH
         if (debugMode == DEBUG_D_LPF && axis != FD_YAW) {
@@ -1405,7 +1417,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // This is done to avoid DTerm spikes that occur with dynamically
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            float delta;
+            if (pidRuntime.dtermSgWindow) {
+                delta = -gyroRateDterm[axis];
+            } else {
+                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            }
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
