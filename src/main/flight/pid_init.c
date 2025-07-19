@@ -254,6 +254,11 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
     }
 
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        sgFilterInit(&pidRuntime.dtermSgFilter[axis], pidProfile->dterm_sg_window);
+        hampelFilterInit(&pidRuntime.dtermHampelFilter[axis], pidProfile->dterm_hampel_window);
+    }
+
     if (pidProfile->yaw_lowpass_hz == 0) {
         pidRuntime.ptermYawLowpassApplyFn = nullFilterApply;
     } else {
@@ -572,6 +577,10 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     pidRuntime.tpaLowBreakpoint = MIN(pidRuntime.tpaLowBreakpoint, pidRuntime.tpaBreakpoint);
     pidRuntime.tpaLowMultiplier = pidProfile->tpa_low_rate / (100.0f * pidRuntime.tpaLowBreakpoint);
     pidRuntime.tpaLowAlways = pidProfile->tpa_low_always;
+
+    pidRuntime.dtermSgWindow = pidProfile->dterm_sg_window;
+    pidRuntime.dtermHampelWindow = pidProfile->dterm_hampel_window;
+    pidRuntime.dtermHampelThreshold = pidProfile->dterm_hampel_threshold;
 
     pidRuntime.useEzDisarm = pidProfile->landing_disarm_threshold > 0;
     pidRuntime.landingDisarmThreshold = pidProfile->landing_disarm_threshold * 10.0f;

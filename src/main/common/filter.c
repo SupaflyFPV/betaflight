@@ -362,6 +362,60 @@ FAST_CODE float laggedMovingAverageUpdate(laggedMovingAverage_t *filter, float i
     return filter->movingSum / denom;
 }
 
+void sgFilterInit(sgFilter_t *filter, uint8_t window)
+{
+    memset(filter->buf, 0, sizeof(filter->buf));
+    filter->window = window;
+}
+
+FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
+{
+    const int size = (filter->window == 5) ? 5 : 3;
+    for (int i = size - 1; i > 0; i--) {
+        filter->buf[i] = filter->buf[i - 1];
+    }
+    filter->buf[0] = input;
+
+    if (filter->window == 5) {
+        return (2.0f * (filter->buf[0] - filter->buf[4]) + (filter->buf[1] - filter->buf[3])) / 10.0f;
+    } else {
+        return (filter->buf[0] - filter->buf[2]) * 0.5f;
+    }
+}
+
+void hampelFilterInit(hampelFilter_t *filter, uint8_t window)
+{
+    memset(filter->buf, 0, sizeof(filter->buf));
+    filter->window = window;
+}
+
+FAST_CODE float hampelFilterApply(hampelFilter_t *filter, float input, float threshold)
+{
+    const int size = filter->window * 2 + 1;
+    for (int i = size - 1; i > 0; i--) {
+        filter->buf[i] = filter->buf[i - 1];
+    }
+    filter->buf[0] = input;
+
+    float tmp[5];
+    for (int i = 0; i < size; i++) {
+        tmp[i] = filter->buf[i];
+    }
+    const float median = quickMedianFilter5f(tmp);
+
+    for (int i = 0; i < size; i++) {
+        tmp[i] = fabsf(filter->buf[i] - median);
+    }
+    const float mad = quickMedianFilter5f(tmp);
+    const float limit = threshold * 1.4826f * mad;
+
+    if (fabsf(input - median) > limit) {
+        filter->buf[0] = median;
+        return median;
+    }
+    return input;
+}
+
 // Simple fixed-point lowpass filter based on integer math
 
 void simpleLPFilterInit(simpleLowpassFilter_t *filter, int32_t beta, int32_t fpShift)

@@ -76,6 +76,16 @@ typedef struct slewFilter_s {
     float threshold;
 } slewFilter_t;
 
+typedef struct sgFilter_s {
+    float buf[5];
+    uint8_t window;
+} sgFilter_t;
+
+typedef struct hampelFilter_s {
+    float buf[5];
+    uint8_t window;
+} hampelFilter_t;
+
 typedef struct laggedMovingAverage_s {
     uint16_t movingWindowIndex;
     uint16_t windowSize;
@@ -141,3 +151,9 @@ int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal);
 void meanAccumulatorInit(meanAccumulator_t *filter);
 void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
+
+void sgFilterInit(sgFilter_t *filter, uint8_t window);
+float sgFilterApply(sgFilter_t *filter, float input);
+
+void hampelFilterInit(hampelFilter_t *filter, uint8_t window);
+float hampelFilterApply(hampelFilter_t *filter, float input, float threshold);
