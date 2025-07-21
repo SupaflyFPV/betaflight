@@ -31,11 +31,15 @@
 #include "drivers/exti.h"
 #include "drivers/io.h"
 #include "drivers/io_impl.h"
+#include "fc/core.h"
 
 void lsm6dsoExtiHandler(extiCallbackRec_t *cb)
 {
     gyroDev_t *gyro = container_of(cb, gyroDev_t, exti);
     gyro->dataReady = true;
+    if (gyroPipelineIrqEnabled) {
+        taskGyroPipelineISR();
+    }
 }
 
 bool lsm6dsoAccRead(accDev_t *acc)
