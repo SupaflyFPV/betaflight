@@ -35,6 +35,7 @@
 #include "drivers/nvic.h"
 #include "drivers/sensor.h"
 #include "drivers/time.h"
+#include "fc/core.h"
 
 #include "drivers/accgyro/accgyro.h"
 
@@ -81,6 +82,9 @@ static void l3gd20ExtiHandler(extiCallbackRec_t *cb)
 {
     gyroDev_t *gyro = container_of(cb, gyroDev_t, exti);
     gyro->dataReady = true;
+    if (gyroPipelineIrqEnabled) {
+        taskGyroPipelineISR();
+    }
 }
 
 static void l3gd20IntExtiInit(gyroDev_t *gyro)
@@ -95,6 +99,7 @@ static void l3gd20IntExtiInit(gyroDev_t *gyro)
     EXTIHandlerInit(&gyro->exti, l3gd20ExtiHandler);
     EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(mpuIntIO);
+    setGyroPipelineIrqEnabled(true);
 }
 
 void l3gd20GyroInit(gyroDev_t *gyro)
