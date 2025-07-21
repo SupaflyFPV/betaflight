@@ -67,8 +67,10 @@
 
 #include "mixer.h"
 
-#define DYN_LPF_THROTTLE_STEPS             100
-#define DYN_LPF_THROTTLE_UPDATE_DELAY_US  5000 // minimum of 5ms between updates
+#ifdef USE_DYN_LPF
+#define DYN_LPF_THROTTLE_STEPS             mixerConfig()->dyn_lpf_throttle_steps
+#define DYN_LPF_THROTTLE_UPDATE_DELAY_US   mixerConfig()->dyn_lpf_throttle_update_delay_us
+#endif
 
 #define CRASHFLIP_MOTOR_DEADBAND         0.02f // 2%; send 'disarm' value to motors below this drive value
 #define CRASHFLIP_STICK_DEADBAND         0.15f // 15%

@@ -97,6 +97,10 @@ typedef struct mixerConfig_s {
     uint8_t crashflip_motor_percent;
     uint8_t crashflip_rate;
     uint8_t mixer_type;
+#ifdef USE_DYN_LPF
+    uint16_t dyn_lpf_throttle_update_delay_us;
+    uint16_t dyn_lpf_throttle_steps;
+#endif
 #ifdef USE_RPM_LIMIT
     bool rpm_limit;
     uint16_t rpm_limit_p;
