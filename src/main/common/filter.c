@@ -417,8 +417,8 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
 }
 
 static const float sosCheby220[][6] = {
-    { 0.02336030f,  0.02336030f, 0.0f, 1.0f, -0.86234208f, 0.0f },
-    { 1.0f, -1.96038984f, 1.0f, 1.0f, -1.89561914f, 0.90906269f },
+    { 0.013356f, 0.013356f, 0.0f, 1.0f, -0.890256f, 0.0f },
+    { 1.0f, -1.960390f, 1.0f, 1.0f, -1.907327f, 0.916968f },
 };
 
 void cheby2FilterInit(cheby2Filter_t *filter)
