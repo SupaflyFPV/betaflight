@@ -287,4 +287,5 @@ extern const char * const lookupTableMixerType[];
 extern const char * const lookupTableCMSMenuBackgroundType[];
 
 extern const char * const lookupTableThrottleLimitType[];
+extern const char * const lookupTableDtermLowpassType[];
 extern const char * const lookupTableBiquadResponse[];

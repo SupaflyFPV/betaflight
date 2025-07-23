@@ -371,14 +371,14 @@ static const char * const lookupTableLowpassType[] = {
     "PT3",
 };
 
-static const char * const lookupTableDtermLowpassType[] = {
+const char * const lookupTableDtermLowpassType[] = {
     "PT1",
     "BIQUAD",
     "PT2",
     "PT3",
 };
 
-static const char * const lookupTableBiquadResponse[] = {
+const char * const lookupTableBiquadResponse[] = {
     "BUTTER",
     "BESSEL",
 };
