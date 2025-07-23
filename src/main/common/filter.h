@@ -103,6 +103,16 @@ typedef struct {
 void cheby2FilterInit(cheby2Filter_t *filter);
 float cheby2FilterApply(cheby2Filter_t *filter, float input);
 
+typedef struct {
+    uint8_t windowSize;
+    uint8_t count;
+    float buf[11];
+} sgFilter_t;
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
+void sgFilterSetWindowSize(sgFilter_t *filter, uint8_t windowSize);
+float sgFilterApply(sgFilter_t *filter, float input, float dT);
+
 float nullFilterApply(filter_t *filter, float input);
 
 float pt1FilterGain(float f_cut, float dT);

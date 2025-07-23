@@ -285,6 +285,8 @@ typedef struct pidProfile_s {
     uint8_t simplified_dterm_filter;
     uint8_t simplified_dterm_filter_multiplier;
     uint8_t dterm_cheby2_filter;
+    uint8_t dterm_sg_filter;
+    uint8_t dterm_sg_window;
     uint8_t simplified_pitch_pi_gain;
 
     uint8_t anti_gravity_cutoff_hz;
@@ -391,6 +393,7 @@ typedef struct pidRuntime_s {
     filterApplyFnPtr dtermNotchApplyFn;
     biquadFilter_t dtermNotch[XYZ_AXIS_COUNT];
     cheby2Filter_t dtermCheby2[XYZ_AXIS_COUNT];
+    sgFilter_t dtermSg[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpassApplyFn;
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;

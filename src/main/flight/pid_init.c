@@ -166,6 +166,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         cheby2FilterInit(&pidRuntime.dtermCheby2[axis]);
+        sgFilterInit(&pidRuntime.dtermSg[axis], pidProfile->dterm_sg_window);
     }
 
     //1st Dterm Lowpass Filter

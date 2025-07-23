@@ -443,3 +443,62 @@ FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
 
     return out;
 }
+
+static const float sgCoeffs5[]  = { -0.48571429f,  0.04285714f, 0.28571429f, 0.24285714f, -0.08571429f };
+static const float sgCoeffs7[]  = { -0.34523810f, -0.07142857f, 0.10714286f, 0.19047619f, 0.17857143f, 0.07142857f, -0.13095238f };
+static const float sgCoeffs9[]  = { -0.24848485f, -0.09545455f, 0.01861472f, 0.09372294f, 0.12987013f, 0.12705628f, 0.08528139f, 0.00454545f, -0.11515152f };
+static const float sgCoeffs11[] = { -0.18531469f, -0.09230769f, -0.01794872f, 0.03776224f, 0.07482517f, 0.09324009f, 0.09300699f, 0.07412587f, 0.03659674f, -0.01958042f, -0.09440559f };
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
+{
+    memset(filter, 0, sizeof(*filter));
+    filter->windowSize = windowSize;
+}
+
+void sgFilterSetWindowSize(sgFilter_t *filter, uint8_t windowSize)
+{
+    filter->windowSize = windowSize;
+    filter->count = 0;
+    memset(filter->buf, 0, sizeof(filter->buf));
+}
+
+FAST_CODE float sgFilterApply(sgFilter_t *filter, float input, float dT)
+{
+    const uint8_t n = filter->windowSize;
+
+    for (int i = n - 1; i > 0; i--) {
+        filter->buf[i] = filter->buf[i - 1];
+    }
+    filter->buf[0] = input;
+
+    if (filter->count < n) {
+        filter->count++;
+        if (filter->count < 2) {
+            return 0.0f;
+        }
+    }
+
+    const float *coeff;
+    switch (n) {
+    case 5:
+        coeff = sgCoeffs5;
+        break;
+    case 7:
+        coeff = sgCoeffs7;
+        break;
+    case 9:
+        coeff = sgCoeffs9;
+        break;
+    case 11:
+    default:
+        coeff = sgCoeffs11;
+        break;
+    }
+
+    float sum = 0.0f;
+    for (int i = 0; i < n; i++) {
+        sum += coeff[i] * filter->buf[i];
+    }
+
+    return sum / dT;
+}
