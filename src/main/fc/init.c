@@ -678,6 +678,7 @@ void init(void)
 #endif
 
     // Finally initialize the gyro filtering
+    biquadFilterSetResponse(currentPidProfile->biquad_response);
     gyroInitFilters();
 
     pidInit(currentPidProfile);

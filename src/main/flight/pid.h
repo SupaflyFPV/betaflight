@@ -287,6 +287,7 @@ typedef struct pidProfile_s {
     uint8_t dterm_cheby2_filter;
     uint8_t dterm_sg_filter;
     uint8_t dterm_sg_window;
+    uint8_t biquad_response;
     uint8_t simplified_pitch_pi_gain;
 
     uint8_t anti_gravity_cutoff_hz;

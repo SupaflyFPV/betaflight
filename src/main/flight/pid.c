@@ -226,6 +226,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .dterm_cheby2_filter = 0,
         .dterm_sg_filter = 0,
         .dterm_sg_window = 7,
+        .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
         .anti_gravity_cutoff_hz = 5,
         .anti_gravity_p_gain = 100,
         .tpa_mode = TPA_MODE_D,
