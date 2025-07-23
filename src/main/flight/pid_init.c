@@ -132,6 +132,8 @@ void pidInitFilters(const pidProfile_t *pidProfile)
 {
     STATIC_ASSERT(FD_YAW == 2, FD_YAW_incorrect); // ensure yaw axis is 2
 
+    biquadFilterSetResponse(pidProfile->biquad_response);
+
     if (targetPidLooptime == 0) {
         // no looptime set, so set all the filters to null
         pidRuntime.dtermNotchApplyFn = nullFilterApply;
@@ -162,6 +164,11 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         }
     } else {
         pidRuntime.dtermNotchApplyFn = nullFilterApply;
+    }
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        cheby2FilterInit(&pidRuntime.dtermCheby2[axis]);
+        sgFilterInit(&pidRuntime.dtermSg[axis], pidProfile->dterm_sg_window);
     }
 
     //1st Dterm Lowpass Filter

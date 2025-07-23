@@ -40,6 +40,16 @@ typedef enum {
     FILTER_BPF,
 } biquadFilterType_e;
 
+typedef enum {
+    BIQUAD_RESPONSE_BUTTERWORTH = 0,
+    BIQUAD_RESPONSE_BESSEL,
+} biquadResponse_e;
+
+extern biquadResponse_e biquadFilterResponse;
+void biquadFilterSetResponse(biquadResponse_e response);
+
+#define BIQUAD_Q_BESSEL 0.577350269f
+
 typedef struct pt1Filter_s {
     float state;
     float k;
@@ -94,6 +104,24 @@ typedef struct meanAccumulator_s {
     int32_t accumulator;
     int32_t count;
 } meanAccumulator_t;
+
+typedef struct {
+    biquadFilter_t stage[2];
+    int stageCount;
+} cheby2Filter_t;
+
+void cheby2FilterInit(cheby2Filter_t *filter);
+float cheby2FilterApply(cheby2Filter_t *filter, float input);
+
+typedef struct {
+    uint8_t windowSize;
+    uint8_t count;
+    float buf[11];
+} sgFilter_t;
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
+void sgFilterSetWindowSize(sgFilter_t *filter, uint8_t windowSize);
+float sgFilterApply(sgFilter_t *filter, float input, float dT);
 
 float nullFilterApply(filter_t *filter, float input);
 
