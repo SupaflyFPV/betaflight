@@ -1226,7 +1226,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_DTERM_LPF2_STATIC_HZ,  VAR_INT16  | PROFILE_VALUE, .config.minmax = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_lpf2_static_hz) },
     { PARAM_NAME_DTERM_NOTCH_HZ,        VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_hz) },
     { PARAM_NAME_DTERM_NOTCH_CUTOFF,    VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_cutoff) },
-    { PARAM_NAME_DTERM_SG_WINDOW,       VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 7 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_sg_window) },
+    { PARAM_NAME_DTERM_SG_WINDOW,       VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 11 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_sg_window) },
     { PARAM_NAME_DTERM_HAMPEL_WINDOW,   VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 5 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_hampel_window) },
     { PARAM_NAME_DTERM_HAMPEL_THRESHOLD, VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 10 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_hampel_threshold) },
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)

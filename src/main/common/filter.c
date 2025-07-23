@@ -371,7 +371,7 @@ void sgFilterInit(sgFilter_t *filter, uint8_t window)
 FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
 {
     int size = filter->window;
-    if (size != 5 && size != 7) {
+    if (size != 5 && size != 7 && size != 9 && size != 11) {
         size = 3;
     }
 
@@ -380,14 +380,23 @@ FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
     }
     filter->buf[0] = input;
 
-    if (size == 7) {
+    if (size == 11) {
+        return (-5.0f * filter->buf[10] - 4.0f * filter->buf[9] - 3.0f * filter->buf[8]
+                - 2.0f * filter->buf[7] - filter->buf[6] + filter->buf[4]
+                + 2.0f * filter->buf[3] + 3.0f * filter->buf[2]
+                + 4.0f * filter->buf[1] + 5.0f * filter->buf[0]) / 110.0f;
+    } else if (size == 9) {
+        return (-4.0f * filter->buf[8] - 3.0f * filter->buf[7] - 2.0f * filter->buf[6]
+                - filter->buf[5] + filter->buf[3] + 2.0f * filter->buf[2]
+                + 3.0f * filter->buf[1] + 4.0f * filter->buf[0]) / 60.0f;
+    } else if (size == 7) {
         return (-3.0f * filter->buf[6] - 2.0f * filter->buf[5] - filter->buf[4]
                 + filter->buf[2] + 2.0f * filter->buf[1] + 3.0f * filter->buf[0]) / 28.0f;
     } else if (size == 5) {
         return (2.0f * (filter->buf[0] - filter->buf[4]) + (filter->buf[1] - filter->buf[3])) / 10.0f;
-    } else {
-        return (filter->buf[0] - filter->buf[2]) * 0.5f;
     }
+
+    return (filter->buf[0] - filter->buf[2]) * 0.5f;
 }
 
 void hampelFilterInit(hampelFilter_t *filter, uint8_t window)
