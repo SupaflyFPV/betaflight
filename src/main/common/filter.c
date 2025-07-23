@@ -456,10 +456,11 @@ FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
     return out;
 }
 
-static const float sgCoeffs5[]  = { -0.48571429f,  0.04285714f, 0.28571429f, 0.24285714f, -0.08571429f };
-static const float sgCoeffs7[]  = { -0.34523810f, -0.07142857f, 0.10714286f, 0.19047619f, 0.17857143f, 0.07142857f, -0.13095238f };
-static const float sgCoeffs9[]  = { -0.24848485f, -0.09545455f, 0.01861472f, 0.09372294f, 0.12987013f, 0.12705628f, 0.08528139f, 0.00454545f, -0.11515152f };
-static const float sgCoeffs11[] = { -0.18531469f, -0.09230769f, -0.01794872f, 0.03776224f, 0.07482517f, 0.09324009f, 0.09300699f, 0.07412587f, 0.03659674f, -0.01958042f, -0.09440559f };
+// Savitzky-Golay derivative coefficients (order 2) for the current sample
+static const float sgCoeffs5[]  = { -0.77142857f,  0.18571429f,  0.57142857f,  0.38571429f, -0.37142857f };
+static const float sgCoeffs7[]  = { -0.46428571f, -0.07142857f,  0.17857143f,  0.28571429f,  0.25000000f,  0.07142857f, -0.25000000f };
+static const float sgCoeffs9[]  = { -0.30909091f, -0.11060606f,  0.03593074f,  0.13051948f,  0.17316017f,  0.16385281f,  0.10259740f, -0.01060606f, -0.17575758f };
+static const float sgCoeffs11[] = { -0.22027972f, -0.10629371f, -0.01561772f,  0.05174825f,  0.09580420f,  0.11655012f,  0.11398601f,  0.08811189f,  0.03892774f, -0.03356643f, -0.12937063f };
 
 void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
 {
