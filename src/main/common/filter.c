@@ -405,15 +405,14 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
 }
 
 static const float sosCheby220[][6] = {
-    { 0.013356f, 0.013356f, 0.000000f, 1.0f, -0.890256f, 0.000000f },
-    { 1.000000f, -1.960390f, 1.000000f, 1.0f, -1.907327f, 0.916968f },
+    { 0.09634886f, -0.18700134f, 0.09634886f, 1.0f, -1.89564711f, 0.90134349f },
 };
 
 void cheby2FilterInit(cheby2Filter_t *filter)
 {
     memset(filter, 0, sizeof(*filter));
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < ARRAYLEN(sosCheby220); i++) {
         biquadFilter_t *s = &filter->stage[i];
         s->b0 = sosCheby220[i][0];
         s->b1 = sosCheby220[i][1];
@@ -422,7 +421,7 @@ void cheby2FilterInit(cheby2Filter_t *filter)
         s->a2 = sosCheby220[i][5];
     }
 
-    filter->stageCount = 2;
+    filter->stageCount = ARRAYLEN(sosCheby220);
 }
 
 FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
