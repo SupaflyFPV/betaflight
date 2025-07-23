@@ -77,7 +77,7 @@ typedef struct slewFilter_s {
 } slewFilter_t;
 
 typedef struct sgFilter_s {
-    float buf[5];
+    float buf[7];
     uint8_t window;
 } sgFilter_t;
 

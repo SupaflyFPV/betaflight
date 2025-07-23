@@ -370,13 +370,20 @@ void sgFilterInit(sgFilter_t *filter, uint8_t window)
 
 FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
 {
-    const int size = (filter->window == 5) ? 5 : 3;
+    int size = filter->window;
+    if (size != 5 && size != 7) {
+        size = 3;
+    }
+
     for (int i = size - 1; i > 0; i--) {
         filter->buf[i] = filter->buf[i - 1];
     }
     filter->buf[0] = input;
 
-    if (filter->window == 5) {
+    if (size == 7) {
+        return (-3.0f * filter->buf[6] - 2.0f * filter->buf[5] - filter->buf[4]
+                + filter->buf[2] + 2.0f * filter->buf[1] + 3.0f * filter->buf[0]) / 28.0f;
+    } else if (size == 5) {
         return (2.0f * (filter->buf[0] - filter->buf[4]) + (filter->buf[1] - filter->buf[3])) / 10.0f;
     } else {
         return (filter->buf[0] - filter->buf[2]) * 0.5f;
