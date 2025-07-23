@@ -413,7 +413,7 @@ void cheby2FilterInit(cheby2Filter_t *filter)
 {
     memset(filter, 0, sizeof(*filter));
 
-    for (int i = 0; i < ARRAYLEN(sosCheby220); i++) {
+    for (size_t i = 0; i < ARRAYLEN(sosCheby220); i++) {
         biquadFilter_t *s = &filter->stage[i];
         s->b0 = sosCheby220[i][0];
         s->b1 = sosCheby220[i][1];
