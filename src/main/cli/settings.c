@@ -382,6 +382,10 @@ const char * const lookupTableSgWindow[] = {
     "OFF", "5", "7", "9", "11"
 };
 
+const char * const lookupTableBiquadResponse[] = {
+    "BUTTER", "BESSEL"
+};
+
 static const char * const lookupTableFailsafe[] = {
     "AUTO-LAND", "DROP", "GPS-RESCUE"
 };
@@ -659,6 +663,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableLowpassType),
     LOOKUP_TABLE_ENTRY(lookupTableDtermLowpassType),
     LOOKUP_TABLE_ENTRY(lookupTableSgWindow),
+    LOOKUP_TABLE_ENTRY(lookupTableBiquadResponse),
     LOOKUP_TABLE_ENTRY(lookupTableFailsafe),
     LOOKUP_TABLE_ENTRY(lookupTableFailsafeSwitchMode),
     LOOKUP_TABLE_ENTRY(lookupTableCrashRecovery),
@@ -1215,6 +1220,7 @@ const clivalue_t valueTable[] = {
     { "runaway_takeoff_deactivate_delay",  VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 100, 1000 }, PG_PID_CONFIG, offsetof(pidConfig_t, runaway_takeoff_deactivate_delay) },           // deactivate time in ms
     { "runaway_takeoff_deactivate_throttle_percent",  VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_PID_CONFIG, offsetof(pidConfig_t, runaway_takeoff_deactivate_throttle) }, // minimum throttle percentage during deactivation phase
 #endif
+    { PARAM_NAME_BIQUAD_RESPONSE, VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_BIQUAD_RESPONSE }, PG_PID_CONFIG, offsetof(pidConfig_t, biquad_response) },
 
 // PG_PID_PROFILE
 #ifdef USE_PROFILE_NAMES

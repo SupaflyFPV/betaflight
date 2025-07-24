@@ -29,6 +29,7 @@
 #include "common/utils.h"
 
 #define BIQUAD_Q 1.0f / sqrtf(2.0f)     /* quality factor - 2nd order butterworth*/
+#define BIQUAD_Q_BESSEL 1.0f / sqrtf(3.0f)
 
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
@@ -230,6 +231,16 @@ FAST_CODE void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint
 FAST_CODE void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
     biquadFilterUpdate(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
+}
+
+void biquadFilterInitLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q)
+{
+    biquadFilterInit(filter, filterFreq, refreshRate, Q, FILTER_LPF, 1.0f);
+}
+
+void biquadFilterUpdateLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q)
+{
+    biquadFilterUpdate(filter, filterFreq, refreshRate, Q, FILTER_LPF, 1.0f);
 }
 
 /* Computes a biquadFilter_t filter on a sample (slightly less precise than df2 but works in dynamic mode) */

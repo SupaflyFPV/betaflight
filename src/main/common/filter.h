@@ -40,6 +40,11 @@ typedef enum {
     FILTER_BPF,
 } biquadFilterType_e;
 
+typedef enum {
+    BIQUAD_RESPONSE_BUTTERWORTH = 0,
+    BIQUAD_RESPONSE_BESSEL,
+} biquadResponse_e;
+
 typedef struct pt1Filter_s {
     float state;
     float k;
@@ -158,6 +163,9 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
 
 void cheby2FilterInit(cheby2Filter_t *filter);
 float cheby2FilterApply(cheby2Filter_t *filter, float input);
+
+void biquadFilterInitLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q);
+void biquadFilterUpdateLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q);
 
 void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
 float sgFilterApply(sgFilter_t *filter, float input);

@@ -31,6 +31,7 @@
 #include "common/axis.h"
 #include "common/maths.h"
 #include "common/filter.h"
+#include "flight/pid.h"
 
 #include "config/config.h"
 
@@ -171,8 +172,9 @@ static bool gyroInitLowpassFilterLpf(int slot, int type, uint16_t lpfHz, uint32_
 #else
                 *lowpassFilterApplyFn = (filterApplyFnPtr) biquadFilterApply;
 #endif
+                const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
                 for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                    biquadFilterInitLPF(&lowpassFilter[axis].biquadFilterState, lpfHz, looptime);
+                    biquadFilterInitLPFCustomQ(&lowpassFilter[axis].biquadFilterState, lpfHz, looptime, q);
                 }
                 ret = true;
             }

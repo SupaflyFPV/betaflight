@@ -90,7 +90,7 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
-PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 4);
+PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 5);
 
 #ifndef DEFAULT_PID_PROCESS_DENOM
 #define DEFAULT_PID_PROCESS_DENOM       1
@@ -102,10 +102,12 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .runaway_takeoff_prevention = true,
     .runaway_takeoff_deactivate_throttle = 20,  // throttle level % needed to accumulate deactivation time
     .runaway_takeoff_deactivate_delay = 500,    // Accumulated time (in milliseconds) before deactivation in successful takeoff
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
 );
 #else
 PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .pid_process_denom = DEFAULT_PID_PROCESS_DENOM,
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
 );
 #endif
 
@@ -1610,7 +1612,8 @@ void dynLpfDTermUpdate(float throttle)
             break;
         case DYN_LPF_BIQUAD:
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                biquadFilterUpdateLPF(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime);
+                const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
+                biquadFilterUpdateLPFCustomQ(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime, q);
             }
             break;
         case DYN_LPF_PT2:

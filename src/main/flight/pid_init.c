@@ -211,8 +211,9 @@ void pidInitFilters(const pidProfile_t *pidProfile)
 #else
                 pidRuntime.dtermLowpassApplyFn = (filterApplyFnPtr)biquadFilterApply;
 #endif
+                const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
                 for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-                    biquadFilterInitLPF(&pidRuntime.dtermLowpass[axis].biquadFilter, dterm_lpf1_init_hz, targetPidLooptime);
+                    biquadFilterInitLPFCustomQ(&pidRuntime.dtermLowpass[axis].biquadFilter, dterm_lpf1_init_hz, targetPidLooptime, q);
                 }
             } else {
                 pidRuntime.dtermLowpassApplyFn = nullFilterApply;
@@ -250,8 +251,9 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         case FILTER_BIQUAD:
             if (pidProfile->dterm_lpf2_static_hz < pidFrequencyNyquist) {
                 pidRuntime.dtermLowpass2ApplyFn = (filterApplyFnPtr)biquadFilterApply;
+                const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
                 for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-                    biquadFilterInitLPF(&pidRuntime.dtermLowpass2[axis].biquadFilter, pidProfile->dterm_lpf2_static_hz, targetPidLooptime);
+                    biquadFilterInitLPFCustomQ(&pidRuntime.dtermLowpass2[axis].biquadFilter, pidProfile->dterm_lpf2_static_hz, targetPidLooptime, q);
                 }
             } else {
                 pidRuntime.dtermLowpassApplyFn = nullFilterApply;
