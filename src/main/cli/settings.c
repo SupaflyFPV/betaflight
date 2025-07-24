@@ -378,7 +378,7 @@ static const char * const lookupTableDtermLowpassType[] = {
     "PT3",
 };
 
-static const char * const lookupTableSgWindow[] = {
+const char * const lookupTableSgWindow[] = {
     "OFF", "5", "7", "9", "11"
 };
 
