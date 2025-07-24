@@ -47,6 +47,7 @@ Betaflight has the following features:
 * Rate profiles and in-flight selection of them
 * Configurable serial ports for Serial RX, Telemetry, ESC telemetry, MSP, GPS, OSD, Sonar, etc - Use most devices on any port, softserial included
 * VTX support for Unify Pro and IRC Tramp
+* Optional Cheby2 and Savitzky-Golay filters for smoother D-term processing
 * and MUCH, MUCH more.
 
 ## Installation & Documentation

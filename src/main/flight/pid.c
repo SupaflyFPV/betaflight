@@ -90,7 +90,7 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
-PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 4);
+PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 5);
 
 #ifndef DEFAULT_PID_PROCESS_DENOM
 #define DEFAULT_PID_PROCESS_DENOM       1
@@ -102,10 +102,12 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .runaway_takeoff_prevention = true,
     .runaway_takeoff_deactivate_throttle = 20,  // throttle level % needed to accumulate deactivation time
     .runaway_takeoff_deactivate_delay = 500,    // Accumulated time (in milliseconds) before deactivation in successful takeoff
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
 );
 #else
 PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .pid_process_denom = DEFAULT_PID_PROCESS_DENOM,
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
 );
 #endif
 
@@ -124,7 +126,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 11);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 12);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -141,6 +143,8 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .yaw_lowpass_hz = 100,
         .dterm_notch_hz = 0,
         .dterm_notch_cutoff = 0,
+        .dterm_cheby2 = 0,
+        .dterm_sg_window = 0,
         .itermWindup = 80,         // sets iTerm limit to this percentage below pidSumLimit
         .pidAtMinThrottle = PID_STABILISATION_ON,
         .angle_limit = 60,
@@ -1114,6 +1118,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 {
     static float previousGyroRateDterm[XYZ_AXIS_COUNT];
     static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
+    float dtermDerivative[XYZ_AXIS_COUNT];
 
     calculateSpaValues(pidProfile);
 
@@ -1193,6 +1198,15 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         }
 
         gyroRateDterm[axis] = pidRuntime.dtermNotchApplyFn((filter_t *) &pidRuntime.dtermNotch[axis], gyroRateDterm[axis]);
+        gyroRateDterm[axis] = pidRuntime.dtermCheby2ApplyFn((filter_t *)&pidRuntime.dtermCheby2[axis], gyroRateDterm[axis]);
+
+        if (pidRuntime.dtermSgApplyFn != nullFilterApply && pidProfile->dterm_sg_window) {
+            dtermDerivative[axis] = -sgFilterApply(&pidRuntime.dtermSg[axis], gyroRateDterm[axis]) * pidRuntime.pidFrequency;
+        } else {
+            dtermDerivative[axis] = -(gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+        }
+        previousGyroRateDterm[axis] = gyroRateDterm[axis];
+
         gyroRateDterm[axis] = pidRuntime.dtermLowpassApplyFn((filter_t *) &pidRuntime.dtermLowpass[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpass2ApplyFn((filter_t *) &pidRuntime.dtermLowpass2[axis], gyroRateDterm[axis]);
     }
@@ -1400,12 +1414,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            // Divide rate change by dT to get differential (ie dr/dt).
-            // dT is fixed and calculated from the target PID loop time
-            // This is done to avoid DTerm spikes that occur with dynamically
-            // calculated deltaT whenever another task causes the PID
-            // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            // dTerm derivative has already been calculated before lowpass filters
+            float delta = dtermDerivative[axis];
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
@@ -1451,8 +1461,6 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, 0);
             }
         }
-
-        previousGyroRateDterm[axis] = gyroRateDterm[axis];
 
         // -----calculate feedforward component
 
@@ -1602,7 +1610,8 @@ void dynLpfDTermUpdate(float throttle)
             break;
         case DYN_LPF_BIQUAD:
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                biquadFilterUpdateLPF(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime);
+                const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
+                biquadFilterUpdateLPFCustomQ(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime, q);
             }
             break;
         case DYN_LPF_PT2:

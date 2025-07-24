@@ -546,7 +546,8 @@ void servosFilterInit(void)
 {
     if (servoConfig()->servo_lowpass_freq) {
         for (int servoIdx = 0; servoIdx < MAX_SUPPORTED_SERVOS; servoIdx++) {
-            biquadFilterInitLPF(&servoFilter[servoIdx], servoConfig()->servo_lowpass_freq, targetPidLooptime);
+            const float q = (pidConfig()->biquad_response == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
+            biquadFilterInitLPFCustomQ(&servoFilter[servoIdx], servoConfig()->servo_lowpass_freq, targetPidLooptime, q);
         }
     }
 

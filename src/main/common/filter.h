@@ -22,6 +22,11 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
+
+#define BIQUAD_Q (1.0f / sqrtf(2.0f))      /* quality factor - 2nd order Butterworth */
+/* Alternative quality factor used for a Bessel response */
+#define BIQUAD_Q_BESSEL (1.0f / sqrtf(3.0f))
 
 struct filter_s;
 typedef struct filter_s filter_t;
@@ -39,6 +44,11 @@ typedef enum {
     FILTER_NOTCH,
     FILTER_BPF,
 } biquadFilterType_e;
+
+typedef enum {
+    BIQUAD_RESPONSE_BUTTERWORTH = 0,
+    BIQUAD_RESPONSE_BESSEL,
+} biquadResponse_e;
 
 typedef struct pt1Filter_s {
     float state;
@@ -95,6 +105,20 @@ typedef struct meanAccumulator_s {
     int32_t count;
 } meanAccumulator_t;
 
+typedef struct {
+    biquadFilter_t stage[2];
+    int stageCount;
+} cheby2Filter_t;
+
+#define SG_MAX_WINDOW 11
+typedef struct {
+    float buf[SG_MAX_WINDOW];
+    uint8_t windowSize;
+    const float *coeffs;
+    uint8_t index;
+    bool primed;
+} sgFilter_t;
+
 float nullFilterApply(filter_t *filter, float input);
 
 float pt1FilterGain(float f_cut, float dT);
@@ -141,3 +165,12 @@ int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal);
 void meanAccumulatorInit(meanAccumulator_t *filter);
 void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
+
+void cheby2FilterInit(cheby2Filter_t *filter);
+float cheby2FilterApply(cheby2Filter_t *filter, float input);
+
+void biquadFilterInitLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q);
+void biquadFilterUpdateLPFCustomQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q);
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
+float sgFilterApply(sgFilter_t *filter, float input);
