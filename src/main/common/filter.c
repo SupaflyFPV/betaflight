@@ -28,9 +28,6 @@
 #include "common/maths.h"
 #include "common/utils.h"
 
-#define BIQUAD_Q 1.0f / sqrtf(2.0f)     /* quality factor - 2nd order butterworth*/
-#define BIQUAD_Q_BESSEL 1.0f / sqrtf(3.0f)
-
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
 #define CUTOFF_CORRECTION_PT3 1.961459177f
