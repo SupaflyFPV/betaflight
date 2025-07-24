@@ -480,7 +480,7 @@ FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
     }
 
     if (!filter->primed) {
-        return input;
+        return 0.0f;
     }
 
     float out = 0.0f;

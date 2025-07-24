@@ -256,7 +256,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
                     biquadFilterInitLPFCustomQ(&pidRuntime.dtermLowpass2[axis].biquadFilter, pidProfile->dterm_lpf2_static_hz, targetPidLooptime, q);
                 }
             } else {
-                pidRuntime.dtermLowpassApplyFn = nullFilterApply;
+                pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
             }
             break;
         case FILTER_PT2:
