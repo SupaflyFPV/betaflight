@@ -24,7 +24,8 @@
 #include <stdint.h>
 #include <math.h>
 
-#define BIQUAD_Q (1.0f / sqrtf(2.0f))      /* quality factor - 2nd order butterworth */
+#define BIQUAD_Q (1.0f / sqrtf(2.0f))      /* quality factor - 2nd order Butterworth */
+/* Alternative quality factor used for a Bessel response */
 #define BIQUAD_Q_BESSEL (1.0f / sqrtf(3.0f))
 
 struct filter_s;
