@@ -449,10 +449,10 @@ FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
 }
 
 // Savitzky-Golay derivative filter (order 2)
-static const float sgCoeffs5[]  = { 0.2f, 0.1f, 0.0f, -0.1f, -0.2f };
-static const float sgCoeffs7[]  = { 0.107143f, 0.071429f, 0.035714f, 0.0f, -0.035714f, -0.071429f, -0.107143f };
-static const float sgCoeffs9[]  = { 0.066667f, 0.05f, 0.033333f, 0.016667f, 0.0f, -0.016667f, -0.033333f, -0.05f, -0.066667f };
-static const float sgCoeffs11[] = { 0.045455f, 0.036364f, 0.027273f, 0.018182f, 0.009091f, 0.0f, -0.009091f, -0.018182f, -0.027273f, -0.036364f, -0.045455f };
+static const float sgCoeffs5[]  = { -0.2f, -0.1f, 0.0f, 0.1f, 0.2f };
+static const float sgCoeffs7[]  = { -0.107143f, -0.071429f, -0.035714f, 0.0f, 0.035714f, 0.071429f, 0.107143f };
+static const float sgCoeffs9[]  = { -0.066667f, -0.05f, -0.033333f, -0.016667f, 0.0f, 0.016667f, 0.033333f, 0.05f, 0.066667f };
+static const float sgCoeffs11[] = { -0.045455f, -0.036364f, -0.027273f, -0.018182f, -0.009091f, 0.0f, 0.009091f, 0.018182f, 0.027273f, 0.036364f, 0.045455f };
 
 void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
 {
