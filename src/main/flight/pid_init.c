@@ -164,6 +164,29 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         pidRuntime.dtermNotchApplyFn = nullFilterApply;
     }
 
+    if (pidProfile->dterm_cheby2) {
+        pidRuntime.dtermCheby2ApplyFn = (filterApplyFnPtr)cheby2FilterApply;
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            cheby2FilterInit(&pidRuntime.dtermCheby2[axis]);
+        }
+    } else {
+        pidRuntime.dtermCheby2ApplyFn = nullFilterApply;
+    }
+
+    const uint8_t sgWin = (pidProfile->dterm_sg_window == 1) ? 5 :
+                          (pidProfile->dterm_sg_window == 2) ? 7 :
+                          (pidProfile->dterm_sg_window == 3) ? 9 :
+                          (pidProfile->dterm_sg_window == 4) ? 11 : 0;
+
+    if (sgWin) {
+        pidRuntime.dtermSgApplyFn = (filterApplyFnPtr)sgFilterApply;
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            sgFilterInit(&pidRuntime.dtermSg[axis], sgWin);
+        }
+    } else {
+        pidRuntime.dtermSgApplyFn = nullFilterApply;
+    }
+
     //1st Dterm Lowpass Filter
     uint16_t dterm_lpf1_init_hz = pidProfile->dterm_lpf1_static_hz;
 

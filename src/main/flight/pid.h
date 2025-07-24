@@ -194,6 +194,8 @@ typedef struct pidProfile_s {
     uint16_t dterm_lpf1_static_hz;          // Static Dterm lowpass 1 filter cutoff value in hz
     uint16_t dterm_notch_hz;                // Biquad dterm notch hz
     uint16_t dterm_notch_cutoff;            // Biquad dterm notch low cutoff
+    uint8_t dterm_cheby2;                   // Enable Cheby2 filter
+    uint8_t dterm_sg_window;                // Savitzky-Golay window option
 
     pidf_t  pid[PID_ITEM_COUNT];
 
@@ -389,6 +391,10 @@ typedef struct pidRuntime_s {
     float previousPidSetpoint[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermNotchApplyFn;
     biquadFilter_t dtermNotch[XYZ_AXIS_COUNT];
+    filterApplyFnPtr dtermCheby2ApplyFn;
+    cheby2Filter_t dtermCheby2[XYZ_AXIS_COUNT];
+    filterApplyFnPtr dtermSgApplyFn;
+    sgFilter_t dtermSg[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpassApplyFn;
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;

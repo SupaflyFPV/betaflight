@@ -141,6 +141,8 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .yaw_lowpass_hz = 100,
         .dterm_notch_hz = 0,
         .dterm_notch_cutoff = 0,
+        .dterm_cheby2 = 0,
+        .dterm_sg_window = 0,
         .itermWindup = 80,         // sets iTerm limit to this percentage below pidSumLimit
         .pidAtMinThrottle = PID_STABILISATION_ON,
         .angle_limit = 60,
@@ -1193,6 +1195,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         }
 
         gyroRateDterm[axis] = pidRuntime.dtermNotchApplyFn((filter_t *) &pidRuntime.dtermNotch[axis], gyroRateDterm[axis]);
+        gyroRateDterm[axis] = pidRuntime.dtermCheby2ApplyFn((filter_t *)&pidRuntime.dtermCheby2[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpassApplyFn((filter_t *) &pidRuntime.dtermLowpass[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpass2ApplyFn((filter_t *) &pidRuntime.dtermLowpass2[axis], gyroRateDterm[axis]);
     }
@@ -1405,7 +1408,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             // This is done to avoid DTerm spikes that occur with dynamically
             // calculated deltaT whenever another task causes the PID
             // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            float delta;
+            if (pidRuntime.dtermSgApplyFn != nullFilterApply && pidProfile->dterm_sg_window) {
+                delta = -sgFilterApply(&pidRuntime.dtermSg[axis], gyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            } else {
+                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            }
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)

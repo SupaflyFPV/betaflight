@@ -403,3 +403,85 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
     }
     return defaultValue;
 }
+
+// Cheby2 fixed filter (3rd order, 220Hz cutoff)
+static const float sosCheby220[][6] = {
+    { 0.013356f, 0.013356f, 0.000000f, 1.0f, -0.890256f, 0.000000f },
+    { 1.000000f, -1.960390f, 1.000000f, 1.0f, -1.907327f, 0.916968f },
+};
+
+void cheby2FilterInit(cheby2Filter_t *filter)
+{
+    memset(filter, 0, sizeof(*filter));
+    for (int i = 0; i < 2; i++) {
+        biquadFilter_t *s = &filter->stage[i];
+        s->b0 = sosCheby220[i][0];
+        s->b1 = sosCheby220[i][1];
+        s->b2 = sosCheby220[i][2];
+        s->a1 = sosCheby220[i][4];
+        s->a2 = sosCheby220[i][5];
+    }
+    filter->stageCount = 2;
+}
+
+FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
+{
+    float out = input;
+    for (int i = 0; i < filter->stageCount; i++) {
+        biquadFilter_t *s = &filter->stage[i];
+        float result = s->b0 * out + s->b1 * s->x1 + s->b2 * s->x2
+                                  - s->a1 * s->y1 - s->a2 * s->y2;
+        s->x2 = s->x1;
+        s->x1 = out;
+        s->y2 = s->y1;
+        s->y1 = result;
+        out = result;
+    }
+    return out;
+}
+
+// Savitzky-Golay derivative filter (order 2)
+static const float sgCoeffs5[]  = { 0.2f, 0.1f, 0.0f, -0.1f, -0.2f };
+static const float sgCoeffs7[]  = { 0.107143f, 0.071429f, 0.035714f, 0.0f, -0.035714f, -0.071429f, -0.107143f };
+static const float sgCoeffs9[]  = { 0.066667f, 0.05f, 0.033333f, 0.016667f, 0.0f, -0.016667f, -0.033333f, -0.05f, -0.066667f };
+static const float sgCoeffs11[] = { 0.045455f, 0.036364f, 0.027273f, 0.018182f, 0.009091f, 0.0f, -0.009091f, -0.018182f, -0.027273f, -0.036364f, -0.045455f };
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
+{
+    memset(filter, 0, sizeof(*filter));
+    filter->windowSize = windowSize;
+    switch (windowSize) {
+    case 5:  filter->coeffs = sgCoeffs5; break;
+    case 7:  filter->coeffs = sgCoeffs7; break;
+    case 9:  filter->coeffs = sgCoeffs9; break;
+    case 11: filter->coeffs = sgCoeffs11; break;
+    default: filter->coeffs = NULL; filter->windowSize = 0; break;
+    }
+}
+
+FAST_CODE float sgFilterApply(sgFilter_t *filter, float input)
+{
+    if (!filter->windowSize) {
+        return input;
+    }
+
+    filter->buf[filter->index++] = input;
+    if (filter->index >= filter->windowSize) {
+        filter->index = 0;
+        filter->primed = true;
+    }
+
+    if (!filter->primed) {
+        return input;
+    }
+
+    float out = 0.0f;
+    int idx = filter->index;
+    for (int i = 0; i < filter->windowSize; i++) {
+        out += filter->coeffs[i] * filter->buf[idx];
+        if (++idx >= filter->windowSize) {
+            idx = 0;
+        }
+    }
+    return out;
+}
