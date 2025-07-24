@@ -1118,6 +1118,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 {
     static float previousGyroRateDterm[XYZ_AXIS_COUNT];
     static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
+    float dtermDerivative[XYZ_AXIS_COUNT];
 
     calculateSpaValues(pidProfile);
 
@@ -1198,6 +1199,14 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         gyroRateDterm[axis] = pidRuntime.dtermNotchApplyFn((filter_t *) &pidRuntime.dtermNotch[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermCheby2ApplyFn((filter_t *)&pidRuntime.dtermCheby2[axis], gyroRateDterm[axis]);
+
+        if (pidRuntime.dtermSgApplyFn != nullFilterApply && pidProfile->dterm_sg_window) {
+            dtermDerivative[axis] = -sgFilterApply(&pidRuntime.dtermSg[axis], gyroRateDterm[axis]) * pidRuntime.pidFrequency;
+        } else {
+            dtermDerivative[axis] = -(gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+        }
+        previousGyroRateDterm[axis] = gyroRateDterm[axis];
+
         gyroRateDterm[axis] = pidRuntime.dtermLowpassApplyFn((filter_t *) &pidRuntime.dtermLowpass[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpass2ApplyFn((filter_t *) &pidRuntime.dtermLowpass2[axis], gyroRateDterm[axis]);
     }
@@ -1405,17 +1414,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            // Divide rate change by dT to get differential (ie dr/dt).
-            // dT is fixed and calculated from the target PID loop time
-            // This is done to avoid DTerm spikes that occur with dynamically
-            // calculated deltaT whenever another task causes the PID
-            // loop execution to be delayed.
-            float delta;
-            if (pidRuntime.dtermSgApplyFn != nullFilterApply && pidProfile->dterm_sg_window) {
-                delta = -sgFilterApply(&pidRuntime.dtermSg[axis], gyroRateDterm[axis]) * pidRuntime.pidFrequency;
-            } else {
-                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-            }
+            // dTerm derivative has already been calculated before lowpass filters
+            float delta = dtermDerivative[axis];
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
@@ -1461,8 +1461,6 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, 0);
             }
         }
-
-        previousGyroRateDterm[axis] = gyroRateDterm[axis];
 
         // -----calculate feedforward component
 
