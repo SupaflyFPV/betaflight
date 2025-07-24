@@ -77,6 +77,7 @@
 
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
+#include "pg/biquad.h"
 
 #include "pg/alt_hold.h"
 #include "pg/autopilot.h"
