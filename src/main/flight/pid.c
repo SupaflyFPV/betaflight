@@ -90,6 +90,12 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
+FAST_DATA_ZERO_INIT float dtermSetpointWeight;
+FAST_DATA_ZERO_INIT bool legacySetpointWeight;
+FAST_DATA_ZERO_INIT float relaxFactor;
+static float previousGyroRateDterm[XYZ_AXIS_COUNT];
+static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
+
 PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 4);
 
 #ifndef DEFAULT_PID_PROCESS_DENOM
@@ -124,7 +130,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 11);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 13);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -267,6 +273,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
+        .setpointRelaxRatio = 0,
+        .dtermSetpointWeight = 60,
+        .legacy_setpoint_weight = false,
     );
 }
 
@@ -320,6 +329,15 @@ void pidResetIterm(void)
 #if defined(USE_ABSOLUTE_CONTROL)
         axisError[axis] = 0.0f;
 #endif
+    }
+}
+
+void pidResetState(void)
+{
+    for (int axis = 0; axis < 3; axis++) {
+        previousGyroRateDterm[axis] = 0.0f;
+        previousRawGyroRateDterm[axis] = 0.0f;
+        pidRuntime.previousPidSetpoint[axis] = 0.0f;
     }
 }
 
@@ -1112,8 +1130,6 @@ NOINLINE static void applySpa(int axis, const pidProfile_t *pidProfile)
 // Based on 2DOF reference design (matlab)
 void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTimeUs)
 {
-    static float previousGyroRateDterm[XYZ_AXIS_COUNT];
-    static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
 
     calculateSpaValues(pidProfile);
 
@@ -1400,13 +1416,15 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            // Divide rate change by dT to get differential (ie dr/dt).
-            // dT is fixed and calculated from the target PID loop time
-            // This is done to avoid DTerm spikes that occur with dynamically
-            // calculated deltaT whenever another task causes the PID
-            // loop execution to be delayed.
-            const float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-            float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+            float delta;
+            float preTpaD;
+            if (legacySetpointWeight) {
+                delta = (dtermSetpointWeight * pidSetpointDelta - (gyroRateDterm[axis] - previousGyroRateDterm[axis])) * pidRuntime.pidFrequency;
+                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+            } else {
+                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
+            }
 
 #if defined(USE_ACC)
             if (cmpTimeUs(currentTimeUs, levelModeStartTimeUs) > CRASH_RECOVERY_DETECTION_DELAY_US) {
@@ -1462,8 +1480,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         pidRuntime.oldSetpointCorrection[axis] = setpointCorrection;
 #endif
         // no feedforward in launch control
-        const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
-        pidData[axis].F = feedforwardGain * pidSetpointDelta;
+        if (legacySetpointWeight) {
+            pidData[axis].F = 0;
+        } else {
+            const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
+            pidData[axis].F = feedforwardGain * pidSetpointDelta;
+        }
 
 #ifdef USE_YAW_SPIN_RECOVERY
         if (yawSpinActive) {
