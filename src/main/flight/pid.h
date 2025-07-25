@@ -573,6 +573,7 @@ extern bool legacySetpointWeight;
 void resetPidProfile(pidProfile_t *profile);
 
 void pidResetIterm(void);
+void pidResetState(void);
 void pidStabilisationState(pidStabilisationState_e pidControllerState);
 void pidSetItermAccelerator(float newItermAccelerator);
 bool crashRecoveryModeActive(void);

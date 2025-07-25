@@ -93,6 +93,8 @@ pt1Filter_t throttleLpf;
 FAST_DATA_ZERO_INIT float dtermSetpointWeight;
 FAST_DATA_ZERO_INIT bool legacySetpointWeight;
 FAST_DATA_ZERO_INIT float relaxFactor;
+static float previousGyroRateDterm[XYZ_AXIS_COUNT];
+static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
 
 PG_REGISTER_WITH_RESET_TEMPLATE(pidConfig_t, pidConfig, PG_PID_CONFIG, 4);
 
@@ -327,6 +329,15 @@ void pidResetIterm(void)
 #if defined(USE_ABSOLUTE_CONTROL)
         axisError[axis] = 0.0f;
 #endif
+    }
+}
+
+void pidResetState(void)
+{
+    for (int axis = 0; axis < 3; axis++) {
+        previousGyroRateDterm[axis] = 0.0f;
+        previousRawGyroRateDterm[axis] = 0.0f;
+        pidRuntime.previousPidSetpoint[axis] = 0.0f;
     }
 }
 
@@ -1119,8 +1130,6 @@ NOINLINE static void applySpa(int axis, const pidProfile_t *pidProfile)
 // Based on 2DOF reference design (matlab)
 void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTimeUs)
 {
-    static float previousGyroRateDterm[XYZ_AXIS_COUNT];
-    static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
 
     calculateSpaValues(pidProfile);
 
@@ -1409,15 +1418,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
             float delta;
             float preTpaD;
-            float pidFeedForward = 0.0f;
             if (legacySetpointWeight) {
                 delta = (dtermSetpointWeight * pidSetpointDelta - (gyroRateDterm[axis] - previousGyroRateDterm[axis])) * pidRuntime.pidFrequency;
                 preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
             } else {
                 delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
                 preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
-                float transition = relaxFactor > 0 ? MIN(1.0f, getRcDeflectionAbs(axis) * relaxFactor) : 1.0f;
-                pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * transition * pidSetpointDelta * pidRuntime.pidFrequency;
             }
 
 #if defined(USE_ACC)
@@ -1452,9 +1458,6 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
 
             pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D);
-            if (!legacySetpointWeight) {
-                pidData[axis].D += pidFeedForward * getTpaFactor(pidProfile, axis, TERM_D);
-            }
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {
