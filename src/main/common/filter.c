@@ -270,6 +270,33 @@ FAST_CODE float biquadFilterApply(biquadFilter_t *filter, float input)
     return result;
 }
 
+void cheby2Lpf3Init(cheby2Lpf3_t *filter)
+{
+    filter->stage1.b0 = 0.0076297773f;
+    filter->stage1.b1 = 0.0076297773f;
+    filter->stage1.b2 = 0.0f;
+    filter->stage1.a1 = -0.9113084866f;
+    filter->stage1.a2 = 0.0f;
+    filter->stage1.x1 = filter->stage1.x2 = 0.0f;
+    filter->stage1.y1 = filter->stage1.y2 = 0.0f;
+    filter->stage1.weight = 1.0f;
+
+    filter->stage2.b0 = 0.0076297773f;
+    filter->stage2.b1 = -0.0149573379f;
+    filter->stage2.b2 = 0.0076297773f;
+    filter->stage2.a1 = -1.9197530329f;
+    filter->stage2.a2 = 0.9265680412f;
+    filter->stage2.x1 = filter->stage2.x2 = 0.0f;
+    filter->stage2.y1 = filter->stage2.y2 = 0.0f;
+    filter->stage2.weight = 1.0f;
+}
+
+FAST_CODE float cheby2Lpf3Apply(cheby2Lpf3_t *filter, float input)
+{
+    const float out1 = biquadFilterApplyDF1(&filter->stage1, input);
+    return biquadFilterApplyDF1(&filter->stage2, out1);
+}
+
 // Phase Compensator (Lead-Lag-Compensator)
 
 void phaseCompInit(phaseComp_t *filter, const float centerFreqHz, const float centerPhaseDeg, const uint32_t looptimeUs)

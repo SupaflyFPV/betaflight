@@ -32,6 +32,7 @@ typedef enum {
     FILTER_BIQUAD,
     FILTER_PT2,
     FILTER_PT3,
+    FILTER_CHEBY2_LPF3,
 } lowpassFilterType_e;
 
 typedef enum {
@@ -64,6 +65,11 @@ typedef struct biquadFilter_s {
     float x1, x2, y1, y2;
     float weight;
 } biquadFilter_t;
+
+typedef struct cheby2Lpf3_s {
+    biquadFilter_t stage1;
+    biquadFilter_t stage2;
+} cheby2Lpf3_t;
 
 typedef struct phaseComp_s {
     float b0, b1, a1;
@@ -124,6 +130,9 @@ void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t re
 float biquadFilterApplyDF1(biquadFilter_t *filter, float input);
 float biquadFilterApplyDF1Weighted(biquadFilter_t *filter, float input);
 float biquadFilterApply(biquadFilter_t *filter, float input);
+
+void cheby2Lpf3Init(cheby2Lpf3_t *filter);
+float cheby2Lpf3Apply(cheby2Lpf3_t *filter, float input);
 
 void phaseCompInit(phaseComp_t *filter, const float centerFreq, const float centerPhase, const uint32_t looptimeUs);
 void phaseCompUpdate(phaseComp_t *filter, const float centerFreq, const float centerPhase, const uint32_t looptimeUs);
