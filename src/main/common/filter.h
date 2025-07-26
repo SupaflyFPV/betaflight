@@ -40,6 +40,11 @@ typedef enum {
     FILTER_BPF,
 } biquadFilterType_e;
 
+typedef enum {
+    FILTER_BIQUAD_BUTTERWORTH = 0,
+    FILTER_BIQUAD_BESSEL,
+} biquadResponse_e;
+
 typedef struct pt1Filter_s {
     float state;
     float k;
