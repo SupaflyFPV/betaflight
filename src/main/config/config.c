@@ -48,6 +48,8 @@
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
+#include "common/filter.h"
+
 #include "flight/failsafe.h"
 #include "flight/imu.h"
 #include "flight/mixer.h"
@@ -119,6 +121,7 @@ PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .hseMhz = SYSTEM_HSE_MHZ,  // Only used for F4 and G4 targets
     .configurationState = CONFIGURATION_STATE_UNCONFIGURED,
     .enableStickArming = false,
+    .biquad_response = FILTER_BIQUAD_BUTTERWORTH,
 );
 
 bool isEepromWriteInProgress(void)
