@@ -281,9 +281,9 @@ void cheby2Lpf3Init(cheby2Lpf3_t *filter)
     filter->stage1.y1 = filter->stage1.y2 = 0.0f;
     filter->stage1.weight = 1.0f;
 
-    filter->stage2.b0 = 0.0076297773f;
-    filter->stage2.b1 = -0.0149573379f;
-    filter->stage2.b2 = 0.0076297773f;
+    filter->stage2.b0 = 1.0f;
+    filter->stage2.b1 = -1.96038984f;
+    filter->stage2.b2 = 1.0f;
     filter->stage2.a1 = -1.9197530329f;
     filter->stage2.a2 = 0.9265680412f;
     filter->stage2.x1 = filter->stage2.x2 = 0.0f;
