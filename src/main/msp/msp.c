@@ -3266,7 +3266,7 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             sbufReadU8(src);
 #endif
         }
-        if (sbufBytesRemaining(src) >= 7) {
+        if (sbufBytesRemaining(src) >= 11) {
             // Added in MSP API 1.44
 #if defined(USE_FEEDFORWARD)
             currentPidProfile->feedforward_averaging = sbufReadU8(src);
