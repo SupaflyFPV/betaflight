@@ -1343,10 +1343,10 @@ const clivalue_t valueTable[] = {
 
 #ifdef USE_THRUST_LINEARIZATION
     { "thrust_linear",              VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, thrustLinearization) },
-    { PARAM_NAME_TL_GAMMA,           VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_gamma) },
-    { PARAM_NAME_TL_IDLE,            VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_idle) },
-    { PARAM_NAME_TL_U0,              VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 255 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_u0) },
-    { PARAM_NAME_TL_K,               VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_k) },
+    { PARAM_NAME_TL_GAMMA,           VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 50, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_gamma) },
+    { PARAM_NAME_TL_IDLE,            VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 100, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_idle) },
+    { PARAM_NAME_TL_U0,              VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 5, 200 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_u0) },
+    { PARAM_NAME_TL_K,               VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 10, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, tl_k) },
 #endif
 
 #ifdef USE_AIRMODE_LPF
