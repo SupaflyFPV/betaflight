@@ -524,6 +524,10 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 #ifdef USE_THRUST_LINEARIZATION
     pidRuntime.thrustLinearization = pidProfile->thrustLinearization / 100.0f;
     pidRuntime.throttleCompensateAmount = pidRuntime.thrustLinearization - 0.5f * sq(pidRuntime.thrustLinearization);
+    pidRuntime.tlGamma = pidProfile->tl_gamma / 100.0f;
+    pidRuntime.tlIdle = pidProfile->tl_idle / 100.0f;
+    pidRuntime.tlU0 = pidProfile->tl_u0 / 255.0f;
+    pidRuntime.tlK = pidProfile->tl_k;
 #endif
 
 #ifdef USE_D_MAX

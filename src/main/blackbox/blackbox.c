@@ -1806,6 +1806,10 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THROTTLE_BOOST, "%d",            currentPidProfile->throttle_boost);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THROTTLE_BOOST_CUTOFF, "%d",     currentPidProfile->throttle_boost_cutoff);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THRUST_LINEARIZATION,  "%d",     currentPidProfile->thrustLinearization);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TL_GAMMA, "%d",     currentPidProfile->tl_gamma);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TL_IDLE, "%d",      currentPidProfile->tl_idle);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TL_U0, "%d",        currentPidProfile->tl_u0);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TL_K, "%d",         currentPidProfile->tl_k);
 
 #ifdef USE_GPS
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GPS_PROVIDER, "%d",               gpsConfig()->provider);

@@ -192,6 +192,10 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .use_integrated_yaw = false,
         .integrated_yaw_relax = 200,
         .thrustLinearization = 0,
+        .tl_gamma = 130,
+        .tl_idle = 150,
+        .tl_u0 = 12,
+        .tl_k = 80,
         .d_max = D_MAX_DEFAULT,
         .d_max_gain = 37,
         .d_max_advance = 20,
@@ -506,18 +510,16 @@ void pidAcroTrainerInit(void)
 #ifdef USE_THRUST_LINEARIZATION
 float pidCompensateThrustLinearization(float throttle)
 {
-    if (pidRuntime.thrustLinearization != 0.0f) {
-        // for whoops where a lot of TL is needed, allow more throttle boost
-        const float throttleReversed = (1.0f - throttle);
-        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * sq(throttleReversed);
-    }
+    UNUSED(throttle);
     return throttle;
 }
 
 float pidApplyThrustLinearization(float motorOutput)
 {
-    motorOutput *= 1.0f + pidRuntime.thrustLinearization * sq(1.0f - motorOutput);
-    return motorOutput;
+    const float u = constrainf(motorOutput, 0.0f, 1.0f);
+    const float w = 1.0f / (1.0f + expf(-pidRuntime.tlK * (u - pidRuntime.tlU0)));
+    const float uOut = (1.0f - w) * (pidRuntime.tlIdle * u) + w * powf(u, pidRuntime.tlGamma);
+    return constrainf(uOut, 0.0f, 1.0f);
 }
 #endif
 
