@@ -193,7 +193,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .use_integrated_yaw = false,
         .integrated_yaw_relax = 200,
         .thrustLinearization = 0,
-        .tl_gamma = 130,
+        .tl_gamma = 150,
         .tl_idle = 150,
         .tl_u0 = 12,
         .tl_k = 80,
