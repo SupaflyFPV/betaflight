@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "common/maths.h"
 
 #include "platform.h"
 
@@ -517,8 +518,8 @@ float pidCompensateThrustLinearization(float throttle)
 float pidApplyThrustLinearization(float motorOutput)
 {
     const float u = constrainf(motorOutput, 0.0f, 1.0f);
-    const float w = 1.0f / (1.0f + expf(-pidRuntime.tlK * (u - pidRuntime.tlU0)));
-    const float uOut = (1.0f - w) * (pidRuntime.tlIdle * u) + w * powf(u, pidRuntime.tlGamma);
+    const float w = 1.0f / (1.0f + exp_approx(-pidRuntime.tlK * (u - pidRuntime.tlU0)));
+    const float uOut = (1.0f - w) * (pidRuntime.tlIdle * u) + w * pow_approx(u, pidRuntime.tlGamma);
     return constrainf(uOut, 0.0f, 1.0f);
 }
 #endif
