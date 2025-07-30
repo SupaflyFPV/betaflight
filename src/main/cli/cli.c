@@ -544,30 +544,28 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
     } else {
         int value = 0;
 
+        union { int32_t i; float f; } valueUnion; valueUnion.i = 0;
         switch (var->type & VALUE_TYPE_MASK) {
         case VAR_UINT8:
-            value = *(uint8_t *)valuePointer;
-
+            valueUnion.i = *(uint8_t *)valuePointer;
             break;
         case VAR_INT8:
-            value = *(int8_t *)valuePointer;
-
+            valueUnion.i = *(int8_t *)valuePointer;
             break;
         case VAR_UINT16:
-            value = *(uint16_t *)valuePointer;
-
+            valueUnion.i = *(uint16_t *)valuePointer;
             break;
         case VAR_INT16:
-            value = *(int16_t *)valuePointer;
-
+            valueUnion.i = *(int16_t *)valuePointer;
             break;
         case VAR_UINT32:
-            value = *(uint32_t *)valuePointer;
-
+            valueUnion.i = *(uint32_t *)valuePointer;
             break;
         case VAR_INT32:
-            value = *(int32_t *)valuePointer;
-
+            valueUnion.i = *(int32_t *)valuePointer;
+            break;
+        case VAR_FLOAT:
+            valueUnion.f = *(float *)valuePointer;
             break;
         }
 
@@ -575,26 +573,30 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
         switch (var->type & VALUE_MODE_MASK) {
         case MODE_DIRECT:
             if ((var->type & VALUE_TYPE_MASK) == VAR_UINT32) {
-                cliPrintf("%u", (uint32_t)value);
-                if ((uint32_t)value > var->config.u32Max) {
+                cliPrintf("%u", (uint32_t)valueUnion.i);
+                if ((uint32_t)valueUnion.i > var->config.u32Max) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" 0 %u", var->config.u32Max);
                 }
             } else if ((var->type & VALUE_TYPE_MASK) == VAR_INT32) {
-                cliPrintf("%d", (int32_t)value);
-                if ((int32_t)value > var->config.d32Max || (int32_t)value < -var->config.d32Max) {
+                cliPrintf("%d", (int32_t)valueUnion.i);
+                if ((int32_t)valueUnion.i > var->config.d32Max || (int32_t)valueUnion.i < -var->config.d32Max) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" 0 %u", var->config.u32Max);
                 }
+            } else if ((var->type & VALUE_TYPE_MASK) == VAR_FLOAT) {
+                char buf[16];
+                ftoa(valueUnion.f, buf);
+                cliPrintf("%s", buf);
             } else {
                 int min;
                 int max;
                 getMinMax(var, &min, &max);
 
-                cliPrintf("%d", value);
-                if ((value < min) || (value > max)) {
+                cliPrintf("%d", valueUnion.i);
+                if ((valueUnion.i < min) || (valueUnion.i > max)) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" %d %d", min, max);
@@ -602,14 +604,14 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
             break;
         case MODE_LOOKUP:
-            if (value < lookupTables[var->config.lookup.tableIndex].valueCount) {
-                cliPrint(lookupTables[var->config.lookup.tableIndex].values[value]);
+            if (valueUnion.i < lookupTables[var->config.lookup.tableIndex].valueCount) {
+                cliPrint(lookupTables[var->config.lookup.tableIndex].values[valueUnion.i]);
             } else {
                 valueIsCorrupted = true;
             }
             break;
         case MODE_BITSET:
-            if (value & 1 << var->config.bitpos) {
+            if (valueUnion.i & 1 << var->config.bitpos) {
                 cliPrintf("ON");
             } else {
                 cliPrintf("OFF");
@@ -622,7 +624,7 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
 
         if (valueIsCorrupted) {
             cliPrintLinefeed();
-            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, value);
+            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, valueUnion.i);
         }
     }
 }
@@ -830,6 +832,9 @@ static void cliPrintVarRange(const clivalue_t *var)
             cliPrintLinef("Allowed range: %d - %d", -var->config.d32Max, var->config.d32Max);
 
             break;
+        case VAR_FLOAT:
+            cliPrintLinef("Allowed range: %.2f - %.2f", var->config.minmax.min / 100.0f, var->config.minmax.max / 100.0f);
+            break;
         case VAR_UINT8:
         case VAR_UINT16:
             cliPrintLinef("Allowed range: %d - %d", var->config.minmaxUnsigned.min, var->config.minmaxUnsigned.max);
@@ -946,6 +951,16 @@ static void cliSetVar(const clivalue_t *var, const uint32_t value)
         case VAR_INT32:
             *(int32_t *)ptr = value;
             break;
+        case VAR_FLOAT:
+        {
+            union {
+                uint32_t u;
+                float f;
+            } converter;
+            converter.u = value;
+            *(float *)ptr = converter.f;
+            break;
+        }
         }
     }
 }
@@ -4489,6 +4504,7 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
 
         bool valueChanged = false;
         int16_t value  = 0;
+        float floatValue = 0.0f;
         switch (val->type & VALUE_MODE_MASK) {
         case MODE_DIRECT: {
                 if ((val->type & VALUE_TYPE_MASK) == VAR_UINT32) {
@@ -4504,6 +4520,15 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
                     // INT32s are limited to being symmetric, so we test both bounds with the same magnitude
                     if (value <= val->config.d32Max && value >= -val->config.d32Max) {
                         cliSetVar(val, value);
+                        valueChanged = true;
+                    }
+                } else if ((val->type & VALUE_TYPE_MASK) == VAR_FLOAT) {
+                    floatValue = fastA2F(eqptr);
+                    float min = val->config.minmax.min / 100.0f;
+                    float max = val->config.minmax.max / 100.0f;
+                    if (floatValue >= min && floatValue <= max) {
+                        union { float f; uint32_t u; } conv = { .f = floatValue };
+                        cliSetVar(val, conv.u);
                         valueChanged = true;
                     }
                 } else {

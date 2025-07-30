@@ -57,6 +57,7 @@
 #include "pg/pg_ids.h"
 
 #include "pg/autopilot.h"
+#include "pg/tl.h"
 
 #include "sensors/acceleration.h"
 #include "sensors/battery.h"
@@ -516,8 +517,22 @@ float pidCompensateThrustLinearization(float throttle)
 
 float pidApplyThrustLinearization(float motorOutput)
 {
-    motorOutput *= 1.0f + pidRuntime.thrustLinearization * sq(1.0f - motorOutput);
-    return motorOutput;
+    const tlConfig_t *cfg = tlConfig();
+    float normOutput = motorOutput;
+    if (normOutput < 0.0f) {
+        normOutput = 0.0f;
+    } else if (normOutput > 1.0f) {
+        normOutput = 1.0f;
+    }
+
+    const float tl_k = 0.5f + 0.01f * cfg->gain;
+    const float tl_exponent = 1.0f - 0.004f * cfg->shape;
+    float gain = tl_k * tl_exponent * powf(normOutput, tl_exponent - 1.0f);
+    if (gain > cfg->maxGain) {
+        gain = cfg->maxGain;
+    }
+
+    return normOutput * gain;
 }
 #endif
 

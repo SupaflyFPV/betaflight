@@ -1343,6 +1343,9 @@ const clivalue_t valueTable[] = {
 
 #ifdef USE_THRUST_LINEARIZATION
     { "thrust_linear",              VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, thrustLinearization) },
+    { PARAM_NAME_TL_GAIN,            VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, gain) },
+    { PARAM_NAME_TL_SHAPE,           VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, shape) },
+    { PARAM_NAME_TL_MAX_GAIN,        VAR_FLOAT | MASTER_VALUE, .config.minmax = { 100, 500 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, maxGain) },
 #endif
 
 #ifdef USE_AIRMODE_LPF

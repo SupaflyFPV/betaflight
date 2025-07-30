@@ -172,6 +172,7 @@ typedef enum {
     VAR_INT16 = (3 << VALUE_TYPE_OFFSET),
     VAR_UINT32 = (4 << VALUE_TYPE_OFFSET),
     VAR_INT32 = (5 << VALUE_TYPE_OFFSET),
+    VAR_FLOAT = (6 << VALUE_TYPE_OFFSET),
 
     // value section, bits 3-4
     MASTER_VALUE = (0 << VALUE_SECTION_OFFSET),
