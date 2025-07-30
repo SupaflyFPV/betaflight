@@ -542,28 +542,31 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
         }
     } else {
-        union { int32_t i; float f; } valueUnion; valueUnion.i = 0;
+        int32_t value = 0;
+        float floatValue = 0.0f;
+        bool isFloat = false;
         switch (var->type & VALUE_TYPE_MASK) {
         case VAR_UINT8:
-            valueUnion.i = *(uint8_t *)valuePointer;
+            value = *(uint8_t *)valuePointer;
             break;
         case VAR_INT8:
-            valueUnion.i = *(int8_t *)valuePointer;
+            value = *(int8_t *)valuePointer;
             break;
         case VAR_UINT16:
-            valueUnion.i = *(uint16_t *)valuePointer;
+            value = *(uint16_t *)valuePointer;
             break;
         case VAR_INT16:
-            valueUnion.i = *(int16_t *)valuePointer;
+            value = *(int16_t *)valuePointer;
             break;
         case VAR_UINT32:
-            valueUnion.i = *(uint32_t *)valuePointer;
+            value = *(uint32_t *)valuePointer;
             break;
         case VAR_INT32:
-            valueUnion.i = *(int32_t *)valuePointer;
+            value = *(int32_t *)valuePointer;
             break;
         case VAR_FLOAT:
-            valueUnion.f = *(float *)valuePointer;
+            isFloat = true;
+            floatValue = *(float *)valuePointer;
             break;
         }
 
@@ -571,30 +574,30 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
         switch (var->type & VALUE_MODE_MASK) {
         case MODE_DIRECT:
             if ((var->type & VALUE_TYPE_MASK) == VAR_UINT32) {
-                cliPrintf("%u", (uint32_t)valueUnion.i);
-                if ((uint32_t)valueUnion.i > var->config.u32Max) {
+                cliPrintf("%u", (uint32_t)value);
+                if ((uint32_t)value > var->config.u32Max) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" 0 %u", var->config.u32Max);
                 }
             } else if ((var->type & VALUE_TYPE_MASK) == VAR_INT32) {
-                cliPrintf("%d", (int32_t)valueUnion.i);
-                if ((int32_t)valueUnion.i > var->config.d32Max || (int32_t)valueUnion.i < -var->config.d32Max) {
+                cliPrintf("%d", (int32_t)value);
+                if ((int32_t)value > var->config.d32Max || (int32_t)value < -var->config.d32Max) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" 0 %u", var->config.u32Max);
                 }
-            } else if ((var->type & VALUE_TYPE_MASK) == VAR_FLOAT) {
+            } else if (isFloat) {
                 char buf[16];
-                ftoa(valueUnion.f, buf);
+                ftoa(floatValue, buf);
                 cliPrintf("%s", buf);
             } else {
                 int min;
                 int max;
                 getMinMax(var, &min, &max);
 
-                cliPrintf("%d", valueUnion.i);
-                if ((valueUnion.i < min) || (valueUnion.i > max)) {
+                cliPrintf("%d", value);
+                if ((value < min) || (value > max)) {
                     valueIsCorrupted = true;
                 } else if (full) {
                     cliPrintf(" %d %d", min, max);
@@ -602,14 +605,14 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
             break;
         case MODE_LOOKUP:
-            if (valueUnion.i < lookupTables[var->config.lookup.tableIndex].valueCount) {
-                cliPrint(lookupTables[var->config.lookup.tableIndex].values[valueUnion.i]);
+            if (value < lookupTables[var->config.lookup.tableIndex].valueCount) {
+                cliPrint(lookupTables[var->config.lookup.tableIndex].values[value]);
             } else {
                 valueIsCorrupted = true;
             }
             break;
         case MODE_BITSET:
-            if (valueUnion.i & 1 << var->config.bitpos) {
+            if (value & 1 << var->config.bitpos) {
                 cliPrintf("ON");
             } else {
                 cliPrintf("OFF");
@@ -622,7 +625,7 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
 
         if (valueIsCorrupted) {
             cliPrintLinefeed();
-            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, valueUnion.i);
+            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, isFloat ? (int)(floatValue) : value);
         }
     }
 }
