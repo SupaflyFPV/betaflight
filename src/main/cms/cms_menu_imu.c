@@ -581,7 +581,7 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     const tlConfig_t *tlCfg = tlConfig();
     cmsx_tl_gain = tlCfg->gain;
     cmsx_tl_shape = tlCfg->shape;
-    cmsx_tl_max_gain = (uint8_t)(tlCfg->maxGain * 100.0f + 0.5f);
+    cmsx_tl_max_gain = (uint8_t)(tlCfg->maxGain * 10.0f + 0.5f);
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -644,7 +644,7 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     tlConfig_t *tlCfgMut = tlConfigMutable();
     tlCfgMut->gain = cmsx_tl_gain;
     tlCfgMut->shape = cmsx_tl_shape;
-    tlCfgMut->maxGain = cmsx_tl_max_gain / 100.0f;
+    tlCfgMut->maxGain = cmsx_tl_max_gain / 10.0f;
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -709,7 +709,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
     { "THR LINEAR",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_thrustLinearization,    0,    150,   1  }    },
     { "TL GAIN",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_gain, 0, 100, 1 } },
     { "TL SHAPE",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_shape, 0, 100, 1 } },
-    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 100, 500, 1, 10 } },
+    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 10, 50, 1, 10 } },
 #endif
 #ifdef USE_ITERM_RELAX
     { "I_RELAX",         OME_TAB,    NULL, &(OSD_TAB_t)     { &cmsx_iterm_relax,        ITERM_RELAX_COUNT - 1,      lookupTableItermRelax       } },
