@@ -542,8 +542,6 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
         }
     } else {
-        int value = 0;
-
         union { int32_t i; float f; } valueUnion; valueUnion.i = 0;
         switch (var->type & VALUE_TYPE_MASK) {
         case VAR_UINT8:
@@ -833,7 +831,7 @@ static void cliPrintVarRange(const clivalue_t *var)
 
             break;
         case VAR_FLOAT:
-            cliPrintLinef("Allowed range: %.2f - %.2f", var->config.minmax.min / 100.0f, var->config.minmax.max / 100.0f);
+            cliPrintLinef("Allowed range: %.2f - %.2f", (double)(var->config.minmax.min / 100.0f), (double)(var->config.minmax.max / 100.0f));
             break;
         case VAR_UINT8:
         case VAR_UINT16:
