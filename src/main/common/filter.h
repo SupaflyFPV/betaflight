@@ -48,6 +48,8 @@ typedef enum {
 #define BIQUAD_Q_BUTTERWORTH (1.0f / sqrtf(2.0f))
 #define BIQUAD_Q_BESSEL      (1.0f / sqrtf(3.0f))
 
+typedef struct biquadFilter_s biquadFilter_t;
+
 float biquadGetQ(biquadResponse_e response);
 void biquadFilterInitLPFWithQ(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q);
 
