@@ -53,6 +53,7 @@
 #include "flight/pid_init.h"
 
 #include "pg/pg.h"
+#include "pg/tl.h"
 
 #include "sensors/battery.h"
 #include "sensors/gyro.h"
@@ -517,6 +518,9 @@ static uint8_t  cmsx_horizonLimitDegrees;
 
 static uint8_t  cmsx_throttleBoost;
 static uint8_t  cmsx_thrustLinearization;
+static uint8_t  cmsx_tl_gain;
+static uint8_t  cmsx_tl_shape;
+static uint8_t  cmsx_tl_max_gain;
 static uint8_t  cmsx_antiGravityGain;
 static uint8_t  cmsx_motorOutputLimit;
 static int8_t   cmsx_autoProfileCellCount;
@@ -573,6 +577,11 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     cmsx_thrustLinearization = pidProfile->thrustLinearization;
     cmsx_motorOutputLimit = pidProfile->motor_output_limit;
     cmsx_autoProfileCellCount = pidProfile->auto_profile_cell_count;
+
+    const tlConfig_t *tlCfg = tlConfig();
+    cmsx_tl_gain = tlCfg->gain;
+    cmsx_tl_shape = tlCfg->shape;
+    cmsx_tl_max_gain = (uint8_t)(tlCfg->maxGain * 100.0f + 0.5f);
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -631,6 +640,11 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     pidProfile->thrustLinearization = cmsx_thrustLinearization;
     pidProfile->motor_output_limit = cmsx_motorOutputLimit;
     pidProfile->auto_profile_cell_count = cmsx_autoProfileCellCount;
+
+    tlConfig_t *tlCfgMut = tlConfigMutable();
+    tlCfgMut->gain = cmsx_tl_gain;
+    tlCfgMut->shape = cmsx_tl_shape;
+    tlCfgMut->maxGain = cmsx_tl_max_gain / 100.0f;
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -693,6 +707,9 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
 #endif
 #ifdef USE_THRUST_LINEARIZATION
     { "THR LINEAR",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_thrustLinearization,    0,    150,   1  }    },
+    { "TL GAIN",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_gain, 0, 100, 1 } },
+    { "TL SHAPE",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_shape, 0, 100, 1 } },
+    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 100, 500, 1, 10 } },
 #endif
 #ifdef USE_ITERM_RELAX
     { "I_RELAX",         OME_TAB,    NULL, &(OSD_TAB_t)     { &cmsx_iterm_relax,        ITERM_RELAX_COUNT - 1,      lookupTableItermRelax       } },
