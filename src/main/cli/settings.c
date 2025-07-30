@@ -569,7 +569,7 @@ const char * const lookupTableSimplifiedTuningPidsMode[] = {
 };
 
 const char * const lookupTableBiquadResponse[] = {
-    "BUTTER",
+    "BUTTERWORTH",
     "BESSEL",
 };
 
