@@ -15,7 +15,7 @@ PG_REGISTER_WITH_RESET_TEMPLATE(tlConfig_t, tlConfig, PG_THRUST_LINEARIZATION_CO
 PG_RESET_TEMPLATE(tlConfig_t, tlConfig,
     .gain = 46,
     .shape = 58,
-    .maxGain = 1.0f,
+    .maxGain = 2.5f,
     .shapeBoost = 1.0f,
 );
 
