@@ -712,7 +712,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
     { "THR LINEAR",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_thrustLinearization,    0,    150,   1  }    },
     { "TL GAIN",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_gain, 0, 100, 1 } },
     { "TL SHAPE",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_shape, 0, 100, 1 } },
-    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 10, 50, 1, 10 } },
+    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 10, 50, 1, 10 } }, // 1.0-5.0
     { "TL SHP BST", OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_shape_boost, 5, 30, 1, 10 } },
 #endif
 #ifdef USE_ITERM_RELAX
