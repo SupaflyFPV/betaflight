@@ -1353,6 +1353,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_TL_GAIN,            VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, gain) },
     { PARAM_NAME_TL_SHAPE,           VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, shape) },
     { PARAM_NAME_TL_MAX_GAIN,        VAR_FLOAT | MASTER_VALUE, .config.minmax = { 100, 500 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, maxGain) },
+    { PARAM_NAME_TL_SHAPE_BOOST,     VAR_FLOAT | MASTER_VALUE, .config.minmax = { 50, 300 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, shapeBoost) },
 #endif
 
 #ifdef USE_AIRMODE_LPF

@@ -528,6 +528,7 @@ float pidApplyThrustLinearization(float motorOutput)
     const float tl_k = 0.5f + 0.01f * cfg->gain;
     const float tl_exponent = 1.0f - 0.004f * cfg->shape;
     float gain = tl_k * tl_exponent * powf(normOutput, tl_exponent - 1.0f);
+    gain = powf(gain, cfg->shapeBoost);
     if (gain > cfg->maxGain) {
         gain = cfg->maxGain;
     }

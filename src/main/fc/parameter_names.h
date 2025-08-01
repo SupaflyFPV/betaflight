@@ -122,6 +122,7 @@
 #define PARAM_NAME_TL_MAX_GAIN "tl_max_gain"
 #define PARAM_NAME_TL_GAIN "tl_gain"
 #define PARAM_NAME_TL_SHAPE "tl_shape"
+#define PARAM_NAME_TL_SHAPE_BOOST "tl_shape_boost"
 #define PARAM_NAME_ABS_CONTROL_GAIN "abs_control_gain"
 #define PARAM_NAME_USE_INTEGRATED_YAW "use_integrated_yaw"
 #define PARAM_NAME_D_MAX_GAIN "d_max_gain"
