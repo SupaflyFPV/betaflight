@@ -58,6 +58,8 @@
 #define PARAM_NAME_TPA_LOW_RATE "tpa_low_rate"
 #define PARAM_NAME_TPA_LOW_BREAKPOINT "tpa_low_breakpoint"
 #define PARAM_NAME_TPA_LOW_ALWAYS "tpa_low_always"
+#define PARAM_NAME_SDA_RATE "sda_rate"
+#define PARAM_NAME_SDA_MODE "sda_mode"
 #define PARAM_NAME_TPA_MODE "tpa_mode"
 #define PARAM_NAME_TPA_CURVE_TYPE "tpa_curve_type"
 #define PARAM_NAME_TPA_CURVE_STALL_THROTTLE "tpa_curve_stall_throttle"

@@ -71,6 +71,7 @@
 #define DTERM_LPF2_HZ_DEFAULT 150
 
 #define TPA_MAX 100
+#define SDA_MAX 50
 
 #ifdef USE_WING
 #define ANGLE_PITCH_OFFSET_MAX 450
@@ -98,6 +99,12 @@ typedef enum {
     TPA_MODE_PDS,
 #endif
 } tpaMode_e;
+
+typedef enum {
+    SDA_MODE_PD,
+    SDA_MODE_D,
+    SDA_MODE_COUNT,
+} sdaMode_e;
 
 typedef enum {
     TERM_P,
@@ -299,6 +306,9 @@ typedef struct pidProfile_s {
     uint16_t tpa_low_breakpoint;            // Breakpoint where lower TPA is deactivated
     uint8_t tpa_low_always;                 // off, on - if OFF then low TPA is only active until tpa_low_breakpoint is reached the first time
 
+    uint8_t sda_mode;                       // Controls which PID terms SDA affects
+    uint8_t sda_rate;                       // Percent reduction based on stick deflection
+
     uint8_t ez_landing_threshold;           // Threshold stick position below which motor output is limited
     uint8_t ez_landing_limit;               // Maximum motor output when all sticks centred and throttle zero
     uint8_t ez_landing_speed;               // Speed below which motor output is limited
@@ -433,6 +443,7 @@ typedef struct pidRuntime_s {
     float tpaLowBreakpoint;
     float tpaLowMultiplier;
     bool tpaLowAlways;
+    float sdaMultiplier;
     bool useEzDisarm;
     float landingDisarmThreshold;
 

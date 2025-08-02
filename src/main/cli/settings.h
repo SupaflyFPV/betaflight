@@ -123,6 +123,7 @@ typedef enum {
     TABLE_LAUNCH_CONTROL_MODE,
 #endif
     TABLE_TPA_MODE,
+    TABLE_SDA_MODE,
     TABLE_SPA_MODE,
 #ifdef USE_LED_STRIP
     TABLE_LED_PROFILE,
@@ -286,3 +287,4 @@ extern const char * const lookupTableMixerType[];
 extern const char * const lookupTableCMSMenuBackgroundType[];
 
 extern const char * const lookupTableThrottleLimitType[];
+extern const char * const lookupTableSdaMode[];

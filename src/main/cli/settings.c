@@ -501,6 +501,10 @@ static const char * const lookupTableTpaMode[] = {
 #endif
 };
 
+const char * const lookupTableSdaMode[] = {
+    "PD", "D",
+};
+
 static const char * const lookupTableSpaMode[] = {
     "OFF", "I_FREEZE", "I", "PID", "PD_I_FREEZE"
 };
@@ -708,6 +712,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableLaunchControlMode),
 #endif
     LOOKUP_TABLE_ENTRY(lookupTableTpaMode),
+    LOOKUP_TABLE_ENTRY(lookupTableSdaMode),
     LOOKUP_TABLE_ENTRY(lookupTableSpaMode),
 #ifdef USE_LED_STRIP
     LOOKUP_TABLE_ENTRY(lookupTableLEDProfile),
@@ -1392,6 +1397,8 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_TPA_LOW_RATE,            VAR_INT8  | PROFILE_VALUE, .config.minmax = { TPA_LOW_RATE_MIN, TPA_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_rate) },
     { PARAM_NAME_TPA_LOW_BREAKPOINT,      VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { PWM_RANGE_MIN, PWM_RANGE_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_breakpoint) },
     { PARAM_NAME_TPA_LOW_ALWAYS, VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_always) },
+    { PARAM_NAME_SDA_MODE,            VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_SDA_MODE }, PG_PID_PROFILE, offsetof(pidProfile_t, sda_mode) },
+    { PARAM_NAME_SDA_RATE,            VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, SDA_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, sda_rate) },
 
 #ifdef USE_WING
     { PARAM_NAME_TPA_SPEED_TYPE, VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_TPA_SPEED_TYPE }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_speed_type) },
