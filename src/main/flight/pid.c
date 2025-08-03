@@ -307,12 +307,24 @@ static float getSdaFactor(const pidProfile_t *pidProfile, int axis, term_e term)
     UNUSED(term);
     return 1.0f;
 #else
+    const float rc = constrainf(rcData[axis], PWM_RANGE_MIN, PWM_RANGE_MAX);
+
     if (!isSdaActive(pidProfile->sda_mode, term) || pidProfile->sda_rate == 0) {
+        if (term == TERM_P) {
+            DEBUG_SET(DEBUG_SDA, axis, lrintf(rc));
+            DEBUG_SET(DEBUG_SDA, axis + 3, 0);
+        }
         return 1.0f;
     }
 
-    const float deflection = fabsf(constrainf(rcData[axis], PWM_RANGE_MIN, PWM_RANGE_MAX) - PWM_RANGE_MIDDLE) / (float)(PWM_RANGE_MAX - PWM_RANGE_MIDDLE);
+    const float deflection = fabsf(rc - PWM_RANGE_MIDDLE) / (float)(PWM_RANGE_MAX - PWM_RANGE_MIDDLE);
     const float attenuation = pidRuntime.sdaMultiplier * deflection;
+
+    if (term == TERM_P) {
+        DEBUG_SET(DEBUG_SDA, axis, lrintf(rc));
+        DEBUG_SET(DEBUG_SDA, axis + 3, lrintf(attenuation * 1000.0f));
+    }
+
     return 1.0f - attenuation;
 #endif
 }
