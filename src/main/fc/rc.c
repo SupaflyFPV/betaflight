@@ -53,9 +53,12 @@
 #include "sensors/gyro.h"
 
 #include "rc.h"
+#include "common/filter.h"
 
 #define RX_INTERVAL_MIN_US     950 // 0.950ms to fit 1kHz without an issue
 #define RX_INTERVAL_MAX_US   65500 // 65.5ms or 15.26hz
+#define RC_VELOCITY_LPF_HZ      30.0f   // cutoff for velocity lowpass filter
+#define RC_VELOCITY_EPSILON     0.001f  // ignore tiny stick movement
 
 typedef float (applyRatesFn)(const int axis, float rcCommandf, const float rcCommandfAbs);
 // note that rcCommand[] is an external float
@@ -110,6 +113,19 @@ float getFeedforward(int axis)
 static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
 static float rcDeflectionSmoothed[3];
 #endif // USE_RC_SMOOTHING_FILTER
+
+/*
+ * Tracks previous stick values and filtered deltas for
+ * velocity-based RC smoothing.
+ */
+typedef struct {
+    float prev[FLIGHT_DYNAMICS_INDEX_COUNT];         // previous stick value per axis
+    pt1Filter_t deltaFilter[FLIGHT_DYNAMICS_INDEX_COUNT]; // filter state for stick velocity
+    float cutoff[FLIGHT_DYNAMICS_INDEX_COUNT];       // last computed PT3 cutoff per axis
+    bool initialized;                                // true once initial values captured
+} rcDynamicSmooth_t;
+
+static FAST_DATA_ZERO_INIT rcDynamicSmooth_t rcDynamicSmooth;
 
 float getSetpointRate(int axis)
 {
@@ -278,6 +294,55 @@ static void scaleRawSetpointToFpvCamAngle(void)
     rawSetpoint[YAW]  = constrainf(yaw  * cosFactor + roll * sinFactor, SETPOINT_RATE_LIMIT_MIN, SETPOINT_RATE_LIMIT_MAX);
 }
 
+/*
+ * Dynamically modulate the RC smoothing PT3 filter cutoff based on
+ * stick velocity.
+ * Low stick velocity => high cutoff (low latency).
+ * High stick velocity => low cutoff (more smoothing).
+ * Selected axis stick value is logged before and after smoothing via
+ * DEBUG_RC_SMOOTHING[0] and DEBUG_RC_SMOOTHING[1] respectively.
+ * The active cutoff frequency for the selected axis is logged in
+ * DEBUG_RC_SMOOTHING[2] and the detected RX rate in [3].
+ */
+static FAST_CODE void applyVelocityBasedSmoothing(float *input)
+{
+    if (!rxConfig()->rc_smoothing_sensitivity || !rxConfig()->rc_smoothing_cutoff_max) {
+        return;
+    }
+
+    const float dT = targetPidLooptime * 1e-6f;
+    const float minHz = rxConfig()->rc_smoothing_cutoff_min;
+    const float maxHz = MAX(rxConfig()->rc_smoothing_cutoff_max, minHz);
+    const float sensitivity = rxConfig()->rc_smoothing_sensitivity;
+
+    if (!rcDynamicSmooth.initialized) {
+        rcDynamicSmooth.initialized = true;
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            rcDynamicSmooth.prev[axis] = input[axis];
+            rcDynamicSmooth.cutoff[axis] = minHz;
+            pt1FilterInit(&rcDynamicSmooth.deltaFilter[axis], pt1FilterGain(RC_VELOCITY_LPF_HZ, dT));
+        }
+    }
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const float delta = input[axis] - rcDynamicSmooth.prev[axis];
+        rcDynamicSmooth.prev[axis] = input[axis];
+
+        const float vel = pt1FilterApply(&rcDynamicSmooth.deltaFilter[axis], delta);
+        if (fabsf(vel) < RC_VELOCITY_EPSILON) {
+            continue;
+        }
+
+        float norm = fabsf(vel) / sensitivity;
+        norm = constrainf(norm, 0.0f, 1.0f);
+        const float cutoff = minHz + (maxHz - minHz) * norm;
+        rcDynamicSmooth.cutoff[axis] = cutoff;
+
+        const float k = pt3FilterGain(cutoff, dT);
+        pt3FilterUpdateCutoff(&rcSmoothingData.filterSetpoint[axis], k);
+    }
+}
+
 void updateRcRefreshRate(timeUs_t currentTimeUs, bool rxReceivingSignal)
 {
     // this function runs from processRx in core.c
@@ -396,8 +461,6 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
         }
     }
 
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 1, smoothingData->setpointCutoffFrequency);
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 2, smoothingData->feedforwardCutoffFrequency);
 }
 
 // Determine if we need to caclulate filter cutoffs. If not then we can avoid
@@ -502,10 +565,15 @@ static FAST_CODE void processRcSmoothingFilter(void)
                 DEBUG_SET(DEBUG_RC_INTERPOLATION, i, ((lrintf(rxDataToSmooth[i])) - 1000));
             }
         }
+        // log unsmoothed stick value for selected axis
+        DEBUG_SET(DEBUG_RC_SMOOTHING, 0, lrintf(rxDataToSmooth[rcSmoothingData.debugAxis]));
     }
 
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 0, rcSmoothingData.smoothedRxRateHz);
-    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, rcSmoothingData.sampleCount);
+    // update PT3 cutoff based on stick velocity
+    applyVelocityBasedSmoothing(rxDataToSmooth);
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 2, lrintf(rcDynamicSmooth.cutoff[rcSmoothingData.debugAxis]));
+
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 3, lrintf(rcSmoothingData.smoothedRxRateHz));
 
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
@@ -517,6 +585,9 @@ static FAST_CODE void processRcSmoothingFilter(void)
             *dst = rxDataToSmooth[i];
         }
     }
+
+    // log smoothed stick value for selected axis
+    DEBUG_SET(DEBUG_RC_SMOOTHING, 1, lrintf(setpointRate[rcSmoothingData.debugAxis]));
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         // Feedforward smoothing
@@ -763,7 +834,7 @@ FAST_CODE_NOINLINE void updateRcCommands(void)
 {
     isRxDataNew = true;
 
-    for (int axis = 0; axis < 3; axis++) {
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         float rc = constrainf(rcData[axis] - rxConfig()->midrc, -500.0f, 500.0f); // -500 to 500
         float rcDeadband = 0;
         if (axis == ROLL || axis == PITCH) {
