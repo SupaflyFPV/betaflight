@@ -1416,15 +1416,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            float delta;
-            float preTpaD;
-            if (legacySetpointWeight) {
-                delta = (dtermSetpointWeight * pidSetpointDelta - (gyroRateDterm[axis] - previousGyroRateDterm[axis])) * pidRuntime.pidFrequency;
-                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
-            } else {
-                delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
-                preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
-            }
+            float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
             if (cmpTimeUs(currentTimeUs, levelModeStartTimeUs) > CRASH_RECOVERY_DETECTION_DELAY_US) {
@@ -1458,6 +1451,10 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
 
             pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D);
+            if (legacySetpointWeight) {
+                const float pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * dtermSetpointWeight * transition * pidSetpointDelta * tpaFactor * pidRuntime.pidFrequency;
+                pidData[axis].D += pidFeedForward;
+            }
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {

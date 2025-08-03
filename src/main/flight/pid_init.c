@@ -411,11 +411,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 #endif
 
     legacySetpointWeight = pidProfile->legacy_setpoint_weight;
-    if (legacySetpointWeight) {
-        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 127.0f;
-    } else {
-        dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
-    }
+    dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
 
     if (pidProfile->setpointRelaxRatio == 0) {
         relaxFactor = 0.0f;
