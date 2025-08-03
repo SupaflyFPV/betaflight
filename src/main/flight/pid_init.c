@@ -410,6 +410,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     pidRuntime.angleEarthRef = pidProfile->angle_earth_ref / 100.0f;
 #endif
 
+    // Store flags and scale factors used by the legacy setpoint-weighted D-term mode
     legacySetpointWeight = pidProfile->legacy_setpoint_weight;
     dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
 

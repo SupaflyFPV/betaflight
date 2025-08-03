@@ -334,8 +334,8 @@ typedef struct pidProfile_s {
     uint8_t chirp_time_seconds;             // excitation time
     uint8_t setpointRelaxRatio;             // Setpoint weight relaxation effect
 
-    uint16_t dtermSetpointWeight;           // Setpoint weight for D-term (legacy mode)
-    uint8_t legacy_setpoint_weight;         // Use legacy D-term setpoint weighting
+    uint16_t dtermSetpointWeight;           // Setpoint weight for D-term when using legacy behaviour
+    uint8_t legacy_setpoint_weight;         // Enable BF3.4-style D-term weighting and disable feedforward
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);

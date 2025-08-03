@@ -132,8 +132,9 @@ CMS_Menu cmsx_menuRcPreview = {
 static uint8_t motorConfig_motorIdle;
 static uint8_t rxConfig_fpvCamAngleDegrees;
 static uint8_t mixerConfig_crashflip_rate;
-static uint16_t cmsx_dtermSetpointWeight;
-static uint8_t cmsx_setpointRelaxRatio;
+// Copies of the PID profile parameters used for on-screen tuning
+static uint16_t cmsx_dtermSetpointWeight; // BF3.4 style D-term weight (0-2000)
+static uint8_t cmsx_setpointRelaxRatio;   // transitional scaling of setpoint derivative
 
 static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
 {
@@ -142,6 +143,7 @@ static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
     motorConfig_motorIdle = motorConfig()->motorIdle / 10;
     rxConfig_fpvCamAngleDegrees = rxConfig()->fpvCamAngleDegrees;
     mixerConfig_crashflip_rate = mixerConfig()->crashflip_rate;
+    // Load current profile values so the user can edit them interactively
     cmsx_dtermSetpointWeight = currentPidProfile->dtermSetpointWeight;
     cmsx_setpointRelaxRatio = currentPidProfile->setpointRelaxRatio;
 
@@ -156,8 +158,10 @@ static const void *cmsx_menuMiscOnExit(displayPort_t *pDisp, const OSD_Entry *se
     motorConfigMutable()->motorIdle = 10 * motorConfig_motorIdle;
     rxConfigMutable()->fpvCamAngleDegrees = rxConfig_fpvCamAngleDegrees;
     mixerConfigMutable()->crashflip_rate = mixerConfig_crashflip_rate;
+    // Persist the temporary values back into the active PID profile
     currentPidProfile->dtermSetpointWeight = cmsx_dtermSetpointWeight;
     currentPidProfile->setpointRelaxRatio = cmsx_setpointRelaxRatio;
+    // Recalculate runtime coefficients so changes take effect immediately
     pidInitConfig(currentPidProfile);
 
     return NULL;
@@ -170,8 +174,8 @@ static const OSD_Entry menuMiscEntries[]=
     { "IDLE OFFSET",   OME_UINT8 | REBOOT_REQUIRED, NULL, &(OSD_UINT8_t) { &motorConfig_motorIdle,      0,  200, 1 } },
     { "FPV CAM ANGLE", OME_UINT8,                   NULL, &(OSD_UINT8_t) { &rxConfig_fpvCamAngleDegrees, 0,   90, 1 } },
     { "CRASHFLIP RATE", OME_UINT8 | REBOOT_REQUIRED,   NULL,          &(OSD_UINT8_t) { &mixerConfig_crashflip_rate,           0,  100, 1 } },
-    { "D SETPT WT",  OME_UINT16,  NULL,          &(OSD_UINT16_t){ &cmsx_dtermSetpointWeight,    0,    2000,  1 } },
-    { "SETPT TRS",   OME_UINT8,   NULL,          &(OSD_UINT8_t) { &cmsx_setpointRelaxRatio,     0,    100,   1 } },
+    { "D SETPT WT",  OME_UINT16,  NULL,          &(OSD_UINT16_t){ &cmsx_dtermSetpointWeight,    0,    2000,  1 } }, // legacy D-term weight
+    { "SETPT TRS",   OME_UINT8,   NULL,          &(OSD_UINT8_t) { &cmsx_setpointRelaxRatio,     0,    100,   1 } }, // relax ratio
     { "RC PREV",       OME_Submenu, cmsMenuChange, &cmsx_menuRcPreview},
 #ifdef USE_GPS_LAP_TIMER
     { "GPS LAP TIMER",  OME_Submenu, cmsMenuChange, &cms_menuGpsLapTimer },

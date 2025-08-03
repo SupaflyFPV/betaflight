@@ -90,8 +90,8 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
-FAST_DATA_ZERO_INIT float dtermSetpointWeight;
-FAST_DATA_ZERO_INIT bool legacySetpointWeight;
+FAST_DATA_ZERO_INIT float dtermSetpointWeight; // user configurable scaling of setpoint derivative
+FAST_DATA_ZERO_INIT bool legacySetpointWeight; // emulate Betaflight 3.4 D-term behaviour
 FAST_DATA_ZERO_INIT float relaxFactor;
 static float previousGyroRateDterm[XYZ_AXIS_COUNT];
 static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
@@ -1455,9 +1455,11 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             const float tpaFactor = getTpaFactor(pidProfile, axis, TERM_D);
             float measurementD = preTpaD * tpaFactor;
             float pidFeedForward = 0.0f;
+            // When legacy weighting is enabled, add a portion of the setpoint derivative to D
             if (legacySetpointWeight) {
                 pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * dtermSetpointWeight * transition * pidSetpointDelta * tpaFactor * pidRuntime.pidFrequency;
             }
+            // Combine measurement D-term with optional legacy feedforward component
             pidData[axis].D = measurementD + pidFeedForward;
 
             // Log the value of D pre application of TPA
@@ -1465,6 +1467,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, lrintf(preTpaD * D_LPF_PRE_TPA_SCALE));
             }
             if (axis == (int)gyro.gyroDebugAxis) {
+                // Log raw gyro delta, setpoint derivative, feedforward contribution and final D-term
                 DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 0, lrintf(delta));
                 DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 1, lrintf(pidSetpointDelta * pidRuntime.pidFrequency));
                 DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 2, lrintf(pidFeedForward));
@@ -1494,6 +1497,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
         // no feedforward in launch control
         if (legacySetpointWeight) {
+            // Legacy mode relies solely on the D-term for setpoint influence
             pidData[axis].F = 0;
         } else {
             const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
