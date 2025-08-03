@@ -332,9 +332,9 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
-    uint8_t setpointRelaxRatio;             // Setpoint weight relaxation effect
+    uint8_t setpointRelaxRatio;             // Transitional stick response scaling for setpoint weighting
 
-    uint16_t dtermSetpointWeight;           // Setpoint weight for D-term when using legacy behaviour
+    uint16_t dtermSetpointWeight;           // Scale of setpoint derivative for legacy D-term (0..2000)
     uint8_t legacy_setpoint_weight;         // Enable BF3.4-style D-term weighting and disable feedforward
 } pidProfile_t;
 
@@ -573,6 +573,7 @@ extern bool legacySetpointWeight;
 void resetPidProfile(pidProfile_t *profile);
 
 void pidResetIterm(void);
+// Clear derivative history and setpoint buffers after PID parameter changes
 void pidResetState(void);
 void pidStabilisationState(pidStabilisationState_e pidControllerState);
 void pidSetItermAccelerator(float newItermAccelerator);

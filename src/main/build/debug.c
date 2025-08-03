@@ -124,6 +124,6 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     [DEBUG_GIMBAL] = "GIMBAL",
     [DEBUG_WING_SETPOINT] = "WING_SETPOINT",
     [DEBUG_AUTOPILOT_POSITION] = "AUTOPILOT_POSITION",
-    [DEBUG_SETPOINT_WEIGHT] = "SETPT_WEIGHT", // log legacy D-term setpoint components
+    [DEBUG_SETPOINT_WEIGHT] = "SETPT_WEIGHT", // measurement delta, setpoint derivative, weighted setpoint and final D
     [DEBUG_CHIRP] = "CHIRP",
 };

@@ -45,6 +45,7 @@
 #include "fc/rc_controls.h"
 
 #include "flight/mixer.h"
+// Access PID profile and reinitialization routines so OSD tuning can take effect immediately
 #include "flight/pid.h"
 #include "flight/pid_init.h"
 
@@ -133,6 +134,7 @@ static uint8_t motorConfig_motorIdle;
 static uint8_t rxConfig_fpvCamAngleDegrees;
 static uint8_t mixerConfig_crashflip_rate;
 // Copies of the PID profile parameters used for on-screen tuning
+// Temporary storage for OSD tuning of legacy setpoint weight and transition ratio
 static uint16_t cmsx_dtermSetpointWeight; // BF3.4 style D-term weight (0-2000)
 static uint8_t cmsx_setpointRelaxRatio;   // transitional scaling of setpoint derivative
 
@@ -144,6 +146,7 @@ static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
     rxConfig_fpvCamAngleDegrees = rxConfig()->fpvCamAngleDegrees;
     mixerConfig_crashflip_rate = mixerConfig()->crashflip_rate;
     // Load current profile values so the user can edit them interactively
+    // Capture current values from active profile so we can modify them interactively
     cmsx_dtermSetpointWeight = currentPidProfile->dtermSetpointWeight;
     cmsx_setpointRelaxRatio = currentPidProfile->setpointRelaxRatio;
 
@@ -159,6 +162,7 @@ static const void *cmsx_menuMiscOnExit(displayPort_t *pDisp, const OSD_Entry *se
     rxConfigMutable()->fpvCamAngleDegrees = rxConfig_fpvCamAngleDegrees;
     mixerConfigMutable()->crashflip_rate = mixerConfig_crashflip_rate;
     // Persist the temporary values back into the active PID profile
+    // Persist edited values back into profile
     currentPidProfile->dtermSetpointWeight = cmsx_dtermSetpointWeight;
     currentPidProfile->setpointRelaxRatio = cmsx_setpointRelaxRatio;
     // Recalculate runtime coefficients so changes take effect immediately

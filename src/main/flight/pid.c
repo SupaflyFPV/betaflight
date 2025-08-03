@@ -90,9 +90,10 @@ FAST_DATA_ZERO_INIT float throttleBoost;
 pt1Filter_t throttleLpf;
 #endif
 
-FAST_DATA_ZERO_INIT float dtermSetpointWeight; // user configurable scaling of setpoint derivative
-FAST_DATA_ZERO_INIT bool legacySetpointWeight; // emulate Betaflight 3.4 D-term behaviour
-FAST_DATA_ZERO_INIT float relaxFactor;
+FAST_DATA_ZERO_INIT float dtermSetpointWeight; // scaling factor applied to setpoint derivative when legacy mode enabled
+FAST_DATA_ZERO_INIT bool legacySetpointWeight; // emulates Betaflight 3.4 by mixing setpoint into D-term and disabling feedforward
+FAST_DATA_ZERO_INIT float relaxFactor;        // inverse of setpoint relax ratio used to smooth stick transitions
+// store previous samples so derivative calculations can be reset cleanly
 static float previousGyroRateDterm[XYZ_AXIS_COUNT];
 static float previousRawGyroRateDterm[XYZ_AXIS_COUNT];
 
@@ -334,6 +335,7 @@ void pidResetIterm(void)
 
 void pidResetState(void)
 {
+    // Clear history used by the D-term so changes in configuration do not produce spikes
     for (int axis = 0; axis < 3; axis++) {
         previousGyroRateDterm[axis] = 0.0f;
         previousRawGyroRateDterm[axis] = 0.0f;
@@ -1414,18 +1416,22 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         }
 #endif
         if (legacySetpointWeight) {
+            // Compute derivative of the setpoint in deg/s for legacy D behaviour
             pidSetpointDerivative = (currentPidSetpoint - pidRuntime.previousPidSetpoint[axis]) * pidRuntime.pidFrequency;
         }
-        pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint; // this is the value sent to blackbox, and used for D-max setpoint
+        // Store setpoint for next loop; this is also logged and used by D-max
+        pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint;
 
         const float transition = (relaxFactor > 0.0f) ? MIN(1.0f, getRcDeflectionAbs(axis) * relaxFactor) : 1.0f;
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
+            // Gyro measurement delta provides the normal derivative term
             const float measurementDelta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
             float delta = measurementDelta;
             float setpointComponent = 0.0f;
             if (legacySetpointWeight) {
+                // In legacy mode also mix in a scaled setpoint derivative
                 setpointComponent = dtermSetpointWeight * transition * pidSetpointDerivative;
                 delta += setpointComponent;
             }
@@ -1465,6 +1471,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             const float tpaFactor = getTpaFactor(pidProfile, axis, TERM_D);
             float pidWeightedSetpoint = 0.0f;
             if (legacySetpointWeight) {
+                // Value of the setpoint contribution after Kd and TPA scaling, logged for analysis
                 pidWeightedSetpoint = pidRuntime.pidCoefficient[axis].Kd * setpointComponent * tpaFactor;
             }
             pidData[axis].D = preTpaD * tpaFactor;

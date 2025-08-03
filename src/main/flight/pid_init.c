@@ -381,6 +381,7 @@ void pidInit(const pidProfile_t *pidProfile)
     pidSetTargetLooptime(gyro.targetLooptime); // Initialize pid looptime
     pidInitFilters(pidProfile);
     pidInitConfig(pidProfile);
+    // Clear derivative history so changes in config don't cause spikes
     pidResetState();
 #ifdef USE_RPM_FILTER
     rpmFilterInit(rpmFilterConfig(), gyro.targetLooptime);
@@ -590,6 +591,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 #ifdef USE_WING
     tpaSpeedInit(pidProfile);
 #endif
+    // Clear state again after all runtime parameters are prepared
     pidResetState();
 }
 
