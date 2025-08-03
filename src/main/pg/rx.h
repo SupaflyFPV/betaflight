@@ -27,6 +27,12 @@
 #define GET_FRAME_ERR_LPF_FREQUENCY(period) (10.0f / period)  // period in deciseconds (0.1s)
 #define FRAME_ERR_RESAMPLE_US 100000
 
+typedef enum {
+    RC_SMOOTHING_FILTER_PT2 = 0,
+    RC_SMOOTHING_FILTER_PT3,
+    RC_SMOOTHING_FILTER_COUNT
+} rcSmoothingFilterType_e;
+
 typedef struct rxConfig_s {
     uint8_t rcmap[RX_MAPPABLE_CHANNEL_COUNT];  // mapping of radio channels to internal RPYTA+ order
     uint8_t serialrx_provider;                 // type of UART-based receiver (0 = spek 10, 1 = spek 11, 2 = sbus). Must be enabled by FEATURE_RX_SERIAL first.
@@ -50,6 +56,7 @@ typedef struct rxConfig_s {
     uint8_t rssi_src_frame_errors;             // true to use frame drop flags in the rx protocol
     int8_t rssi_offset;                        // offset applied to the RSSI value before it is returned
     uint8_t rc_smoothing_mode;                 // Whether filter based rc smoothing is on or off
+    uint8_t rc_smoothing_filter_type;          // 0 = PT2, 1 = PT3
     uint8_t rc_smoothing_setpoint_cutoff;      // Filter cutoff frequency for the setpoint filter (0 = auto)
     uint8_t rc_smoothing_feedforward_cutoff;   // Filter cutoff frequency for the feedforward filter (0 = auto)
     uint8_t rc_smoothing_throttle_cutoff;      // Filter cutoff frequency for the setpoint filter (0 = auto)

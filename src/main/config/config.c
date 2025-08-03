@@ -92,6 +92,7 @@
 #include "sensors/gyro.h"
 
 #include "config.h"
+#include "common/filter.h"
 
 static bool configIsDirty; /* someone indicated that the config is modified and it is not yet saved */
 

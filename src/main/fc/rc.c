@@ -357,41 +357,84 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
     const float dT = targetPidLooptime * 1e-6f;
     if ((smoothingData->setpointCutoffFrequency != oldSetpointCutoff) || !smoothingData->filterInitialized) {
         // note that cutoff frequencies are integers, filter cutoffs won't re-calculate until there is > 1hz variation from previous cutoff
-        // initialize or update the setpoint cutoff based filters
         const float setpointCutoffFrequency = smoothingData->setpointCutoffFrequency;
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
-            if (i < THROTTLE) {
-                if (!smoothingData->filterInitialized) {
-                    pt3FilterInit(&smoothingData->filterSetpoint[i], pt3FilterGain(setpointCutoffFrequency, dT));
-                } else {
-                    pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt3FilterGain(setpointCutoffFrequency, dT));
+            const float freq = (i < THROTTLE) ? setpointCutoffFrequency : smoothingData->throttleCutoffFrequency;
+            switch (smoothingData->filterType) {
+            case RC_SMOOTHING_FILTER_PT2:
+                {
+                    const float k = pt2FilterGain(freq, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt2FilterInit(&smoothingData->filterSetpoint[i].pt2Filter, k);
+                    } else {
+                        pt2FilterUpdateCutoff(&smoothingData->filterSetpoint[i].pt2Filter, k);
+                    }
                 }
-            } else {
-                const float throttleCutoffFrequency = smoothingData->throttleCutoffFrequency;
-                if (!smoothingData->filterInitialized) {
-                    pt3FilterInit(&smoothingData->filterSetpoint[i], pt3FilterGain(throttleCutoffFrequency, dT));
-                } else {
-                    pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt3FilterGain(throttleCutoffFrequency, dT));
+                break;
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
+                {
+                    const float k = pt3FilterGain(freq, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt3FilterInit(&smoothingData->filterSetpoint[i].pt3Filter, k);
+                    } else {
+                        pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i].pt3Filter, k);
+                    }
                 }
+                break;
             }
         }
-        // initialize or update the RC Deflection filter
         for (int i = FD_ROLL; i < FD_YAW; i++) {
-            if (!smoothingData->filterInitialized) {
-                pt3FilterInit(&smoothingData->filterRcDeflection[i], pt3FilterGain(setpointCutoffFrequency, dT));
-            } else {
-                pt3FilterUpdateCutoff(&smoothingData->filterRcDeflection[i], pt3FilterGain(setpointCutoffFrequency, dT));
+            switch (smoothingData->filterType) {
+            case RC_SMOOTHING_FILTER_PT2:
+                {
+                    const float k = pt2FilterGain(setpointCutoffFrequency, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt2FilterInit(&smoothingData->filterRcDeflection[i].pt2Filter, k);
+                    } else {
+                        pt2FilterUpdateCutoff(&smoothingData->filterRcDeflection[i].pt2Filter, k);
+                    }
+                }
+                break;
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
+                {
+                    const float k = pt3FilterGain(setpointCutoffFrequency, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt3FilterInit(&smoothingData->filterRcDeflection[i].pt3Filter, k);
+                    } else {
+                        pt3FilterUpdateCutoff(&smoothingData->filterRcDeflection[i].pt3Filter, k);
+                    }
+                }
+                break;
             }
         }
     }
-    // initialize or update the Feedforward filter
     if ((smoothingData->feedforwardCutoffFrequency != oldFeedforwardCutoff) || !smoothingData->filterInitialized) {
        for (int i = FD_ROLL; i <= FD_YAW; i++) {
-            const float feedforwardCutoffFrequency = smoothingData->feedforwardCutoffFrequency;
-            if (!smoothingData->filterInitialized) {
-                pt3FilterInit(&smoothingData->filterFeedforward[i], pt3FilterGain(feedforwardCutoffFrequency, dT));
-            } else {
-                pt3FilterUpdateCutoff(&smoothingData->filterFeedforward[i], pt3FilterGain(feedforwardCutoffFrequency, dT));
+            const float freq = smoothingData->feedforwardCutoffFrequency;
+            switch (smoothingData->filterType) {
+            case RC_SMOOTHING_FILTER_PT2:
+                {
+                    const float k = pt2FilterGain(freq, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt2FilterInit(&smoothingData->filterFeedforward[i].pt2Filter, k);
+                    } else {
+                        pt2FilterUpdateCutoff(&smoothingData->filterFeedforward[i].pt2Filter, k);
+                    }
+                }
+                break;
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
+                {
+                    const float k = pt3FilterGain(freq, dT);
+                    if (!smoothingData->filterInitialized) {
+                        pt3FilterInit(&smoothingData->filterFeedforward[i].pt3Filter, k);
+                    } else {
+                        pt3FilterUpdateCutoff(&smoothingData->filterFeedforward[i].pt3Filter, k);
+                    }
+                }
+                break;
             }
         }
     }
@@ -424,6 +467,16 @@ static FAST_CODE void processRcSmoothingFilter(void)
         rcSmoothingData.smoothedRxRateHz = 0.0f;
         rcSmoothingData.sampleCount = 0;
         rcSmoothingData.debugAxis = rxConfig()->rc_smoothing_debug_axis;
+        rcSmoothingData.filterType = rxConfig()->rc_smoothing_filter_type;
+        switch (rcSmoothingData.filterType) {
+        case RC_SMOOTHING_FILTER_PT2:
+            rcSmoothingData.applyFn = (filterApplyFnPtr)pt2FilterApply;
+            break;
+        case RC_SMOOTHING_FILTER_PT3:
+        default:
+            rcSmoothingData.applyFn = (filterApplyFnPtr)pt3FilterApply;
+            break;
+        }
 
         rcSmoothingData.autoSmoothnessFactorSetpoint = 1.5f / (1.0f + (rxConfig()->rc_smoothing_auto_factor_rpy / 10.0f));
         rcSmoothingData.autoSmoothnessFactorFeedforward = 1.5f / (1.0f + (rxConfig()->rc_smoothing_auto_factor_rpy / 10.0f));
@@ -511,7 +564,7 @@ static FAST_CODE void processRcSmoothingFilter(void)
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
         float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
         if (rcSmoothingData.filterInitialized) {
-            *dst = pt3FilterApply(&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
+            *dst = rcSmoothingData.applyFn((filter_t *)&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
         } else {
             // If filter isn't initialized yet, as in smoothing off, use the actual unsmoothed rx channel data
             *dst = rxDataToSmooth[i];
@@ -520,11 +573,11 @@ static FAST_CODE void processRcSmoothingFilter(void)
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         // Feedforward smoothing
-        feedforwardSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
+        feedforwardSmoothed[axis] = rcSmoothingData.applyFn((filter_t *)&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
         // Horizon mode smoothing of rcDeflection on pitch and roll to provide a smooth angle element
         const bool smoothRcDeflection = FLIGHT_MODE(HORIZON_MODE) && rcSmoothingData.filterInitialized;
         if (smoothRcDeflection && axis < FD_YAW) {
-            rcDeflectionSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
+            rcDeflectionSmoothed[axis] = rcSmoothingData.applyFn((filter_t *)&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
         } else {
             rcDeflectionSmoothed[axis] = rcDeflection[axis];
         }

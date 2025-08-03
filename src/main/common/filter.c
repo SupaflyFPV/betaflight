@@ -28,7 +28,8 @@
 #include "common/maths.h"
 #include "common/utils.h"
 
-#define BIQUAD_Q 1.0f / sqrtf(2.0f)     /* quality factor - 2nd order butterworth*/
+// quality factor - 2nd order Butterworth
+#define BIQUAD_Q 1.0f / sqrtf(2.0f)
 
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
@@ -165,7 +166,7 @@ float filterGetNotchQ(float centerFreq, float cutoffFreq)
     return centerFreq * cutoffFreq / (centerFreq * centerFreq - cutoffFreq * cutoffFreq);
 }
 
-/* sets up a biquad filter as a 2nd order butterworth LPF */
+/* sets up a biquad filter as a 2nd order LPF using the selected response */
 void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
     biquadFilterInit(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);

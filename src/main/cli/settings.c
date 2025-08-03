@@ -424,6 +424,7 @@ static const char * const lookupOverclock[] = {
 };
 #endif
 
+
 #ifdef USE_LED_STRIP
     static const char * const lookupLedStripFormatRGB[] = {
         "GRB", "RGB", "GRBW"
@@ -467,6 +468,10 @@ static const char * const lookupTableAcroTrainerDebug[] = {
 #ifdef USE_RC_SMOOTHING_FILTER
 static const char * const lookupTableRcSmoothingDebug[] = {
     "ROLL", "PITCH", "YAW", "THROTTLE"
+};
+
+static const char * const lookupTableRcSmoothingFilterType[] = {
+    "PT2", "PT3"
 };
 #endif // USE_RC_SMOOTHING_FILTER
 
@@ -687,6 +692,7 @@ const lookupTableEntry_t lookupTables[] = {
 #endif // USE_ACRO_TRAINER
 #ifdef USE_RC_SMOOTHING_FILTER
     LOOKUP_TABLE_ENTRY(lookupTableRcSmoothingDebug),
+    LOOKUP_TABLE_ENTRY(lookupTableRcSmoothingFilterType),
 #endif // USE_RC_SMOOTHING_FILTER
 #ifdef USE_VTX_COMMON
     LOOKUP_TABLE_ENTRY(lookupTableVtxLowPowerDisarm),
@@ -853,6 +859,7 @@ const clivalue_t valueTable[] = {
 
 #ifdef USE_RC_SMOOTHING_FILTER
     { PARAM_NAME_RC_SMOOTHING,                   VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_mode) },
+    { PARAM_NAME_RC_SMOOTHING_FILTER_TYPE,       VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_RC_SMOOTHING_FILTER_TYPE }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_filter_type) },
     { PARAM_NAME_RC_SMOOTHING_AUTO_FACTOR,       VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { RC_SMOOTHING_AUTO_FACTOR_MIN, RC_SMOOTHING_AUTO_FACTOR_MAX }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_auto_factor_rpy) },
     { PARAM_NAME_RC_SMOOTHING_AUTO_FACTOR_THROTTLE, VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { RC_SMOOTHING_AUTO_FACTOR_MIN, RC_SMOOTHING_AUTO_FACTOR_MAX }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_auto_factor_throttle) },
     { PARAM_NAME_RC_SMOOTHING_SETPOINT_CUTOFF,    VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, UINT8_MAX }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_setpoint_cutoff) },
