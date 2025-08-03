@@ -1392,7 +1392,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // -----calculate D component
 
-        float pidSetpointDelta = 0;
+        float pidSetpointDelta = 0.0f;          // feedforward setpoint delta (deg/s)
+        float pidSetpointDerivative = 0.0f;     // derivative of setpoint for legacy weighting (deg/s^2)
 
 #if defined(USE_FEEDFORWARD) && defined(USE_ACC)
         if (FLIGHT_MODE(ANGLE_MODE) && pidRuntime.axisInAngleMode[axis]) {
@@ -1412,18 +1413,27 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             pidSetpointDelta = getFeedforward(axis);
         }
 #endif
+        if (legacySetpointWeight) {
+            pidSetpointDerivative = (currentPidSetpoint - pidRuntime.previousPidSetpoint[axis]) * pidRuntime.pidFrequency;
+        }
         pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint; // this is the value sent to blackbox, and used for D-max setpoint
 
         const float transition = (relaxFactor > 0.0f) ? MIN(1.0f, getRcDeflectionAbs(axis) * relaxFactor) : 1.0f;
 
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
-            float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            const float measurementDelta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
+            float delta = measurementDelta;
+            float setpointComponent = 0.0f;
+            if (legacySetpointWeight) {
+                setpointComponent = dtermSetpointWeight * transition * pidSetpointDerivative;
+                delta += setpointComponent;
+            }
             float preTpaD = pidRuntime.pidCoefficient[axis].Kd * delta;
 
 #if defined(USE_ACC)
             if (cmpTimeUs(currentTimeUs, levelModeStartTimeUs) > CRASH_RECOVERY_DETECTION_DELAY_US) {
-                detectAndSetCrashRecovery(pidProfile->crash_recovery, axis, currentTimeUs, delta, errorRate);
+                detectAndSetCrashRecovery(pidProfile->crash_recovery, axis, currentTimeUs, measurementDelta, errorRate);
             }
 #endif
 
@@ -1453,24 +1463,21 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
 
             const float tpaFactor = getTpaFactor(pidProfile, axis, TERM_D);
-            float measurementD = preTpaD * tpaFactor;
-            float pidFeedForward = 0.0f;
-            // When legacy weighting is enabled, add a portion of the setpoint derivative to D
+            float pidWeightedSetpoint = 0.0f;
             if (legacySetpointWeight) {
-                pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * dtermSetpointWeight * transition * pidSetpointDelta * tpaFactor * pidRuntime.pidFrequency;
+                pidWeightedSetpoint = pidRuntime.pidCoefficient[axis].Kd * setpointComponent * tpaFactor;
             }
-            // Combine measurement D-term with optional legacy feedforward component
-            pidData[axis].D = measurementD + pidFeedForward;
+            pidData[axis].D = preTpaD * tpaFactor;
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, lrintf(preTpaD * D_LPF_PRE_TPA_SCALE));
             }
             if (axis == (int)gyro.gyroDebugAxis) {
-                // Log raw gyro delta, setpoint derivative, feedforward contribution and final D-term
-                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 0, lrintf(delta));
-                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 1, lrintf(pidSetpointDelta * pidRuntime.pidFrequency));
-                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 2, lrintf(pidFeedForward));
+                // Log measurement delta, setpoint derivative, weighted contribution and final D-term
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 0, lrintf(measurementDelta));
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 1, lrintf(pidSetpointDerivative));
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 2, lrintf(pidWeightedSetpoint));
                 DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 3, lrintf(pidData[axis].D));
             }
         } else {
