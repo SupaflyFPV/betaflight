@@ -413,6 +413,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 
     // Store flags and scale factors used by the legacy setpoint-weighted D-term mode
     legacySetpointWeight = pidProfile->legacy_setpoint_weight;
+    // dtermSetpointWeight is stored as a percentage*100 (0..2000) so divide to obtain scalar 0.0..20.0
     dtermSetpointWeight = pidProfile->dtermSetpointWeight / 100.0f;
 
     if (pidProfile->setpointRelaxRatio == 0) {
