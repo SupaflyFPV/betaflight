@@ -579,10 +579,16 @@ STATIC_UNIT_TESTED FAST_CODE_NOINLINE float pidLevel(int axis, const pidProfile_
     const float maxSetpointRateInv = 1.0f / getMaxRcRate(axis);
 
 #ifdef USE_FEEDFORWARD
-    angleFeedforward = angleLimit * getFeedforward(axis) * pidRuntime.angleFeedforwardGain * maxSetpointRateInv;
-    //  angle feedforward must be heavily filtered, at the PID loop rate, with limited user control over time constant
-    // it MUST be very delayed to avoid early overshoot and being too aggressive
-    angleFeedforward = pt3FilterApply(&pidRuntime.angleFeedforwardPt3[axis], angleFeedforward);
+    // modern feedforward would add a stick‑based rate change here.  When the
+    // legacy setpoint weight is enabled we disable all feedforward paths so
+    // stick influence enters the loop only via the D-term mixing below.
+    if (!legacySetpointWeight) {
+        angleFeedforward = angleLimit * getFeedforward(axis) * pidRuntime.angleFeedforwardGain * maxSetpointRateInv;
+        // angle feedforward must be heavily filtered at the PID loop rate with
+        // limited user control over the time constant to avoid early overshoot
+        // and excessive aggression.
+        angleFeedforward = pt3FilterApply(&pidRuntime.angleFeedforwardPt3[axis], angleFeedforward);
+    }
 #endif
 
     float angleTarget = angleLimit * currentPidSetpoint * maxSetpointRateInv;
@@ -1394,35 +1400,38 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
         // -----calculate D component
 
-        float pidSetpointDelta = 0.0f;          // feedforward setpoint delta (deg/s)
+        float feedforwardDelta = 0.0f;          // feedforward setpoint delta (deg/s)
         float pidSetpointDerivative = 0.0f;     // derivative of setpoint for legacy weighting (deg/s^2)
 
-#if defined(USE_FEEDFORWARD) && defined(USE_ACC)
-        if (FLIGHT_MODE(ANGLE_MODE) && pidRuntime.axisInAngleMode[axis]) {
-            // this axis is fully under self-levelling control
-            // it will already have stick based feedforward applied in the input to their angle setpoint
-            // a simple setpoint Delta can be used to for PID feedforward element for motor lag on these axes
-            // however RC steps come in, via angle setpoint
-            // and setpoint RC smoothing must have a cutoff half normal to remove those steps completely
-            // the RC stepping does not come in via the feedforward, which is very well smoothed already
-            // if uncommented, and the forcing to zero is removed, the two following lines will restore PID feedforward to angle mode axes
-            // but for now let's see how we go without it (which was the case before 4.5 anyway)
-//            pidSetpointDelta = currentPidSetpoint - pidRuntime.previousPidSetpoint[axis];
-//            pidSetpointDelta *= pidRuntime.pidFrequency * pidRuntime.angleFeedforwardGain;
-            pidSetpointDelta = 0.0f;
-        } else {
-            // the axis is operating as a normal acro axis, so use normal feedforard from rc.c
-            pidSetpointDelta = getFeedforward(axis);
-        }
-#endif
+        // When legacy weighting is active we derive the setpoint derivative from
+        // the change in the already smoothed setpoint and optionally run it
+        // through the RC smoothing derivative filter before converting to deg/s².
+        // Otherwise, feedforward uses the normal pipeline which already includes
+        // its own smoothing and jitter reduction.
         if (legacySetpointWeight && !pidRuntime.axisInAngleMode[axis]) {
-            // Reuse the feedforward path to obtain a smoothed rate change.  The
-            // getFeedforward() call above supplies the RC delta (deg/s) after all
-            // feedforward specific filtering such as RC smoothing auto and
-            // feedforward_lpf.  Converting this delta to deg/s^2 matches the
-            // legacy setpoint derivative used by Betaflight 3.4.
+            float pidSetpointDelta = currentPidSetpoint - pidRuntime.previousPidSetpoint[axis];
+#ifdef USE_RC_SMOOTHING_FILTER
+            rcSmoothingFilter_t *const rcSmoothingData = getRcSmoothingData();
+            if (rcSmoothingData->filterInitialized) {
+                pidSetpointDelta = pt3FilterApply(&rcSmoothingData->filterFeedforward[axis], pidSetpointDelta);
+            }
+#endif
             pidSetpointDerivative = pidSetpointDelta * pidRuntime.pidFrequency;
         }
+
+#if defined(USE_FEEDFORWARD) && defined(USE_ACC)
+        if (!legacySetpointWeight) {
+            if (FLIGHT_MODE(ANGLE_MODE) && pidRuntime.axisInAngleMode[axis]) {
+                // angle axes already incorporate feedforward via the input to the
+                // angle setpoint so no additional feedforward is required here
+                feedforwardDelta = 0.0f;
+            } else {
+                // the axis is operating as a normal acro axis, so use the
+                // standard feedforward path from rc.c
+                feedforwardDelta = getFeedforward(axis);
+            }
+        }
+#endif
 
         // Store setpoint for next loop; this is also logged and used by D-max
         pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint;
@@ -1453,7 +1462,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             if (pidRuntime.dMaxPercent[axis] > 1.0f) {
                 float dMaxGyroFactor = pt2FilterApply(&pidRuntime.dMaxRange[axis], delta);
                 dMaxGyroFactor = fabsf(dMaxGyroFactor) * pidRuntime.dMaxGyroGain;
-                const float dMaxSetpointFactor = fabsf(pidSetpointDelta) * pidRuntime.dMaxSetpointGain;
+                const float dMaxSetpointFactor = fabsf(feedforwardDelta) * pidRuntime.dMaxSetpointGain;
                 const float dMaxBoost = fmaxf(dMaxGyroFactor, dMaxSetpointFactor);
                 // dMaxBoost starts at zero, and by 1.0 we get Dmax, but it can exceed 1.
                 dMaxMultiplier += (pidRuntime.dMaxPercent[axis] - 1.0f) * dMaxBoost;
@@ -1511,7 +1520,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 
 #ifdef USE_ABSOLUTE_CONTROL
         // include abs control correction in feedforward
-        pidSetpointDelta += setpointCorrection - pidRuntime.oldSetpointCorrection[axis];
+        feedforwardDelta += setpointCorrection - pidRuntime.oldSetpointCorrection[axis];
         pidRuntime.oldSetpointCorrection[axis] = setpointCorrection;
 #endif
         // no feedforward in launch control
@@ -1520,7 +1529,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             pidData[axis].F = 0;
         } else {
             const float feedforwardGain = launchControlActive ? 0.0f : pidRuntime.pidCoefficient[axis].Kf;
-            pidData[axis].F = feedforwardGain * pidSetpointDelta;
+            pidData[axis].F = feedforwardGain * feedforwardDelta;
         }
 
 #ifdef USE_YAW_SPIN_RECOVERY
