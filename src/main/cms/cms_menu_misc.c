@@ -145,8 +145,7 @@ static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
     motorConfig_motorIdle = motorConfig()->motorIdle / 10;
     rxConfig_fpvCamAngleDegrees = rxConfig()->fpvCamAngleDegrees;
     mixerConfig_crashflip_rate = mixerConfig()->crashflip_rate;
-    // Load current profile values so the user can edit them interactively
-    // Capture current values from active profile so we can modify them interactively
+    // Load current PID profile values for interactive tuning
     cmsx_dtermSetpointWeight = currentPidProfile->dtermSetpointWeight;
     cmsx_setpointRelaxRatio = currentPidProfile->setpointRelaxRatio;
 
@@ -161,8 +160,7 @@ static const void *cmsx_menuMiscOnExit(displayPort_t *pDisp, const OSD_Entry *se
     motorConfigMutable()->motorIdle = 10 * motorConfig_motorIdle;
     rxConfigMutable()->fpvCamAngleDegrees = rxConfig_fpvCamAngleDegrees;
     mixerConfigMutable()->crashflip_rate = mixerConfig_crashflip_rate;
-    // Persist the temporary values back into the active PID profile
-    // Persist edited values back into profile
+    // Save edited values back into the active PID profile
     currentPidProfile->dtermSetpointWeight = cmsx_dtermSetpointWeight;
     currentPidProfile->setpointRelaxRatio = cmsx_setpointRelaxRatio;
     // Recalculate runtime coefficients so changes take effect immediately
