@@ -4991,12 +4991,7 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
     rcSmoothingFilter_t *rcSmoothingData = getRcSmoothingData();
     cliPrint("# RC Smoothing Type: ");
     if (rxConfig()->rc_smoothing_mode) {
-        const char *typeStr = "PT3";
-        if (rxConfig()->rc_smoothing_filter_type == FILTER_PT2) {
-            typeStr = "PT2";
-        } else if (rxConfig()->rc_smoothing_filter_type == FILTER_BIQUAD) {
-            typeStr = "BIQUAD";
-        }
+        const char *typeStr = (rxConfig()->rc_smoothing_filter_type == RC_SMOOTHING_FILTER_PT2) ? "PT2" : "PT3";
         cliPrintLine(typeStr);
         if (rcSmoothingAutoCalculate()) {
             cliPrint("# Detected Rx frequency: ");

@@ -37,7 +37,6 @@ typedef struct systemConfig_s {
     uint8_t task_statistics;
     uint8_t rateProfile6PosSwitch;
     uint8_t cpu_overclock;
-    uint8_t biquad_response;
     uint8_t powerOnArmingGraceTime; // in seconds
     char boardIdentifier[sizeof(TARGET_BOARD_IDENTIFIER) + 1];
     uint8_t hseMhz;                 // Only used for F4 and G4 targets

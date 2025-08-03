@@ -88,12 +88,11 @@ extern float rcCommand[4];
 typedef union rcSmoothingFilterState_u {
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
-    biquadFilter_t biquadFilter;
 } rcSmoothingFilterState_t;
 
 typedef struct rcSmoothingFilter_s {
     bool filterInitialized;
-    lowpassFilterType_e filterType;
+    uint8_t filterType;                 // rc smoothing filter type: 0 = PT2, 1 = PT3
     filterApplyFnPtr applyFn;
     rcSmoothingFilterState_t filterSetpoint[4];
     rcSmoothingFilterState_t filterRcDeflection[RP_AXIS_COUNT];

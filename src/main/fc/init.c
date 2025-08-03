@@ -410,7 +410,6 @@ void init(void)
 #endif
 
     debugMode = systemConfig()->debug_mode;
-    setBiquadResponse(systemConfig()->biquad_response);
 
 #ifdef TARGET_PREINIT
     targetPreInit();

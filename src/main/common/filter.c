@@ -28,19 +28,8 @@
 #include "common/maths.h"
 #include "common/utils.h"
 
-static biquadResponse_e biquadResponse = BIQUAD_RESPONSE_BUTTERWORTH;
-
-// Retrieve Q value based on the selected biquad response (Butterworth or Bessel)
-float getBiquadQ(void)
-{
-    return 1.0f / sqrtf(biquadResponse == BIQUAD_RESPONSE_BESSEL ? 3.0f : 2.0f);
-}
-
-// Allow runtime selection of the biquad response via the CLI
-void setBiquadResponse(biquadResponse_e response)
-{
-    biquadResponse = response;
-}
+// quality factor - 2nd order Butterworth
+#define BIQUAD_Q 1.0f / sqrtf(2.0f)
 
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
@@ -180,7 +169,7 @@ float filterGetNotchQ(float centerFreq, float cutoffFreq)
 /* sets up a biquad filter as a 2nd order LPF using the selected response */
 void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterInit(filter, filterFreq, refreshRate, getBiquadQ(), FILTER_LPF, 1.0f);
+    biquadFilterInit(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
 }
 
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight)
@@ -241,7 +230,7 @@ FAST_CODE void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint
 
 FAST_CODE void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterUpdate(filter, filterFreq, refreshRate, getBiquadQ(), FILTER_LPF, 1.0f);
+    biquadFilterUpdate(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
 }
 
 /* Computes a biquadFilter_t filter on a sample (slightly less precise than df2 but works in dynamic mode) */

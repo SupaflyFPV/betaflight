@@ -35,14 +35,6 @@ typedef enum {
 } lowpassFilterType_e;
 
 typedef enum {
-    BIQUAD_RESPONSE_BUTTERWORTH = 0,
-    BIQUAD_RESPONSE_BESSEL
-} biquadResponse_e;
-
-void setBiquadResponse(biquadResponse_e response);
-float getBiquadQ(void);
-
-typedef enum {
     FILTER_LPF,    // 2nd order Butterworth section
     FILTER_NOTCH,
     FILTER_BPF,

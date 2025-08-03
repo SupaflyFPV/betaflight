@@ -103,7 +103,7 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .airModeActivateThreshold = 25,
         .max_aux_channel = DEFAULT_AUX_CHANNEL_COUNT,
         .rc_smoothing_mode = 1,
-        .rc_smoothing_filter_type = FILTER_PT3,
+        .rc_smoothing_filter_type = RC_SMOOTHING_FILTER_PT3,
         .rc_smoothing_setpoint_cutoff = 0,
         .rc_smoothing_feedforward_cutoff = 0,
         .rc_smoothing_throttle_cutoff = 0,

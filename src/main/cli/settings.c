@@ -424,9 +424,6 @@ static const char * const lookupOverclock[] = {
 };
 #endif
 
-static const char * const lookupTableBiquadResponse[] = {
-    "BUTTERWORTH", "BESSEL"
-};
 
 #ifdef USE_LED_STRIP
     static const char * const lookupLedStripFormatRGB[] = {
@@ -474,7 +471,7 @@ static const char * const lookupTableRcSmoothingDebug[] = {
 };
 
 static const char * const lookupTableRcSmoothingFilterType[] = {
-    "PT1", "BIQUAD", "PT2", "PT3"
+    "PT2", "PT3"
 };
 #endif // USE_RC_SMOOTHING_FILTER
 
@@ -679,7 +676,6 @@ const lookupTableEntry_t lookupTables[] = {
 #ifdef USE_OVERCLOCK
     LOOKUP_TABLE_ENTRY(lookupOverclock),
 #endif
-    LOOKUP_TABLE_ENTRY(lookupTableBiquadResponse),
 #ifdef USE_LED_STRIP
     LOOKUP_TABLE_ENTRY(lookupLedStripFormatRGB),
 #endif
@@ -1717,7 +1713,6 @@ const clivalue_t valueTable[] = {
 #ifdef USE_OVERCLOCK
     { "cpu_overclock",              VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OVERCLOCK }, PG_SYSTEM_CONFIG, offsetof(systemConfig_t, cpu_overclock) },
 #endif
-    { "biquad_response",           VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_BIQUAD_RESPONSE }, PG_SYSTEM_CONFIG, offsetof(systemConfig_t, biquad_response) },
     { "pwr_on_arm_grace",           VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 30 }, PG_SYSTEM_CONFIG, offsetof(systemConfig_t, powerOnArmingGraceTime) },
     { "enable_stick_arming",        VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_SYSTEM_CONFIG, offsetof(systemConfig_t, enableStickArming) },
 

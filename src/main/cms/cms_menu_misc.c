@@ -43,6 +43,7 @@
 #include "drivers/time.h"
 
 #include "fc/rc_controls.h"
+#include "cli/settings.h" // for lookupTableOffOn
 
 #include "flight/mixer.h"
 
@@ -130,6 +131,13 @@ CMS_Menu cmsx_menuRcPreview = {
 static uint8_t motorConfig_motorIdle;
 static uint8_t rxConfig_fpvCamAngleDegrees;
 static uint8_t mixerConfig_crashflip_rate;
+#ifdef USE_RC_SMOOTHING_FILTER
+static uint8_t rxConfig_rcSmoothingMode;
+static uint8_t rxConfig_rcSmoothingFilterType;
+static const char * const lookupTableRcSmoothingFilterType[] = {
+    "PT2", "PT3"
+};
+#endif
 
 static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
 {
@@ -138,6 +146,10 @@ static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
     motorConfig_motorIdle = motorConfig()->motorIdle / 10;
     rxConfig_fpvCamAngleDegrees = rxConfig()->fpvCamAngleDegrees;
     mixerConfig_crashflip_rate = mixerConfig()->crashflip_rate;
+#ifdef USE_RC_SMOOTHING_FILTER
+    rxConfig_rcSmoothingMode = rxConfig()->rc_smoothing_mode;
+    rxConfig_rcSmoothingFilterType = rxConfig()->rc_smoothing_filter_type;
+#endif
 
     return NULL;
 }
@@ -150,6 +162,10 @@ static const void *cmsx_menuMiscOnExit(displayPort_t *pDisp, const OSD_Entry *se
     motorConfigMutable()->motorIdle = 10 * motorConfig_motorIdle;
     rxConfigMutable()->fpvCamAngleDegrees = rxConfig_fpvCamAngleDegrees;
     mixerConfigMutable()->crashflip_rate = mixerConfig_crashflip_rate;
+#ifdef USE_RC_SMOOTHING_FILTER
+    rxConfigMutable()->rc_smoothing_mode = rxConfig_rcSmoothingMode;
+    rxConfigMutable()->rc_smoothing_filter_type = rxConfig_rcSmoothingFilterType;
+#endif
 
     return NULL;
 }
@@ -161,6 +177,10 @@ static const OSD_Entry menuMiscEntries[]=
     { "IDLE OFFSET",   OME_UINT8 | REBOOT_REQUIRED, NULL, &(OSD_UINT8_t) { &motorConfig_motorIdle,      0,  200, 1 } },
     { "FPV CAM ANGLE", OME_UINT8,                   NULL, &(OSD_UINT8_t) { &rxConfig_fpvCamAngleDegrees, 0,   90, 1 } },
     { "CRASHFLIP RATE", OME_UINT8 | REBOOT_REQUIRED,   NULL,          &(OSD_UINT8_t) { &mixerConfig_crashflip_rate,           0,  100, 1 } },
+#ifdef USE_RC_SMOOTHING_FILTER
+    { "RC SMOOTHING", OME_TAB, NULL, &(OSD_TAB_t){ &rxConfig_rcSmoothingMode, 1, lookupTableOffOn } },
+    { "RC SM FILTER", OME_TAB, NULL, &(OSD_TAB_t){ &rxConfig_rcSmoothingFilterType, 1, lookupTableRcSmoothingFilterType } },
+#endif
     { "RC PREV",       OME_Submenu, cmsMenuChange, &cmsx_menuRcPreview},
 #ifdef USE_GPS_LAP_TIMER
     { "GPS LAP TIMER",  OME_Submenu, cmsMenuChange, &cms_menuGpsLapTimer },

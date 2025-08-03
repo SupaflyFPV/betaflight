@@ -361,7 +361,7 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
             const float freq = (i < THROTTLE) ? setpointCutoffFrequency : smoothingData->throttleCutoffFrequency;
             switch (smoothingData->filterType) {
-            case FILTER_PT2:
+            case RC_SMOOTHING_FILTER_PT2:
                 {
                     const float k = pt2FilterGain(freq, dT);
                     if (!smoothingData->filterInitialized) {
@@ -371,7 +371,8 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                     }
                 }
                 break;
-            case FILTER_PT3:
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
                 {
                     const float k = pt3FilterGain(freq, dT);
                     if (!smoothingData->filterInitialized) {
@@ -381,20 +382,11 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                     }
                 }
                 break;
-            case FILTER_BIQUAD:
-                if (!smoothingData->filterInitialized) {
-                    biquadFilterInitLPF(&smoothingData->filterSetpoint[i].biquadFilter, freq, targetPidLooptime);
-                } else {
-                    biquadFilterUpdateLPF(&smoothingData->filterSetpoint[i].biquadFilter, freq, targetPidLooptime);
-                }
-                break;
-            default:
-                break;
             }
         }
         for (int i = FD_ROLL; i < FD_YAW; i++) {
             switch (smoothingData->filterType) {
-            case FILTER_PT2:
+            case RC_SMOOTHING_FILTER_PT2:
                 {
                     const float k = pt2FilterGain(setpointCutoffFrequency, dT);
                     if (!smoothingData->filterInitialized) {
@@ -404,7 +396,8 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                     }
                 }
                 break;
-            case FILTER_PT3:
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
                 {
                     const float k = pt3FilterGain(setpointCutoffFrequency, dT);
                     if (!smoothingData->filterInitialized) {
@@ -414,15 +407,6 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                     }
                 }
                 break;
-            case FILTER_BIQUAD:
-                if (!smoothingData->filterInitialized) {
-                    biquadFilterInitLPF(&smoothingData->filterRcDeflection[i].biquadFilter, setpointCutoffFrequency, targetPidLooptime);
-                } else {
-                    biquadFilterUpdateLPF(&smoothingData->filterRcDeflection[i].biquadFilter, setpointCutoffFrequency, targetPidLooptime);
-                }
-                break;
-            default:
-                break;
             }
         }
     }
@@ -430,7 +414,7 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
        for (int i = FD_ROLL; i <= FD_YAW; i++) {
             const float freq = smoothingData->feedforwardCutoffFrequency;
             switch (smoothingData->filterType) {
-            case FILTER_PT2:
+            case RC_SMOOTHING_FILTER_PT2:
                 {
                     const float k = pt2FilterGain(freq, dT);
                     if (!smoothingData->filterInitialized) {
@@ -440,7 +424,8 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                     }
                 }
                 break;
-            case FILTER_PT3:
+            case RC_SMOOTHING_FILTER_PT3:
+            default:
                 {
                     const float k = pt3FilterGain(freq, dT);
                     if (!smoothingData->filterInitialized) {
@@ -449,15 +434,6 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
                         pt3FilterUpdateCutoff(&smoothingData->filterFeedforward[i].pt3Filter, k);
                     }
                 }
-                break;
-            case FILTER_BIQUAD:
-                if (!smoothingData->filterInitialized) {
-                    biquadFilterInitLPF(&smoothingData->filterFeedforward[i].biquadFilter, freq, targetPidLooptime);
-                } else {
-                    biquadFilterUpdateLPF(&smoothingData->filterFeedforward[i].biquadFilter, freq, targetPidLooptime);
-                }
-                break;
-            default:
                 break;
             }
         }
@@ -493,15 +469,10 @@ static FAST_CODE void processRcSmoothingFilter(void)
         rcSmoothingData.debugAxis = rxConfig()->rc_smoothing_debug_axis;
         rcSmoothingData.filterType = rxConfig()->rc_smoothing_filter_type;
         switch (rcSmoothingData.filterType) {
-        case FILTER_PT2:
+        case RC_SMOOTHING_FILTER_PT2:
             rcSmoothingData.applyFn = (filterApplyFnPtr)pt2FilterApply;
             break;
-        case FILTER_PT3:
-            rcSmoothingData.applyFn = (filterApplyFnPtr)pt3FilterApply;
-            break;
-        case FILTER_BIQUAD:
-            rcSmoothingData.applyFn = (filterApplyFnPtr)biquadFilterApply;
-            break;
+        case RC_SMOOTHING_FILTER_PT3:
         default:
             rcSmoothingData.applyFn = (filterApplyFnPtr)pt3FilterApply;
             break;
