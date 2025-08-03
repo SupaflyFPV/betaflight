@@ -1414,6 +1414,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
 #endif
         pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint; // this is the value sent to blackbox, and used for D-max setpoint
 
+        const float transition = (relaxFactor > 0.0f) ? MIN(1.0f, getRcDeflectionAbs(axis) * relaxFactor) : 1.0f;
+
         // disable D if launch control is active
         if ((pidRuntime.pidCoefficient[axis].Kd > 0) && !launchControlActive) {
             float delta = - (gyroRateDterm[axis] - previousGyroRateDterm[axis]) * pidRuntime.pidFrequency;
@@ -1450,20 +1452,34 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             preTpaD *= dMaxMultiplier;
 #endif
 
-            pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D);
+            const float tpaFactor = getTpaFactor(pidProfile, axis, TERM_D);
+            float measurementD = preTpaD * tpaFactor;
+            float pidFeedForward = 0.0f;
             if (legacySetpointWeight) {
-                const float pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * dtermSetpointWeight * transition * pidSetpointDelta * tpaFactor * pidRuntime.pidFrequency;
-                pidData[axis].D += pidFeedForward;
+                pidFeedForward = pidRuntime.pidCoefficient[axis].Kd * dtermSetpointWeight * transition * pidSetpointDelta * tpaFactor * pidRuntime.pidFrequency;
             }
+            pidData[axis].D = measurementD + pidFeedForward;
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, lrintf(preTpaD * D_LPF_PRE_TPA_SCALE));
             }
+            if (axis == (int)gyro.gyroDebugAxis) {
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 0, lrintf(delta));
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 1, lrintf(pidSetpointDelta * pidRuntime.pidFrequency));
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 2, lrintf(pidFeedForward));
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 3, lrintf(pidData[axis].D));
+            }
         } else {
             pidData[axis].D = 0;
             if (axis != FD_YAW) {
                 DEBUG_SET(DEBUG_D_LPF, axis - FD_ROLL + 2, 0);
+            }
+            if (axis == (int)gyro.gyroDebugAxis) {
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 0, 0);
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 1, 0);
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 2, 0);
+                DEBUG_SET(DEBUG_SETPOINT_WEIGHT, 3, 0);
             }
         }
 
