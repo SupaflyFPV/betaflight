@@ -1416,11 +1416,14 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         }
 #endif
         if (legacySetpointWeight && !pidRuntime.axisInAngleMode[axis]) {
-            // Compute derivative of the stick setpoint (deg/s) when legacy mode is active and the axis
-            // is operating in pure rate mode. Using angle modes would reintroduce the level controller
-            // into the derivative term which Betaflight 3.4 intentionally avoided.
-            pidSetpointDerivative = (currentPidSetpoint - pidRuntime.previousPidSetpoint[axis]) * pidRuntime.pidFrequency;
+            // Reuse the feedforward path to obtain a smoothed rate change.  The
+            // getFeedforward() call above supplies the RC delta (deg/s) after all
+            // feedforward specific filtering such as RC smoothing auto and
+            // feedforward_lpf.  Converting this delta to deg/s^2 matches the
+            // legacy setpoint derivative used by Betaflight 3.4.
+            pidSetpointDerivative = pidSetpointDelta * pidRuntime.pidFrequency;
         }
+
         // Store setpoint for next loop; this is also logged and used by D-max
         pidRuntime.previousPidSetpoint[axis] = currentPidSetpoint;
 
