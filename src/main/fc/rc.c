@@ -567,9 +567,19 @@ static FAST_CODE void processRcSmoothingFilter(void)
     }
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-        // Feedforward smoothing uses the selected filter type for each axis
-        feedforwardSmoothed[axis] = rcSmoothingData.filterFeedforward[axis].applyFn((filter_t *)&rcSmoothingData.filterFeedforward[axis].state, feedforwardRaw[axis]);
-        // Horizon mode smoothing of rcDeflection on pitch and roll to provide a smooth angle element
+        if (rcSmoothingData.filterInitialized) {
+            // Feedforward smoothing uses the selected filter type for each axis once
+            // the filter has been initialized.
+            feedforwardSmoothed[axis] = rcSmoothingData.filterFeedforward[axis].applyFn((filter_t *)&rcSmoothingData.filterFeedforward[axis].state, feedforwardRaw[axis]);
+        } else {
+            // During startup the filter may not yet be configured; in this case pass
+            // through the unfiltered feedforward to avoid calling an uninitialised
+            // function pointer which would hard fault on some MCUs.
+            feedforwardSmoothed[axis] = feedforwardRaw[axis];
+        }
+
+        // Horizon mode smoothing of rcDeflection on pitch and roll to provide a
+        // smooth angle element
         const bool smoothRcDeflection = FLIGHT_MODE(HORIZON_MODE) && rcSmoothingData.filterInitialized;
         if (smoothRcDeflection && axis < FD_YAW) {
             rcDeflectionSmoothed[axis] = rcSmoothingData.filterRcDeflection[axis].applyFn((filter_t *)&rcSmoothingData.filterRcDeflection[axis].state, rcDeflection[axis]);
