@@ -13,6 +13,7 @@ PG_SRC = \
             pg/dashboard.c \
             pg/displayport_profiles.c \
             pg/dyn_notch.c \
+            pg/filter.c \
             pg/flash.c \
             pg/gimbal.c \
             pg/gps.c \
