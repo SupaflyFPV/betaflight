@@ -547,7 +547,7 @@ static FAST_CODE void processRcSmoothingLinear(void)
     }
 
     if (isRxDataNew) {
-        const int steps = MAX(1, currentRxIntervalUs / targetPidLooptime);
+        const int steps = MAX(1U, currentRxIntervalUs / targetPidLooptime);
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
             const float target = i == THROTTLE ? rcCommand[i] : rawSetpoint[i];
             step[i] = (target - output[i]) / steps;
