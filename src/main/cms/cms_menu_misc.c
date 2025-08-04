@@ -127,6 +127,58 @@ CMS_Menu cmsx_menuRcPreview = {
     .entries = cmsx_menuRcEntries
 };
 
+//
+// RC smoothing configuration menu
+//
+static uint8_t cmsx_rcSetpointType;
+static uint8_t cmsx_rcFeedforwardType;
+static uint8_t cmsx_rcSetpointCutoff;
+static uint8_t cmsx_rcFeedforwardCutoff;
+
+// names used for filter type selection tabs
+static const char * const cmsx_lookupRcFilterType[] = { "LIN", "PT1", "PT2", "PT3", "BES" };
+
+static const void *cmsx_menuRcSmoothOnEnter(displayPort_t *pDisp)
+{
+    UNUSED(pDisp);
+
+    cmsx_rcSetpointType = rxConfig()->rc_smoothing_setpoint_type;
+    cmsx_rcFeedforwardType = rxConfig()->rc_smoothing_feedforward_type;
+    cmsx_rcSetpointCutoff = rxConfig()->rc_smoothing_setpoint_cutoff;
+    cmsx_rcFeedforwardCutoff = rxConfig()->rc_smoothing_feedforward_cutoff;
+
+    return NULL;
+}
+
+static const void *cmsx_menuRcSmoothOnExit(displayPort_t *pDisp, const OSD_Entry *self)
+{
+    UNUSED(pDisp);
+    UNUSED(self);
+
+    rxConfigMutable()->rc_smoothing_setpoint_type = cmsx_rcSetpointType;
+    rxConfigMutable()->rc_smoothing_feedforward_type = cmsx_rcFeedforwardType;
+    rxConfigMutable()->rc_smoothing_setpoint_cutoff = cmsx_rcSetpointCutoff;
+    rxConfigMutable()->rc_smoothing_feedforward_cutoff = cmsx_rcFeedforwardCutoff;
+
+    return NULL;
+}
+
+static const OSD_Entry cmsx_menuRcSmoothEntries[] = {
+    { "-- RC SMOOTH --", OME_Label, NULL, NULL },
+    { "SP TYPE",   OME_TAB,   NULL, &(OSD_TAB_t){ &cmsx_rcSetpointType,  ARRAYLEN(cmsx_lookupRcFilterType) - 1, cmsx_lookupRcFilterType } },
+    { "SP CUTOFF", OME_UINT8, NULL, &(OSD_UINT8_t){ &cmsx_rcSetpointCutoff, 0, 255, 1 } },
+    { "FF TYPE",   OME_TAB,   NULL, &(OSD_TAB_t){ &cmsx_rcFeedforwardType, ARRAYLEN(cmsx_lookupRcFilterType) - 1, cmsx_lookupRcFilterType } },
+    { "FF CUTOFF", OME_UINT8, NULL, &(OSD_UINT8_t){ &cmsx_rcFeedforwardCutoff, 0, 255, 1 } },
+    { "BACK",      OME_Back, NULL, NULL },
+    { NULL, OME_END, NULL, NULL }
+};
+
+CMS_Menu cmsx_menuRcSmooth = {
+    .onEnter = cmsx_menuRcSmoothOnEnter,
+    .onExit = cmsx_menuRcSmoothOnExit,
+    .entries = cmsx_menuRcSmoothEntries,
+};
+
 static uint8_t motorConfig_motorIdle;
 static uint8_t rxConfig_fpvCamAngleDegrees;
 static uint8_t mixerConfig_crashflip_rate;
@@ -161,6 +213,7 @@ static const OSD_Entry menuMiscEntries[]=
     { "IDLE OFFSET",   OME_UINT8 | REBOOT_REQUIRED, NULL, &(OSD_UINT8_t) { &motorConfig_motorIdle,      0,  200, 1 } },
     { "FPV CAM ANGLE", OME_UINT8,                   NULL, &(OSD_UINT8_t) { &rxConfig_fpvCamAngleDegrees, 0,   90, 1 } },
     { "CRASHFLIP RATE", OME_UINT8 | REBOOT_REQUIRED,   NULL,          &(OSD_UINT8_t) { &mixerConfig_crashflip_rate,           0,  100, 1 } },
+    { "RC SMTH",      OME_Submenu, cmsMenuChange, &cmsx_menuRcSmooth},
     { "RC PREV",       OME_Submenu, cmsMenuChange, &cmsx_menuRcPreview},
 #ifdef USE_GPS_LAP_TIMER
     { "GPS LAP TIMER",  OME_Submenu, cmsMenuChange, &cms_menuGpsLapTimer },

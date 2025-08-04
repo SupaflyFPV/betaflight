@@ -105,6 +105,8 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rc_smoothing_mode = 1,
         .rc_smoothing_setpoint_cutoff = 0,
         .rc_smoothing_feedforward_cutoff = 0,
+        .rc_smoothing_setpoint_type = RC_SMOOTHING_FILTER_PT3,
+        .rc_smoothing_feedforward_type = RC_SMOOTHING_FILTER_PT3,
         .rc_smoothing_throttle_cutoff = 0,
         .rc_smoothing_debug_axis = ROLL,
         .rc_smoothing_auto_factor_rpy = 30,

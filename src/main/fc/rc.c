@@ -337,6 +337,59 @@ bool getRxRateValid(void)
 
 // Initialize or update the filters base on either the manually selected cutoff, or
 // the auto-calculated cutoff frequency based on detected rx frame rate.
+// Bessel biquad quality factor used for the optional Bessel LPF.
+#define RC_BESSEL_Q 0.577f
+
+// Helper to initialise or update a generic filter stage based on the selected
+// type.  The function pointer stored in the stage is also refreshed so the main
+// loop can apply the filter without knowing the exact implementation type.
+static void rcFilterInitOrUpdate(rcFilterStage_t *stage, float cutoff, float dT, bool initialise)
+{
+    switch (stage->type) {
+    case RC_SMOOTHING_FILTER_LINEAR:
+        // Linear interpolation / pass through, nothing to initialise
+        stage->applyFn = nullFilterApply;
+        break;
+
+    case RC_SMOOTHING_FILTER_PT1:
+        if (initialise) {
+            pt1FilterInit(&stage->state.pt1, pt1FilterGain(cutoff, dT));
+        } else {
+            pt1FilterUpdateCutoff(&stage->state.pt1, pt1FilterGain(cutoff, dT));
+        }
+        stage->applyFn = (filterApplyFnPtr)pt1FilterApply;
+        break;
+
+    case RC_SMOOTHING_FILTER_PT2:
+        if (initialise) {
+            pt2FilterInit(&stage->state.pt2, pt2FilterGain(cutoff, dT));
+        } else {
+            pt2FilterUpdateCutoff(&stage->state.pt2, pt2FilterGain(cutoff, dT));
+        }
+        stage->applyFn = (filterApplyFnPtr)pt2FilterApply;
+        break;
+
+    case RC_SMOOTHING_FILTER_PT3:
+        if (initialise) {
+            pt3FilterInit(&stage->state.pt3, pt3FilterGain(cutoff, dT));
+        } else {
+            pt3FilterUpdateCutoff(&stage->state.pt3, pt3FilterGain(cutoff, dT));
+        }
+        stage->applyFn = (filterApplyFnPtr)pt3FilterApply;
+        break;
+
+    case RC_SMOOTHING_FILTER_BIQUAD_BESSEL:
+        // Biquad lowpass section with Bessel Q for maximally flat phase
+        if (initialise) {
+            biquadFilterInit(&stage->state.biquad, cutoff, (uint32_t)(dT * 1e6f), RC_BESSEL_Q, FILTER_LPF, 1.0f);
+        } else {
+            biquadFilterUpdate(&stage->state.biquad, cutoff, (uint32_t)(dT * 1e6f), RC_BESSEL_Q, FILTER_LPF, 1.0f);
+        }
+        stage->applyFn = (filterApplyFnPtr)biquadFilterApply;
+        break;
+    }
+}
+
 static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *smoothingData)
 {
     // in auto mode, calculate the RC smoothing cutoff from the smoothed Rx link frequency
@@ -360,39 +413,18 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
         // initialize or update the setpoint cutoff based filters
         const float setpointCutoffFrequency = smoothingData->setpointCutoffFrequency;
         for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
-            if (i < THROTTLE) {
-                if (!smoothingData->filterInitialized) {
-                    pt3FilterInit(&smoothingData->filterSetpoint[i], pt3FilterGain(setpointCutoffFrequency, dT));
-                } else {
-                    pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt3FilterGain(setpointCutoffFrequency, dT));
-                }
-            } else {
-                const float throttleCutoffFrequency = smoothingData->throttleCutoffFrequency;
-                if (!smoothingData->filterInitialized) {
-                    pt3FilterInit(&smoothingData->filterSetpoint[i], pt3FilterGain(throttleCutoffFrequency, dT));
-                } else {
-                    pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt3FilterGain(throttleCutoffFrequency, dT));
-                }
-            }
+            const float cutoff = (i < THROTTLE) ? setpointCutoffFrequency : smoothingData->throttleCutoffFrequency;
+            rcFilterInitOrUpdate(&smoothingData->filterSetpoint[i], cutoff, dT, !smoothingData->filterInitialized);
         }
         // initialize or update the RC Deflection filter
         for (int i = FD_ROLL; i < FD_YAW; i++) {
-            if (!smoothingData->filterInitialized) {
-                pt3FilterInit(&smoothingData->filterRcDeflection[i], pt3FilterGain(setpointCutoffFrequency, dT));
-            } else {
-                pt3FilterUpdateCutoff(&smoothingData->filterRcDeflection[i], pt3FilterGain(setpointCutoffFrequency, dT));
-            }
+            rcFilterInitOrUpdate(&smoothingData->filterRcDeflection[i], setpointCutoffFrequency, dT, !smoothingData->filterInitialized);
         }
     }
     // initialize or update the Feedforward filter
     if ((smoothingData->feedforwardCutoffFrequency != oldFeedforwardCutoff) || !smoothingData->filterInitialized) {
        for (int i = FD_ROLL; i <= FD_YAW; i++) {
-            const float feedforwardCutoffFrequency = smoothingData->feedforwardCutoffFrequency;
-            if (!smoothingData->filterInitialized) {
-                pt3FilterInit(&smoothingData->filterFeedforward[i], pt3FilterGain(feedforwardCutoffFrequency, dT));
-            } else {
-                pt3FilterUpdateCutoff(&smoothingData->filterFeedforward[i], pt3FilterGain(feedforwardCutoffFrequency, dT));
-            }
+            rcFilterInitOrUpdate(&smoothingData->filterFeedforward[i], smoothingData->feedforwardCutoffFrequency, dT, !smoothingData->filterInitialized);
         }
     }
 
@@ -432,6 +464,21 @@ static FAST_CODE void processRcSmoothingFilter(void)
         rcSmoothingData.setpointCutoffSetting = rxConfig()->rc_smoothing_setpoint_cutoff;
         rcSmoothingData.throttleCutoffSetting = rxConfig()->rc_smoothing_throttle_cutoff;
         rcSmoothingData.feedforwardCutoffSetting = rxConfig()->rc_smoothing_feedforward_cutoff;
+
+        // Record selected filter types from configuration
+        rcSmoothingData.setpointFilterType = rxConfig()->rc_smoothing_setpoint_type;
+        rcSmoothingData.feedforwardFilterType = rxConfig()->rc_smoothing_feedforward_type;
+
+        // Apply the configured filter type to each stage
+        for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
+            rcSmoothingData.filterSetpoint[i].type = rcSmoothingData.setpointFilterType;
+        }
+        for (int i = FD_ROLL; i < FD_YAW; i++) {
+            rcSmoothingData.filterRcDeflection[i].type = rcSmoothingData.setpointFilterType;
+        }
+        for (int i = FD_ROLL; i <= FD_YAW; i++) {
+            rcSmoothingData.filterFeedforward[i].type = rcSmoothingData.feedforwardFilterType;
+        }
 
         rcSmoothingData.setpointCutoffFrequency = rcSmoothingData.setpointCutoffSetting;
         rcSmoothingData.feedforwardCutoffFrequency = rcSmoothingData.feedforwardCutoffSetting;
@@ -507,27 +554,37 @@ static FAST_CODE void processRcSmoothingFilter(void)
     DEBUG_SET(DEBUG_RC_SMOOTHING, 0, rcSmoothingData.smoothedRxRateHz);
     DEBUG_SET(DEBUG_RC_SMOOTHING, 3, rcSmoothingData.sampleCount);
 
-    // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
+    // each pid loop, apply the last received channel value to the selected filter type
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
         float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
         if (rcSmoothingData.filterInitialized) {
-            *dst = pt3FilterApply(&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
+            // Use function pointer specific to the stage to apply filtering
+            *dst = rcSmoothingData.filterSetpoint[i].applyFn((filter_t *)&rcSmoothingData.filterSetpoint[i].state, rxDataToSmooth[i]);
         } else {
-            // If filter isn't initialized yet, as in smoothing off, use the actual unsmoothed rx channel data
+            // If filter isn't initialized yet, use the actual unsmoothed rx channel data
             *dst = rxDataToSmooth[i];
         }
     }
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-        // Feedforward smoothing
-        feedforwardSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
+        // Feedforward smoothing uses the selected filter type for each axis
+        feedforwardSmoothed[axis] = rcSmoothingData.filterFeedforward[axis].applyFn((filter_t *)&rcSmoothingData.filterFeedforward[axis].state, feedforwardRaw[axis]);
         // Horizon mode smoothing of rcDeflection on pitch and roll to provide a smooth angle element
         const bool smoothRcDeflection = FLIGHT_MODE(HORIZON_MODE) && rcSmoothingData.filterInitialized;
         if (smoothRcDeflection && axis < FD_YAW) {
-            rcDeflectionSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
+            rcDeflectionSmoothed[axis] = rcSmoothingData.filterRcDeflection[axis].applyFn((filter_t *)&rcSmoothingData.filterRcDeflection[axis].state, rcDeflection[axis]);
         } else {
             rcDeflectionSmoothed[axis] = rcDeflection[axis];
         }
+    }
+
+    // Provide debug values for blackbox to inspect the filter pipeline.  Axis is
+    // selected via rc_smoothing_debug_axis.
+    const int dbgAxis = rcSmoothingData.debugAxis;
+    if (dbgAxis <= FD_YAW) {
+        DEBUG_SET(DEBUG_RC_FILTER_STAGE, 0, rxDataToSmooth[dbgAxis]);
+        DEBUG_SET(DEBUG_RC_FILTER_STAGE, 1, setpointRate[dbgAxis]);
+        DEBUG_SET(DEBUG_RC_FILTER_STAGE, 2, feedforwardSmoothed[dbgAxis]);
     }
 }
 #endif // USE_RC_SMOOTHING_FILTER

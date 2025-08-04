@@ -85,11 +85,39 @@ typedef enum {
 
 extern float rcCommand[4];
 
+//
+// Flexible RC smoothing filter selection
+//
+
+// Available filter choices for each RC smoothing stage.  Linear is a pass through
+// implementation used when the user selects "Linear Interpolation".
+typedef enum {
+    RC_SMOOTHING_FILTER_LINEAR = 0, // simple pass through / linear interpolation
+    RC_SMOOTHING_FILTER_PT1,        // single pole lowpass
+    RC_SMOOTHING_FILTER_PT2,        // two pole lowpass
+    RC_SMOOTHING_FILTER_PT3,        // three pole lowpass
+    RC_SMOOTHING_FILTER_BIQUAD_BESSEL, // Bessel biquad (Q ~= 0.577)
+} rcSmoothingFilterType_e;
+
+// Generic container for a single filter stage.  Each stage stores the selected
+// filter type, a pointer to the filter application function and union of filter
+// state structures required by the various implementations.
+typedef struct {
+    rcSmoothingFilterType_e type;
+    filterApplyFnPtr applyFn;             // function used to process a sample
+    union {
+        pt1Filter_t pt1;
+        pt2Filter_t pt2;
+        pt3Filter_t pt3;
+        biquadFilter_t biquad;
+    } state;
+} rcFilterStage_t;
+
 typedef struct rcSmoothingFilter_s {
     bool filterInitialized;
-    pt3Filter_t filterSetpoint[4];
-    pt3Filter_t filterRcDeflection[RP_AXIS_COUNT];
-    pt3Filter_t filterFeedforward[3];
+    rcFilterStage_t filterSetpoint[4];       // setpoint / throttle filters
+    rcFilterStage_t filterRcDeflection[RP_AXIS_COUNT];
+    rcFilterStage_t filterFeedforward[3];
 
     uint8_t setpointCutoffSetting;
     uint8_t throttleCutoffSetting;
@@ -106,6 +134,10 @@ typedef struct rcSmoothingFilter_s {
     float autoSmoothnessFactorSetpoint;
     float autoSmoothnessFactorFeedforward;
     float autoSmoothnessFactorThrottle;
+
+    // Selected filter types exposed via CLI/OSD
+    rcSmoothingFilterType_e setpointFilterType;
+    rcSmoothingFilterType_e feedforwardFilterType;
 } rcSmoothingFilter_t;
 
 typedef struct rcControlsConfig_s {
