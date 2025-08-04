@@ -141,3 +141,18 @@ int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal);
 void meanAccumulatorInit(meanAccumulator_t *filter);
 void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
+
+#define SG_MAX_WINDOW 13
+
+typedef struct sgFilter_s {
+    float buf[SG_MAX_WINDOW];
+    uint8_t windowSize;
+    uint8_t halfWindow;
+    float denom;
+    uint8_t index;
+    uint8_t count;
+    float last;
+} sgFilter_t;
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
+float sgFilterApply(sgFilter_t *filter, float input);

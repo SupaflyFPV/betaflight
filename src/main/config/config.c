@@ -247,6 +247,10 @@ static void validateAndFixConfig(void)
             pidProfilesMutable(i)->dterm_notch_hz = 0;
         }
 
+        if (pidProfilesMutable(i)->dterm_sg_window > SG_MAX_WINDOW || !(pidProfilesMutable(i)->dterm_sg_window & 1)) {
+            pidProfilesMutable(i)->dterm_sg_window = 0;
+        }
+
 #ifdef USE_DYN_LPF
         //Prevent invalid dynamic lowpass
         if (pidProfilesMutable(i)->dterm_lpf1_dyn_min_hz > pidProfilesMutable(i)->dterm_lpf1_dyn_max_hz) {

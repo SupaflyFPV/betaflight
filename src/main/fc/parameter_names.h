@@ -97,6 +97,7 @@
 #define PARAM_NAME_PID_PROCESS_DENOM "pid_process_denom"
 #define PARAM_NAME_DTERM_LPF1_TYPE "dterm_lpf1_type"
 #define PARAM_NAME_DTERM_LPF1_STATIC_HZ "dterm_lpf1_static_hz"
+#define PARAM_NAME_DTERM_SG_WINDOW "dterm_sg_window"
 #define PARAM_NAME_DTERM_LPF2_TYPE "dterm_lpf2_type"
 #define PARAM_NAME_DTERM_LPF2_STATIC_HZ "dterm_lpf2_static_hz"
 #define PARAM_NAME_DTERM_NOTCH_HZ "dterm_notch_hz"

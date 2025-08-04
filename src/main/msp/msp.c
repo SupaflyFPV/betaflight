@@ -1885,6 +1885,7 @@ case MSP_NAME:
         sbufWriteU8(dst, gyroConfig()->gyro_lpf1_type);
         sbufWriteU8(dst, gyroConfig()->gyro_lpf2_type);
         sbufWriteU16(dst, currentPidProfile->dterm_lpf2_static_hz);
+        sbufWriteU8(dst, currentPidProfile->dterm_sg_window);
         // Added in MSP API 1.41
         sbufWriteU8(dst, currentPidProfile->dterm_lpf2_type);
 #if defined(USE_DYN_LPF)
@@ -3082,6 +3083,9 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         }
         if (sbufBytesRemaining(src) >= 1) {
             currentPidProfile->dterm_lpf1_type = sbufReadU8(src);
+        }
+        if (sbufBytesRemaining(src) >= 1) {
+            currentPidProfile->dterm_sg_window = sbufReadU8(src);
         }
         if (sbufBytesRemaining(src) >= 10) {
             gyroConfigMutable()->gyro_hardware_lpf = sbufReadU8(src);

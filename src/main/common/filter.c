@@ -403,3 +403,41 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
     }
     return defaultValue;
 }
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
+{
+    filter->windowSize = windowSize;
+    filter->halfWindow = (windowSize - 1) / 2;
+    filter->denom = (float)(filter->halfWindow * (filter->halfWindow + 1) * (2 * filter->halfWindow + 1)) / 3.0f;
+    filter->index = 0;
+    filter->count = 0;
+    filter->last = 0.0f;
+    for (int i = 0; i < SG_MAX_WINDOW; i++) {
+        filter->buf[i] = 0.0f;
+    }
+}
+
+float sgFilterApply(sgFilter_t *filter, float input)
+{
+    filter->buf[filter->index] = input;
+    filter->index = (filter->index + 1) % filter->windowSize;
+
+    if (filter->count < filter->windowSize) {
+        float delta = input - filter->last;
+        filter->last = input;
+        filter->count++;
+        if (filter->count < 2) {
+            return 0.0f;
+        }
+        return delta;
+    }
+
+    const int center = (filter->index + filter->halfWindow) % filter->windowSize;
+    float acc = 0.0f;
+    for (int j = 1; j <= filter->halfWindow; j++) {
+        const int idxPlus = (center + j) % filter->windowSize;
+        const int idxMinus = (center + filter->windowSize - j) % filter->windowSize;
+        acc += j * (filter->buf[idxPlus] - filter->buf[idxMinus]);
+    }
+    return acc / filter->denom;
+}

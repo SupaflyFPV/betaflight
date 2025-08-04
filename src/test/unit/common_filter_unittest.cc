@@ -114,3 +114,14 @@ TEST(FilterUnittest, TestSlewFilter)
     slewFilterApply(&filter, 200.0f);
     EXPECT_EQ(200, filter.state);
 }
+
+TEST(FilterUnittest, TestSgFilterLinear)
+{
+    sgFilter_t filter;
+    sgFilterInit(&filter, 5);
+    float output = 0;
+    for (int i = 0; i < 20; i++) {
+        output = sgFilterApply(&filter, (float)i);
+    }
+    EXPECT_NEAR(1.0f, output, 1e-6f);
+}

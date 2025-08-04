@@ -38,6 +38,7 @@
 #include "cms/cms_menu_imu.h"
 
 #include "common/utils.h"
+#include "common/filter.h"
 
 #include "config/feature.h"
 #include "config/simplified_tuning.h"
@@ -910,6 +911,7 @@ static uint16_t cmsx_dterm_lpf2_static_hz;
 static uint16_t cmsx_dterm_notch_hz;
 static uint16_t cmsx_dterm_notch_cutoff;
 static uint16_t cmsx_yaw_lowpass_hz;
+static uint8_t cmsx_dterm_sg_window;
 
 static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
 {
@@ -922,6 +924,7 @@ static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
     cmsx_dterm_notch_hz         = pidProfile->dterm_notch_hz;
     cmsx_dterm_notch_cutoff     = pidProfile->dterm_notch_cutoff;
     cmsx_yaw_lowpass_hz         = pidProfile->yaw_lowpass_hz;
+    cmsx_dterm_sg_window        = pidProfile->dterm_sg_window;
 
     return NULL;
 }
@@ -938,6 +941,7 @@ static const void *cmsx_FilterPerProfileWriteback(displayPort_t *pDisp, const OS
     pidProfile->dterm_notch_hz        = cmsx_dterm_notch_hz;
     pidProfile->dterm_notch_cutoff    = cmsx_dterm_notch_cutoff;
     pidProfile->yaw_lowpass_hz        = cmsx_yaw_lowpass_hz;
+    pidProfile->dterm_sg_window       = cmsx_dterm_sg_window;
 
     return NULL;
 }
@@ -950,6 +954,7 @@ static const OSD_Entry cmsx_menuFilterPerProfileEntries[] =
     { "DTERM LPF2", OME_UINT16 | SLIDER_DTERM, NULL, &(OSD_UINT16_t){ &cmsx_dterm_lpf2_static_hz, 0, LPF_MAX_HZ, 1 } },
     { "DTERM NF",   OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_hz,       0, LPF_MAX_HZ, 1 } },
     { "DTERM NFCO", OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_cutoff,   0, LPF_MAX_HZ, 1 } },
+    { "DTERM SG",   OME_UINT8,  NULL, &(OSD_UINT8_t){ &cmsx_dterm_sg_window,       0, SG_MAX_WINDOW, 1 } },
     { "YAW LPF",    OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_yaw_lowpass_hz,       0, 500, 1 } },
 
     { "BACK", OME_Back, NULL, NULL },
