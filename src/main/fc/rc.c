@@ -530,6 +530,48 @@ static FAST_CODE void processRcSmoothingFilter(void)
         }
     }
 }
+
+static FAST_CODE void processRcSmoothingLinear(void)
+{
+    static FAST_DATA_ZERO_INIT float output[4];
+    static FAST_DATA_ZERO_INIT float step[4];
+    static FAST_DATA_ZERO_INIT int stepsRemaining;
+    static FAST_DATA_ZERO_INIT bool initialized;
+
+    if (!initialized) {
+        initialized = true;
+        for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
+            output[i] = i == THROTTLE ? rcCommand[i] : rawSetpoint[i];
+        }
+        stepsRemaining = 0;
+    }
+
+    if (isRxDataNew) {
+        const int steps = MAX(1, currentRxIntervalUs / targetPidLooptime);
+        for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
+            const float target = i == THROTTLE ? rcCommand[i] : rawSetpoint[i];
+            step[i] = (target - output[i]) / steps;
+        }
+        stepsRemaining = steps;
+    }
+
+    for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
+        if (stepsRemaining > 0) {
+            output[i] += step[i];
+        }
+        float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
+        *dst = output[i];
+    }
+
+    if (stepsRemaining > 0) {
+        stepsRemaining--;
+    }
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        feedforwardSmoothed[axis] = feedforwardRaw[axis];
+        rcDeflectionSmoothed[axis] = rcDeflection[axis];
+    }
+}
 #endif // USE_RC_SMOOTHING_FILTER
 
 #ifdef USE_FEEDFORWARD
@@ -753,7 +795,11 @@ FAST_CODE void processRcCommand(void)
     }
 
 #ifdef USE_RC_SMOOTHING_FILTER
-    processRcSmoothingFilter();
+    if (rxConfig()->rc_smoothing_mode == RC_SMOOTHING_LINEAR) {
+        processRcSmoothingLinear();
+    } else {
+        processRcSmoothingFilter();
+    }
 #endif
 
     isRxDataNew = false;
@@ -978,6 +1024,9 @@ rcSmoothingFilter_t *getRcSmoothingData(void)
 
 bool rcSmoothingInitializationComplete(void)
 {
+    if (rxConfig()->rc_smoothing_mode == RC_SMOOTHING_LINEAR) {
+        return true;
+    }
     return rcSmoothingData.filterInitialized;
 }
 #endif // USE_RC_SMOOTHING_FILTER
