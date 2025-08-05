@@ -137,6 +137,7 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         pidRuntime.dtermNotchApplyFn = nullFilterApply;
         pidRuntime.dtermLowpassApplyFn = nullFilterApply;
         pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
+        pidRuntime.ptermLowpassApplyFn = nullFilterApply;
         pidRuntime.ptermYawLowpassApplyFn = nullFilterApply;
         return;
     }
@@ -252,6 +253,15 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         }
     } else {
         pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
+    }
+
+    if (pidProfile->pterm_lowpass_hz == 0) {
+        pidRuntime.ptermLowpassApplyFn = nullFilterApply;
+    } else {
+        pidRuntime.ptermLowpassApplyFn = (filterApplyFnPtr)pt1FilterApply;
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            pt1FilterInit(&pidRuntime.ptermLowpass[axis], pt1FilterGain(pidProfile->pterm_lowpass_hz, pidRuntime.dT));
+        }
     }
 
     if (pidProfile->yaw_lowpass_hz == 0) {

@@ -1867,6 +1867,7 @@ case MSP_NAME:
         sbufWriteU8(dst, gyroConfig()->gyro_lpf1_static_hz);
         sbufWriteU16(dst, currentPidProfile->dterm_lpf1_static_hz);
         sbufWriteU16(dst, currentPidProfile->yaw_lowpass_hz);
+        sbufWriteU16(dst, currentPidProfile->pterm_lowpass_hz);
         sbufWriteU16(dst, gyroConfig()->gyro_soft_notch_hz_1);
         sbufWriteU16(dst, gyroConfig()->gyro_soft_notch_cutoff_1);
         sbufWriteU16(dst, currentPidProfile->dterm_notch_hz);
@@ -3041,6 +3042,11 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         gyroConfigMutable()->gyro_lpf1_static_hz = sbufReadU8(src);
         currentPidProfile->dterm_lpf1_static_hz = sbufReadU16(src);
         currentPidProfile->yaw_lowpass_hz = sbufReadU16(src);
+        if (sbufBytesRemaining(src) >= 10) {
+            currentPidProfile->pterm_lowpass_hz = sbufReadU16(src);
+        } else {
+            currentPidProfile->pterm_lowpass_hz = 0;
+        }
         if (sbufBytesRemaining(src) >= 8) {
             gyroConfigMutable()->gyro_soft_notch_hz_1 = sbufReadU16(src);
             gyroConfigMutable()->gyro_soft_notch_cutoff_1 = sbufReadU16(src);
