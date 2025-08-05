@@ -32,6 +32,7 @@
 #include "cli/cli.h"
 
 #include "common/sensor_alignment.h"
+#include "common/filter.h"
 
 #include "config/config_eeprom.h"
 #include "config/feature.h"
@@ -119,6 +120,7 @@ PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .hseMhz = SYSTEM_HSE_MHZ,  // Only used for F4 and G4 targets
     .configurationState = CONFIGURATION_STATE_UNCONFIGURED,
     .enableStickArming = false,
+    .biquad_response = BIQUAD_RESPONSE_BUTTERWORTH,
 );
 
 bool isEepromWriteInProgress(void)
@@ -576,6 +578,12 @@ void validateAndFixGyroConfig(void)
         gyroConfigMutable()->gyro_lpf1_dyn_min_hz = 0;
     }
 #endif
+
+    if (gyroConfig()->gyro_sg_window > SG_MAX_WINDOW || !(gyroConfig()->gyro_sg_window & 1)) {
+        gyroConfigMutable()->gyro_sg_window = 0;
+    }
+
+    biquadFilterSetResponse(systemConfig()->biquad_response);
 
     if (gyro.sampleRateHz > 0) {
         float samplingTime = 1.0f / gyro.sampleRateHz;

@@ -44,6 +44,7 @@
 #include "config/simplified_tuning.h"
 
 #include "config/config.h"
+#include "common/filter.h"
 #include "fc/controlrate_profile.h"
 #include "fc/core.h"
 #include "fc/rc_controls.h"
@@ -759,6 +760,9 @@ static const void *cmsx_menuGyro_onEnter(displayPort_t *pDisp)
     gyroConfig_gyro_soft_notch_hz_2 = gyroConfig()->gyro_soft_notch_hz_2;
     gyroConfig_gyro_soft_notch_cutoff_2 = gyroConfig()->gyro_soft_notch_cutoff_2;
 
+    cmsx_gyro_sg_window = gyroConfig()->gyro_sg_window;
+    cmsx_biquad_response = systemConfig()->biquad_response;
+
     return NULL;
 }
 
@@ -774,12 +778,18 @@ static const void *cmsx_menuGyro_onExit(displayPort_t *pDisp, const OSD_Entry *s
     gyroConfigMutable()->gyro_soft_notch_hz_2 = gyroConfig_gyro_soft_notch_hz_2;
     gyroConfigMutable()->gyro_soft_notch_cutoff_2 = gyroConfig_gyro_soft_notch_cutoff_2;
 
+    gyroConfigMutable()->gyro_sg_window = cmsx_gyro_sg_window;
+    systemConfigMutable()->biquad_response = cmsx_biquad_response;
+    biquadFilterSetResponse(cmsx_biquad_response);
+
     return NULL;
 }
 
 static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
 {
     { "-- FILTER GLB  --", OME_Label, NULL, NULL },
+
+    { "BIQUAD R",  OME_TAB, NULL, &(OSD_TAB_t){ &cmsx_biquad_response, 2, lookupTableBiquadResponse } },
 
     { "GYRO LPF1",  OME_UINT16 | SLIDER_GYRO, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_lpf1_static_hz, 0, LPF_MAX_HZ, 1 } },
 #ifdef USE_GYRO_LPF2
@@ -789,6 +799,7 @@ static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
     { "GYRO NF1C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_1, 0, 500, 1 } },
     { "GYRO NF2",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2,     0, 500, 1 } },
     { "GYRO NF2C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_2, 0, 500, 1 } },
+    { "GYRO SG",    OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_gyro_sg_window, 0, SG_MAX_WINDOW, 1 } },
 
     { "BACK", OME_Back, NULL, NULL },
     { NULL, OME_END, NULL, NULL}
@@ -912,6 +923,10 @@ static uint16_t cmsx_dterm_notch_hz;
 static uint16_t cmsx_dterm_notch_cutoff;
 static uint16_t cmsx_yaw_lowpass_hz;
 static uint8_t cmsx_dterm_sg_window;
+static uint8_t cmsx_gyro_sg_window;
+static uint8_t cmsx_biquad_response;
+
+static const char * const lookupTableBiquadResponse[] = { "BUTTER", "BESSEL" };
 
 static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
 {

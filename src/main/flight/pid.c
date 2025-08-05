@@ -1409,6 +1409,8 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             float rateChange;
             if (pidRuntime.dtermSgFilterApplyFn) {
                 rateChange = pidRuntime.dtermSgFilterApplyFn((filter_t *)&pidRuntime.dtermSgFilter[axis], gyroRateDterm[axis]);
+            } else if (gyro.sgFilterApplyFn) {
+                rateChange = gyro.gyroADCfDelta[axis];
             } else {
                 rateChange = gyroRateDterm[axis] - previousGyroRateDterm[axis];
             }
