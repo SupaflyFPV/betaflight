@@ -30,6 +30,7 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
+#include "common/maths.h"
 
 #include "drivers/dshot_command.h"
 
@@ -259,8 +260,10 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         pidRuntime.ptermLowpassApplyFn = nullFilterApply;
     } else {
         pidRuntime.ptermLowpassApplyFn = (filterApplyFnPtr)pt1FilterApply;
+        const uint16_t ptermCutoff = constrain(pidProfile->pterm_lowpass_hz, 200, 2000);
+        const float ptermFilterGain = pt1FilterGain(ptermCutoff, pidRuntime.dT);
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-            pt1FilterInit(&pidRuntime.ptermLowpass[axis], pt1FilterGain(pidProfile->pterm_lowpass_hz, pidRuntime.dT));
+            pt1FilterInit(&pidRuntime.ptermLowpass[axis], ptermFilterGain);
         }
     }
 
