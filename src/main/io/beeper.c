@@ -30,6 +30,7 @@
 #include "drivers/dshot_command.h"
 #include "drivers/io.h"
 #include "drivers/pwm_output.h"
+#include "drivers/serial_usb_vcp.h"
 #include "drivers/sound_beeper.h"
 #include "drivers/system.h"
 #include "drivers/time.h"
@@ -426,16 +427,20 @@ void beeperUpdate(timeUs_t currentTimeUs)
 
     bool dshotBeaconRequested = false;
 
+    const bool usbConnected = usbVcpIsConnected();
+
     if (!areMotorsRunning()) {
         // Failsafe-triggered beacon when the RX link is lost and USB is disconnected
         if (!failsafeIsReceivingRxData()
             && !usbCableIsInserted()
+            && !usbConnected
             && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(BEEPER_RX_LOST)) ) {
             dshotBeaconRequested = true;
         }
 
         // User-triggered beacon when the RX link is active and the AUX switch is engaged
         if (failsafeIsReceivingRxData()
+            && !usbConnected
             && IS_RC_MODE_ACTIVE(BOXBEEPERON)
             && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(BEEPER_RX_SET)) ) {
             dshotBeaconRequested = true;
