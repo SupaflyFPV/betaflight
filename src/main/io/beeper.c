@@ -30,6 +30,7 @@
 #include "drivers/dshot_command.h"
 #include "drivers/io.h"
 #include "drivers/pwm_output.h"
+#include "drivers/serial_usb_vcp.h"
 #include "drivers/sound_beeper.h"
 #include "drivers/system.h"
 #include "drivers/time.h"
@@ -435,9 +436,11 @@ void beeperUpdate(timeUs_t currentTimeUs)
     }
 
 #ifdef USE_DSHOT
+    const bool usbConnected = usbVcpIsConnected() && (currentBeeperEntry->mode == BEEPER_RX_LOST || currentBeeperEntry->mode == BEEPER_RX_SET);
     if (!areMotorsRunning()
         && (DSHOT_BEACON_ALLOWED_MODES & BEEPER_GET_FLAG(currentBeeperEntry->mode))
-        && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(currentBeeperEntry->mode)) ) {
+        && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(currentBeeperEntry->mode))
+        && !usbConnected) {
         const timeDelta_t dShotBeaconInterval = (currentBeeperEntry->mode == BEEPER_RX_SET)
             ? DSHOT_BEACON_MODE_INTERVAL_US
             : DSHOT_BEACON_RXLOSS_INTERVAL_US;
