@@ -225,13 +225,14 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .simplified_dterm_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT,
         .anti_gravity_cutoff_hz = 5,
         .anti_gravity_p_gain = 100,
-        .tpa_mode = TPA_MODE_D,
-        .tpa_rate = 65,
+        .tpa_p_rate = 0,
+        .tpa_d_rate = 65,
         .tpa_breakpoint = 1350,
         .angle_feedforward_smoothing_ms = 80,
         .angle_earth_ref = 100,
         .horizon_delay_ms = 500, // 500ms time constant on any increase in horizon strength
-        .tpa_low_rate = 20,
+        .tpa_low_p_rate = 0,
+        .tpa_low_d_rate = 20,
         .tpa_low_breakpoint = 1050,
         .tpa_low_always = 0,
         .ez_landing_threshold = 25,
@@ -268,21 +269,6 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
     );
-}
-
-static bool isTpaActive(tpaMode_e tpaMode, term_e term) {
-    switch (tpaMode) {
-    case TPA_MODE_PD:
-        return term == TERM_P || term == TERM_D;
-    case TPA_MODE_D:
-        return term == TERM_D;
-#ifdef USE_WING
-    case TPA_MODE_PDS:
-        return term == TERM_P || term == TERM_D || term == TERM_S;
-#endif
-    default:
-        return false;
-    }
 }
 
 void pgResetFn_pidProfiles(pidProfile_t *pidProfiles)
@@ -416,18 +402,18 @@ static float wingAdjustSetpoint(float currentPidSetpoint, int axis)
 #endif // USE_WING
 }
 
-static float getTpaFactorClassic(float tpaArgument)
+static float getTpaFactorClassic(float tpaArgument, float multiplier, float lowMultiplier)
 {
     static bool isTpaLowFaded = false;
     bool isThrottlePastTpaLowBreakpoint = (tpaArgument >= pidRuntime.tpaLowBreakpoint || pidRuntime.tpaLowBreakpoint <= 0.01f);
     float tpaRate = 0.0f;
     if (isThrottlePastTpaLowBreakpoint || isTpaLowFaded) {
-        tpaRate = pidRuntime.tpaMultiplier * fmaxf(tpaArgument - pidRuntime.tpaBreakpoint, 0.0f);
+        tpaRate = multiplier * fmaxf(tpaArgument - pidRuntime.tpaBreakpoint, 0.0f);
         if (!pidRuntime.tpaLowAlways && !isTpaLowFaded) {
             isTpaLowFaded = true;
         }
     } else {
-        tpaRate = pidRuntime.tpaLowMultiplier * (pidRuntime.tpaLowBreakpoint - tpaArgument);
+        tpaRate = lowMultiplier * (pidRuntime.tpaLowBreakpoint - tpaArgument);
     }
 
     return 1.0f - tpaRate;
@@ -436,7 +422,8 @@ static float getTpaFactorClassic(float tpaArgument)
 void pidUpdateTpaFactor(float throttle)
 {
     throttle = constrainf(throttle, 0.0f, 1.0f);
-    float tpaFactor;
+    float tpaFactorP;
+    float tpaFactorD;
 
 #ifdef USE_WING
     const float tpaArgument = isFixedWing() ?  calcWingTpaArgument() : throttle;
@@ -447,23 +434,27 @@ void pidUpdateTpaFactor(float throttle)
 #ifdef USE_ADVANCED_TPA
     switch (pidRuntime.tpaCurveType) {
     case TPA_CURVE_HYPERBOLIC:
-        tpaFactor = pwlInterpolate(&pidRuntime.tpaCurvePwl, tpaArgument);
+        tpaFactorP = pwlInterpolate(&pidRuntime.tpaCurvePwl, tpaArgument);
+        tpaFactorD = tpaFactorP;
         break;
     case TPA_CURVE_CLASSIC:
     default:
-        tpaFactor = getTpaFactorClassic(tpaArgument);
+        tpaFactorP = getTpaFactorClassic(tpaArgument, pidRuntime.tpaMultiplierP, pidRuntime.tpaLowMultiplierP);
+        tpaFactorD = getTpaFactorClassic(tpaArgument, pidRuntime.tpaMultiplierD, pidRuntime.tpaLowMultiplierD);
     }
 #else
-    tpaFactor = getTpaFactorClassic(tpaArgument);
+    tpaFactorP = getTpaFactorClassic(tpaArgument, pidRuntime.tpaMultiplierP, pidRuntime.tpaLowMultiplierP);
+    tpaFactorD = getTpaFactorClassic(tpaArgument, pidRuntime.tpaMultiplierD, pidRuntime.tpaLowMultiplierD);
 #endif
 
-    DEBUG_SET(DEBUG_TPA, 0, lrintf(tpaFactor * 1000));
-    pidRuntime.tpaFactor = tpaFactor;
+    DEBUG_SET(DEBUG_TPA, 0, lrintf(tpaFactorP * 1000));
+    pidRuntime.tpaFactor = tpaFactorP;
+    pidRuntime.tpaFactorD = tpaFactorD;
 
 #ifdef USE_WING
     switch (currentPidProfile->yaw_type) {
     case YAW_TYPE_DIFF_THRUST:
-        pidRuntime.tpaFactorYaw = getTpaFactorClassic(tpaArgument);
+        pidRuntime.tpaFactorYaw = getTpaFactorClassic(tpaArgument, pidRuntime.tpaMultiplierP, pidRuntime.tpaLowMultiplierP);
         break;
     case YAW_TYPE_RUDDER:
     default:
@@ -1017,25 +1008,25 @@ static FAST_CODE_NOINLINE float applyLaunchControl(int axis, const rollAndPitchT
 
 static float getTpaFactor(const pidProfile_t *pidProfile, int axis, term_e term)
 {
-    float tpaFactor = pidRuntime.tpaFactor;
+    UNUSED(pidProfile);
+    float tpaFactorP = pidRuntime.tpaFactor;
 
 #ifdef USE_WING
     if (axis == FD_YAW) {
-        tpaFactor = pidRuntime.tpaFactorYaw;
+        tpaFactorP = pidRuntime.tpaFactorYaw;
     }
 #else
     UNUSED(axis);
 #endif
 
-    const bool tpaActive = isTpaActive(pidProfile->tpa_mode, term);
     switch (term) {
     case TERM_P:
-        return tpaActive ? tpaFactor : 1.0f;
+        return tpaFactorP;
     case TERM_D:
-        return tpaFactor;
+        return pidRuntime.tpaFactorD;
 #ifdef USE_WING
     case TERM_S:
-        return tpaActive ? pidRuntime.tpaFactorSterm[axis] : 1.0f;
+        return pidRuntime.tpaFactorSterm[axis];
 #endif
     default:
         return 1.0f;

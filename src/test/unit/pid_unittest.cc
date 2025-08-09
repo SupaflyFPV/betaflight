@@ -240,6 +240,9 @@ float calculateTolerance(float input)
 TEST(pidControllerTest, testInitialisation)
 {
     resetTest();
+    pidProfile->tpa_d_rate = 0;
+    pidProfile->tpa_low_d_rate = 0;
+    pidInit(pidProfile);
 
     // In initial state PIDsums should be 0
     for (int axis = 0; axis <= FD_YAW; axis++) {
@@ -301,7 +304,7 @@ TEST(pidControllerTest, testPidLoop)
     EXPECT_NEAR(-7.8, pidData[FD_ROLL].I, calculateTolerance(-7.8));
     EXPECT_FLOAT_EQ(0, pidData[FD_PITCH].I);
     EXPECT_FLOAT_EQ(0, pidData[FD_YAW].I);
-    EXPECT_NEAR(-198.4, pidData[FD_ROLL].D, calculateTolerance(-198.4));
+    EXPECT_FLOAT_EQ(0, pidData[FD_ROLL].D);
     EXPECT_FLOAT_EQ(0, pidData[FD_PITCH].D);
     EXPECT_FLOAT_EQ(0, pidData[FD_YAW].D);
 
@@ -317,7 +320,7 @@ TEST(pidControllerTest, testPidLoop)
     EXPECT_NEAR(9.8, pidData[FD_PITCH].I, calculateTolerance(9.8));
     EXPECT_FLOAT_EQ(0, pidData[FD_YAW].I);
     EXPECT_FLOAT_EQ(0, pidData[FD_ROLL].D);
-    EXPECT_NEAR(231.4, pidData[FD_PITCH].D, calculateTolerance(231.4));
+    EXPECT_FLOAT_EQ(0, pidData[FD_PITCH].D);
     EXPECT_FLOAT_EQ(0, pidData[FD_YAW].D);
 
     // Add some rotation on YAW to generate error, but not enough to trigger pidSumLimitYaw
@@ -1060,9 +1063,11 @@ TEST(pidControllerTest, testTpaClassic)
     resetTest();
 
     pidProfile->tpa_curve_type = TPA_CURVE_CLASSIC;
-    pidProfile->tpa_rate = 30;
+    pidProfile->tpa_p_rate = 30;
+    pidProfile->tpa_d_rate = 30;
     pidProfile->tpa_breakpoint = 1600;
-    pidProfile->tpa_low_rate = -50;
+    pidProfile->tpa_low_p_rate = -50;
+    pidProfile->tpa_low_d_rate = -50;
     pidProfile->tpa_low_breakpoint = 1200;
     pidProfile->tpa_low_always = 1;
 
@@ -1088,9 +1093,11 @@ TEST(pidControllerTest, testTpaClassic)
 
 
     pidProfile->tpa_curve_type = TPA_CURVE_CLASSIC;
-    pidProfile->tpa_rate = 30;
+    pidProfile->tpa_p_rate = 30;
+    pidProfile->tpa_d_rate = 30;
     pidProfile->tpa_breakpoint = 1600;
-    pidProfile->tpa_low_rate = -50;
+    pidProfile->tpa_low_p_rate = -50;
+    pidProfile->tpa_low_d_rate = -50;
     pidProfile->tpa_low_breakpoint = 1000;
     pidProfile->tpa_low_always = 1;
 

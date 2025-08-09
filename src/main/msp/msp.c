@@ -2044,8 +2044,8 @@ case MSP_NAME:
 #else
         sbufWriteU8(dst, 0);
 #endif
-        sbufWriteU8(dst, currentPidProfile->tpa_mode);
-        sbufWriteU8(dst, currentPidProfile->tpa_rate);
+        sbufWriteU8(dst, currentPidProfile->tpa_p_rate);
+        sbufWriteU8(dst, currentPidProfile->tpa_d_rate);
         sbufWriteU16(dst, currentPidProfile->tpa_breakpoint);   // was currentControlRateProfile->tpa_breakpoint
         break;
 
@@ -3287,8 +3287,8 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         }
         if (sbufBytesRemaining(src) >= 4) {
             // Added in API 1.45
-            currentPidProfile->tpa_mode = sbufReadU8(src);
-            currentPidProfile->tpa_rate = MIN(sbufReadU8(src), TPA_MAX);
+            currentPidProfile->tpa_p_rate = MIN(sbufReadU8(src), TPA_MAX);
+            currentPidProfile->tpa_d_rate = MIN(sbufReadU8(src), TPA_MAX);
             currentPidProfile->tpa_breakpoint = sbufReadU16(src);
         }
 
