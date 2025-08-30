@@ -214,6 +214,12 @@ bool mpuAccReadSPI(accDev_t *acc)
     case GYRO_EXTI_INT:
     case GYRO_EXTI_NO_INT:
     {
+        // consume data from previous transaction before queuing the next one
+        int16_t *accData = (int16_t *)acc->gyro->dev.rxBuf;
+        acc->ADCRaw[X] = __builtin_bswap16(accData[1]);
+        acc->ADCRaw[Y] = __builtin_bswap16(accData[2]);
+        acc->ADCRaw[Z] = __builtin_bswap16(accData[3]);
+
         acc->gyro->dev.txBuf[0] = acc->gyro->accDataReg | 0x80;
 
         busSegment_t segments[] = {
@@ -224,9 +230,7 @@ bool mpuAccReadSPI(accDev_t *acc)
         segments[0].u.buffers.rxData = &acc->gyro->dev.rxBuf[1];
 
         spiSequence(&acc->gyro->dev, &segments[0]);
-
-        // Fall through
-        FALLTHROUGH;
+        break;
     }
 
     case GYRO_EXTI_INT_DMA:
@@ -289,6 +293,11 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
     case GYRO_EXTI_INT:
     case GYRO_EXTI_NO_INT:
     {
+        // read previously captured sample before kicking off the next SPI transfer
+        gyro->gyroADCRaw[X] = __builtin_bswap16(gyroData[1]);
+        gyro->gyroADCRaw[Y] = __builtin_bswap16(gyroData[2]);
+        gyro->gyroADCRaw[Z] = __builtin_bswap16(gyroData[3]);
+
         gyro->dev.txBuf[0] = gyro->gyroDataReg | 0x80;
 
         busSegment_t segments[] = {
@@ -299,10 +308,6 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
         segments[0].u.buffers.rxData = &gyro->dev.rxBuf[1];
 
         spiSequence(&gyro->dev, &segments[0]);
-
-        gyro->gyroADCRaw[X] = __builtin_bswap16(gyroData[1]);
-        gyro->gyroADCRaw[Y] = __builtin_bswap16(gyroData[2]);
-        gyro->gyroADCRaw[Z] = __builtin_bswap16(gyroData[3]);
         break;
     }
 
