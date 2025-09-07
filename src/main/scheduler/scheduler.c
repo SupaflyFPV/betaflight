@@ -513,7 +513,7 @@ FAST_CODE void scheduler(void)
     }
 #endif
 
-    if (gyroEnabled) {
+    if (gyroEnabled && !gyroPipelineIrqEnabled) {
         // Realtime gyro/filtering/PID tasks get complete priority
         task_t *gyroTask = getTask(TASK_GYRO);
         nowCycles = getCycleCounter();
@@ -700,7 +700,7 @@ FAST_CODE void scheduler(void)
     nowCycles = getCycleCounter();
     schedLoopRemainingCycles = cmpTimeCycles(nextTargetCycles, nowCycles);
 
-    if (!gyroEnabled || (schedLoopRemainingCycles > (int32_t)clockMicrosToCycles(CHECK_GUARD_MARGIN_US))) {
+    if (!gyroEnabled || gyroPipelineIrqEnabled || (schedLoopRemainingCycles > (int32_t)clockMicrosToCycles(CHECK_GUARD_MARGIN_US))) {
         currentTimeUs = micros();
 
         // Update task dynamic priorities
@@ -770,7 +770,7 @@ FAST_CODE void scheduler(void)
             // Allow a little extra time
             taskRequiredTimeCycles += taskGuardCycles;
 
-            if (!gyroEnabled || firstSchedulingOpportunity || (taskRequiredTimeCycles < schedLoopRemainingCycles)) {
+            if (!gyroEnabled || gyroPipelineIrqEnabled || firstSchedulingOpportunity || (taskRequiredTimeCycles < schedLoopRemainingCycles)) {
                 uint32_t antipatedEndCycles = nowCycles + taskRequiredTimeCycles;
                 taskExecutionTimeUs += schedulerExecuteTask(selectedTask, currentTimeUs);
                 nowCycles = getCycleCounter();
