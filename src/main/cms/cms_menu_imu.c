@@ -53,6 +53,7 @@
 #include "flight/pid_init.h"
 
 #include "pg/pg.h"
+#include "pg/tl.h"
 
 #include "sensors/battery.h"
 #include "sensors/gyro.h"
@@ -517,6 +518,10 @@ static uint8_t  cmsx_horizonLimitDegrees;
 
 static uint8_t  cmsx_throttleBoost;
 static uint8_t  cmsx_thrustLinearization;
+static uint8_t  cmsx_tl_gain;
+static uint8_t  cmsx_tl_shape;
+static uint8_t  cmsx_tl_max_gain;
+static uint8_t  cmsx_tl_shape_boost;
 static uint8_t  cmsx_antiGravityGain;
 static uint8_t  cmsx_motorOutputLimit;
 static int8_t   cmsx_autoProfileCellCount;
@@ -573,6 +578,12 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     cmsx_thrustLinearization = pidProfile->thrustLinearization;
     cmsx_motorOutputLimit = pidProfile->motor_output_limit;
     cmsx_autoProfileCellCount = pidProfile->auto_profile_cell_count;
+
+    const tlConfig_t *tlCfg = tlConfig();
+    cmsx_tl_gain = tlCfg->gain;
+    cmsx_tl_shape = tlCfg->shape;
+    cmsx_tl_max_gain = (uint8_t)(tlCfg->maxGain * 10.0f + 0.5f);
+    cmsx_tl_shape_boost = (uint8_t)(tlCfg->shapeBoost * 10.0f + 0.5f);
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -631,6 +642,12 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     pidProfile->thrustLinearization = cmsx_thrustLinearization;
     pidProfile->motor_output_limit = cmsx_motorOutputLimit;
     pidProfile->auto_profile_cell_count = cmsx_autoProfileCellCount;
+
+    tlConfig_t *tlCfgMut = tlConfigMutable();
+    tlCfgMut->gain = cmsx_tl_gain;
+    tlCfgMut->shape = cmsx_tl_shape;
+    tlCfgMut->maxGain = cmsx_tl_max_gain / 10.0f;
+    tlCfgMut->shapeBoost = cmsx_tl_shape_boost / 10.0f;
 
 #ifdef USE_D_MAX
     for (unsigned i = 0; i < XYZ_AXIS_COUNT; i++) {
@@ -693,6 +710,10 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
 #endif
 #ifdef USE_THRUST_LINEARIZATION
     { "THR LINEAR",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_thrustLinearization,    0,    150,   1  }    },
+    { "TL GAIN",    OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_gain, 0, 100, 1 } },
+    { "TL SHAPE",   OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_tl_shape, 0, 100, 1 } },
+    { "TL MAX G",   OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_max_gain, 10, 50, 1, 10 } }, // 1.0-5.0
+    { "TL SHP BST", OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tl_shape_boost, 5, 30, 1, 10 } },
 #endif
 #ifdef USE_ITERM_RELAX
     { "I_RELAX",         OME_TAB,    NULL, &(OSD_TAB_t)     { &cmsx_iterm_relax,        ITERM_RELAX_COUNT - 1,      lookupTableItermRelax       } },
@@ -746,6 +767,7 @@ static uint16_t gyroConfig_gyro_soft_notch_hz_1;
 static uint16_t gyroConfig_gyro_soft_notch_cutoff_1;
 static uint16_t gyroConfig_gyro_soft_notch_hz_2;
 static uint16_t gyroConfig_gyro_soft_notch_cutoff_2;
+static uint8_t gyroConfig_biquad_response;
 
 static const void *cmsx_menuGyro_onEnter(displayPort_t *pDisp)
 {
@@ -757,6 +779,7 @@ static const void *cmsx_menuGyro_onEnter(displayPort_t *pDisp)
     gyroConfig_gyro_soft_notch_cutoff_1 = gyroConfig()->gyro_soft_notch_cutoff_1;
     gyroConfig_gyro_soft_notch_hz_2 = gyroConfig()->gyro_soft_notch_hz_2;
     gyroConfig_gyro_soft_notch_cutoff_2 = gyroConfig()->gyro_soft_notch_cutoff_2;
+    gyroConfig_biquad_response = gyroConfig()->biquad_response;
 
     return NULL;
 }
@@ -772,6 +795,7 @@ static const void *cmsx_menuGyro_onExit(displayPort_t *pDisp, const OSD_Entry *s
     gyroConfigMutable()->gyro_soft_notch_cutoff_1 = gyroConfig_gyro_soft_notch_cutoff_1;
     gyroConfigMutable()->gyro_soft_notch_hz_2 = gyroConfig_gyro_soft_notch_hz_2;
     gyroConfigMutable()->gyro_soft_notch_cutoff_2 = gyroConfig_gyro_soft_notch_cutoff_2;
+    gyroConfigMutable()->biquad_response = gyroConfig_biquad_response;
 
     return NULL;
 }
@@ -788,6 +812,8 @@ static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
     { "GYRO NF1C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_1, 0, 500, 1 } },
     { "GYRO NF2",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2,     0, 500, 1 } },
     { "GYRO NF2C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_2, 0, 500, 1 } },
+
+    { "BIQ RESP",  OME_TAB, NULL, &(OSD_TAB_t) { &gyroConfig_biquad_response, 1, lookupTableBiquadResponse } },
 
     { "BACK", OME_Back, NULL, NULL },
     { NULL, OME_END, NULL, NULL}
