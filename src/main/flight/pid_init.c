@@ -254,6 +254,15 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         pidRuntime.dtermLowpass2ApplyFn = nullFilterApply;
     }
 
+    if (pidProfile->dterm_sg_window >= 3 && (pidProfile->dterm_sg_window & 1)) {
+        pidRuntime.dtermSgFilterApplyFn = (filterApplyFnPtr)sgFilterApply;
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            sgFilterInit(&pidRuntime.dtermSgFilter[axis], pidProfile->dterm_sg_window);
+        }
+    } else {
+        pidRuntime.dtermSgFilterApplyFn = NULL;
+    }
+
     if (pidProfile->yaw_lowpass_hz == 0) {
         pidRuntime.ptermYawLowpassApplyFn = nullFilterApply;
     } else {
