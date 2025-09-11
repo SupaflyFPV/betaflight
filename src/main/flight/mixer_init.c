@@ -336,8 +336,9 @@ void initEscEndpoints(void)
 void mixerInitProfile(void)
 {
 #ifdef USE_DYN_IDLE
+    const float motorOutputLimit = currentPidProfile->motor_output_limit * 0.01f;
     if (useDshotTelemetry) {
-        mixerRuntime.dynIdleMinRps = currentPidProfile->dyn_idle_min_rpm * 100.0f / 60.0f;
+        mixerRuntime.dynIdleMinRps = currentPidProfile->dyn_idle_min_rpm * motorOutputLimit * 100.0f / 60.0f;
     } else {
         mixerRuntime.dynIdleMinRps = 0.0f;
     }
