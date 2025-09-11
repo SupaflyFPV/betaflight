@@ -246,6 +246,9 @@ static void validateAndFixConfig(void)
         if (pidProfilesMutable(i)->dterm_notch_cutoff >= pidProfilesMutable(i)->dterm_notch_hz) {
             pidProfilesMutable(i)->dterm_notch_hz = 0;
         }
+        if (pidProfilesMutable(i)->dterm_notch_weight > 100) {
+            pidProfilesMutable(i)->dterm_notch_weight = 100;
+        }
 
 #ifdef USE_DYN_LPF
         //Prevent invalid dynamic lowpass
@@ -602,6 +605,12 @@ void validateAndFixGyroConfig(void)
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_1, 0);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2, LPF_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_2, 0);
+    if (gyroConfigMutable()->gyro_soft_notch_weight_1 > 100) {
+        gyroConfigMutable()->gyro_soft_notch_weight_1 = 100;
+    }
+    if (gyroConfigMutable()->gyro_soft_notch_weight_2 > 100) {
+        gyroConfigMutable()->gyro_soft_notch_weight_2 = 100;
+    }
 
     // Prevent invalid notch cutoff
     if (gyroConfig()->gyro_soft_notch_cutoff_1 >= gyroConfig()->gyro_soft_notch_hz_1) {
