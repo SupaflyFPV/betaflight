@@ -154,11 +154,19 @@ void pidInitFilters(const pidProfile_t *pidProfile)
         }
     }
 
-    if (dTermNotchHz != 0 && pidProfile->dterm_notch_cutoff != 0) {
-        pidRuntime.dtermNotchApplyFn = (filterApplyFnPtr)biquadFilterApply;
+    if (dTermNotchHz != 0 && pidProfile->dterm_notch_cutoff != 0 && pidProfile->dterm_notch_weight > 0) {
         const float notchQ = filterGetNotchQ(dTermNotchHz, pidProfile->dterm_notch_cutoff);
-        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-            biquadFilterInit(&pidRuntime.dtermNotch[axis], dTermNotchHz, targetPidLooptime, notchQ, FILTER_NOTCH, 1.0f);
+        if (pidProfile->dterm_notch_weight == 100) {
+            pidRuntime.dtermNotchApplyFn = (filterApplyFnPtr)biquadFilterApplyDF1;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                biquadFilterInit(&pidRuntime.dtermNotch[axis], dTermNotchHz, targetPidLooptime, notchQ, FILTER_NOTCH, 1.0f);
+            }
+        } else {
+            pidRuntime.dtermNotchApplyFn = (filterApplyFnPtr)biquadFilterApplyDF1Weighted;
+            const float notchWeight = pidProfile->dterm_notch_weight / 100.0f;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                biquadFilterInit(&pidRuntime.dtermNotch[axis], dTermNotchHz, targetPidLooptime, notchQ, FILTER_NOTCH, notchWeight);
+            }
         }
     } else {
         pidRuntime.dtermNotchApplyFn = nullFilterApply;

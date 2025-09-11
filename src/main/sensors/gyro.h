@@ -161,6 +161,8 @@ typedef struct gyroConfig_s {
     uint16_t gyro_soft_notch_cutoff_1;
     uint16_t gyro_soft_notch_hz_2;
     uint16_t gyro_soft_notch_cutoff_2;
+    uint8_t gyro_soft_notch_weight_1;
+    uint8_t gyro_soft_notch_weight_2;
     int16_t gyro_offset_yaw;
     uint8_t checkOverflow;
 
