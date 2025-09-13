@@ -59,6 +59,7 @@
 #define PARAM_NAME_TPA_LOW_BREAKPOINT "tpa_low_breakpoint"
 #define PARAM_NAME_TPA_LOW_ALWAYS "tpa_low_always"
 #define PARAM_NAME_TPA_MODE "tpa_mode"
+#define PARAM_NAME_TPA_D_GSCOPIC "tpa_d_gscopic"
 #define PARAM_NAME_TPA_CURVE_TYPE "tpa_curve_type"
 #define PARAM_NAME_TPA_CURVE_STALL_THROTTLE "tpa_curve_stall_throttle"
 #define PARAM_NAME_TPA_CURVE_PID_THR0 "tpa_curve_pid_thr0"
