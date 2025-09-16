@@ -1992,8 +1992,10 @@ case MSP_NAME:
         sbufWriteU8(dst, currentPidProfile->d_max[PID_PITCH]);
         sbufWriteU8(dst, currentPidProfile->d_max[PID_YAW]);
         sbufWriteU8(dst, currentPidProfile->d_max_gain);
+        sbufWriteU8(dst, currentPidProfile->d_max_gain_hpf_hz);
         sbufWriteU8(dst, currentPidProfile->d_max_advance);
 #else
+        sbufWriteU8(dst, 0);
         sbufWriteU8(dst, 0);
         sbufWriteU8(dst, 0);
         sbufWriteU8(dst, 0);
@@ -3225,12 +3227,18 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             currentPidProfile->d_max[PID_PITCH] = sbufReadU8(src);
             currentPidProfile->d_max[PID_YAW] = sbufReadU8(src);
             currentPidProfile->d_max_gain = sbufReadU8(src);
+            if (sbufBytesRemaining(src) >= 4) {
+                currentPidProfile->d_max_gain_hpf_hz = sbufReadU8(src);
+            }
             currentPidProfile->d_max_advance = sbufReadU8(src);
 #else
             sbufReadU8(src);
             sbufReadU8(src);
             sbufReadU8(src);
             sbufReadU8(src);
+            if (sbufBytesRemaining(src) >= 4) {
+                sbufReadU8(src);
+            }
             sbufReadU8(src);
 #endif
 #if defined(USE_INTEGRATED_YAW_CONTROL)

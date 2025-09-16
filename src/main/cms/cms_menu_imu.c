@@ -523,6 +523,7 @@ static int8_t   cmsx_autoProfileCellCount;
 #ifdef USE_D_MAX
 static uint8_t  cmsx_d_max[XYZ_AXIS_COUNT];
 static uint8_t  cmsx_d_max_gain;
+static uint8_t  cmsx_d_max_gain_hpf;
 static uint8_t  cmsx_d_max_advance;
 #endif
 
@@ -579,6 +580,7 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
         cmsx_d_max[i]  = pidProfile->d_max[i];
     }
     cmsx_d_max_gain = pidProfile->d_max_gain;
+    cmsx_d_max_gain_hpf = pidProfile->d_max_gain_hpf_hz;
     cmsx_d_max_advance = pidProfile->d_max_advance;
 #endif
 
@@ -637,6 +639,7 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
         pidProfile->d_max[i] = cmsx_d_max[i];
     }
     pidProfile->d_max_gain = cmsx_d_max_gain;
+    pidProfile->d_max_gain_hpf_hz = cmsx_d_max_gain_hpf;
     pidProfile->d_max_advance = cmsx_d_max_advance;
 #endif
 
@@ -711,6 +714,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
     { "D_MAX PITCH", OME_UINT8 | SLIDER_RP,  NULL, &(OSD_UINT8_t) { &cmsx_d_max[FD_PITCH],     0, 100, 1 } },
     { "D_MAX YAW",   OME_UINT8 | SLIDER_RPY,  NULL, &(OSD_UINT8_t) { &cmsx_d_max[FD_YAW],       0, 100, 1 } },
     { "D_MAX GAIN",  OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_d_max_gain,          0, 100, 1 } },
+    { "D_MAX HPF",   OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_d_max_gain_hpf,      0,  50, 1 } },
     { "D_MAX ADV",   OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_d_max_advance,       0, 200, 1 } },
 #endif
 

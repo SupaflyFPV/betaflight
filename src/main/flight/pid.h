@@ -249,6 +249,7 @@ typedef struct pidProfile_s {
     uint8_t thrustLinearization;            // Compensation factor for pid linearization
     uint8_t d_max[XYZ_AXIS_COUNT];          // Maximum D value on each axis
     uint8_t d_max_gain;                     // Gain factor for amount of gyro / setpoint activity required to boost D
+    uint8_t d_max_gain_hpf_hz;              // High-pass cutoff for gyro activity used in D gain boost
     uint8_t d_max_advance;                  // Percentage multiplier for setpoint input to boost algorithm
     uint8_t motor_output_limit;             // Upper limit of the motor output (percent)
     int8_t auto_profile_cell_count;         // Cell count for this profile to be used with if auto PID profile switching is used
@@ -455,10 +456,12 @@ typedef struct pidRuntime_s {
 #ifdef USE_D_MAX
     pt2Filter_t dMaxRange[XYZ_AXIS_COUNT];
     pt2Filter_t dMaxLowpass[XYZ_AXIS_COUNT];
+    pt1Filter_t dMaxGainHpfLpf[XYZ_AXIS_COUNT];
     float dMaxPercent[XYZ_AXIS_COUNT];
     uint8_t dMax[XYZ_AXIS_COUNT];
     float dMaxGyroGain;
     float dMaxSetpointGain;
+    bool dMaxGainHpfActive;
 #endif
 
 #ifdef USE_AIRMODE_LPF

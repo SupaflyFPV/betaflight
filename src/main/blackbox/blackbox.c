@@ -1593,6 +1593,7 @@ static bool blackboxWriteSysinfo(void)
                                                                             currentPidProfile->d_max[PITCH],
                                                                             currentPidProfile->d_max[YAW]);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_D_MAX_GAIN, "%d",             currentPidProfile->d_max_gain);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_D_MAX_GAIN_HPF, "%d",         currentPidProfile->d_max_gain_hpf_hz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_D_MAX_ADVANCE, "%d",          currentPidProfile->d_max_advance);
 #endif
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF1_TYPE, "%d",        currentPidProfile->dterm_lpf1_type);

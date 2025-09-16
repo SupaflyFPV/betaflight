@@ -289,7 +289,9 @@ void pidInitFilters(const pidProfile_t *pidProfile)
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         pt2FilterInit(&pidRuntime.dMaxRange[axis], pt2FilterGain(D_MAX_RANGE_HZ, pidRuntime.dT));
         pt2FilterInit(&pidRuntime.dMaxLowpass[axis], pt2FilterGain(D_MAX_LOWPASS_HZ, pidRuntime.dT));
+        pt1FilterInit(&pidRuntime.dMaxGainHpfLpf[axis], pt1FilterGain(pidProfile->d_max_gain_hpf_hz, pidRuntime.dT));
      }
+    pidRuntime.dMaxGainHpfActive = pidProfile->d_max_gain_hpf_hz > 0;
 #endif
 
 #if defined(USE_AIRMODE_LPF)

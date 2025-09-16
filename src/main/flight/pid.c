@@ -194,6 +194,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .thrustLinearization = 0,
         .d_max = D_MAX_DEFAULT,
         .d_max_gain = 37,
+        .d_max_gain_hpf_hz = 30,
         .d_max_advance = 20,
         .motor_output_limit = 100,
         .auto_profile_cell_count = AUTO_PROFILE_CELL_COUNT_STAY,
@@ -1418,6 +1419,10 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             float dMaxMultiplier = 1.0f;
             if (pidRuntime.dMaxPercent[axis] > 1.0f) {
                 float dMaxGyroFactor = pt2FilterApply(&pidRuntime.dMaxRange[axis], delta);
+                if (pidRuntime.dMaxGainHpfActive) {
+                    const float dMaxGyroLowpassed = pt1FilterApply(&pidRuntime.dMaxGainHpfLpf[axis], dMaxGyroFactor);
+                    dMaxGyroFactor -= dMaxGyroLowpassed;
+                }
                 dMaxGyroFactor = fabsf(dMaxGyroFactor) * pidRuntime.dMaxGyroGain;
                 const float dMaxSetpointFactor = fabsf(pidSetpointDelta) * pidRuntime.dMaxSetpointGain;
                 const float dMaxBoost = fmaxf(dMaxGyroFactor, dMaxSetpointFactor);
