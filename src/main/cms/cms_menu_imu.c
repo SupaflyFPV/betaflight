@@ -258,7 +258,7 @@ static uint16_t cmsx_tpa_breakpoint;
 static int8_t cmsx_tpa_low_rate;
 static uint16_t cmsx_tpa_low_breakpoint;
 static uint8_t cmsx_tpa_low_always;
-static uint8_t cmsx_tpa_d_gscopic;
+static uint8_t cmsx_tpa_pd_dmult;
 static uint8_t cmsx_landing_disarm_threshold;
 
 static const void *cmsx_simplifiedTuningOnEnter(displayPort_t *pDisp)
@@ -605,7 +605,7 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
     cmsx_tpa_low_rate = pidProfile->tpa_low_rate;
     cmsx_tpa_low_breakpoint = pidProfile->tpa_low_breakpoint;
     cmsx_tpa_low_always = pidProfile->tpa_low_always;
-    cmsx_tpa_d_gscopic = pidProfile->tpa_d_gscopic;
+    cmsx_tpa_pd_dmult = pidProfile->tpa_pd_dmult;
     cmsx_landing_disarm_threshold = pidProfile->landing_disarm_threshold;
     return NULL;
 }
@@ -664,7 +664,7 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
     pidProfile->tpa_low_rate = cmsx_tpa_low_rate;
     pidProfile->tpa_low_breakpoint = cmsx_tpa_low_breakpoint;
     pidProfile->tpa_low_always = cmsx_tpa_low_always;
-    pidProfile->tpa_d_gscopic = cmsx_tpa_d_gscopic;
+    pidProfile->tpa_pd_dmult = cmsx_tpa_pd_dmult;
     pidProfile->landing_disarm_threshold = cmsx_landing_disarm_threshold;
 
     initEscEndpoints();
@@ -723,7 +723,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
 
     { "TPA RATE",      OME_FLOAT,  NULL, &(OSD_FLOAT_t) { &cmsx_tpa_rate, 0, 100, 1, 10} },
     { "TPA BRKPT",     OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_tpa_breakpoint, 1000, 2000, 10} },
-    { "TPA D GSC",    OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_tpa_d_gscopic, 0, 100, 1 } },
+    { "TPA PD DM",    OME_UINT8,  NULL, &(OSD_UINT8_t) { &cmsx_tpa_pd_dmult, 0, 100, 1 } },
     { "TPA LOW RATE",  OME_INT8,   NULL, &(OSD_INT8_t) { &cmsx_tpa_low_rate, TPA_LOW_RATE_MIN, TPA_MAX , 1} },
     { "TPA LOW BRKPT", OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_tpa_low_breakpoint, 1000, 2000, 10} },
     { "TPA LOW ALWYS", OME_Bool,   NULL, &cmsx_tpa_low_always },
