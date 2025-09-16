@@ -291,7 +291,7 @@ typedef struct pidProfile_s {
     uint8_t tpa_mode;                       // Controls which PID terms TPA effects
     uint8_t tpa_rate;                       // Percent reduction in P or D at full throttle
     uint16_t tpa_breakpoint;                // Breakpoint where TPA is activated
-    uint8_t tpa_d_gscopic;                  // Additional D-term TPA multiplier, 0 = off, 100 = double
+    uint8_t tpa_pd_dmult;                   // Additional D-term TPA multiplier, 0 = off, 100 = double
 
     uint8_t angle_feedforward_smoothing_ms; // Smoothing factor for angle feedforward as time constant in milliseconds
     uint8_t angle_earth_ref;                // Control amount of "co-ordination" from yaw into roll while pitched forward in angle mode
