@@ -92,14 +92,6 @@
 #define G_ACCELERATION 9.80665f // gravitational acceleration in m/s^2
 
 typedef enum {
-    TPA_MODE_PD,
-    TPA_MODE_D,
-#ifdef USE_WING
-    TPA_MODE_PDS,
-#endif
-} tpaMode_e;
-
-typedef enum {
     TERM_P,
     TERM_I,
     TERM_D,
@@ -288,14 +280,15 @@ typedef struct pidProfile_s {
 
     uint8_t anti_gravity_cutoff_hz;
     uint8_t anti_gravity_p_gain;
-    uint8_t tpa_mode;                       // Controls which PID terms TPA effects
-    uint8_t tpa_rate;                       // Percent reduction in P or D at full throttle
+    uint8_t tpa_p_rate;                     // Percent reduction in P at full throttle
+    uint8_t tpa_d_rate;                     // Percent reduction in D at full throttle
     uint16_t tpa_breakpoint;                // Breakpoint where TPA is activated
 
     uint8_t angle_feedforward_smoothing_ms; // Smoothing factor for angle feedforward as time constant in milliseconds
     uint8_t angle_earth_ref;                // Control amount of "co-ordination" from yaw into roll while pitched forward in angle mode
     uint16_t horizon_delay_ms;              // delay when Horizon Strength increases, 50 = 500ms time constant
-    int8_t tpa_low_rate;                    // Percent reduction in P or D at zero throttle
+    int8_t tpa_low_p_rate;                  // Percent reduction in P at zero throttle
+    int8_t tpa_low_d_rate;                  // Percent reduction in D at zero throttle
     uint16_t tpa_low_breakpoint;            // Breakpoint where lower TPA is deactivated
     uint8_t tpa_low_always;                 // off, on - if OFF then low TPA is only active until tpa_low_breakpoint is reached the first time
 
@@ -427,11 +420,14 @@ typedef struct pidRuntime_s {
     bool itermRotation;
     bool zeroThrottleItermReset;
     bool levelRaceMode;
-    float tpaFactor;
+    float tpaFactor;        // P term factor
+    float tpaFactorD;       // D term factor
     float tpaBreakpoint;
-    float tpaMultiplier;
+    float tpaMultiplierP;
+    float tpaMultiplierD;
     float tpaLowBreakpoint;
-    float tpaLowMultiplier;
+    float tpaLowMultiplierP;
+    float tpaLowMultiplierD;
     bool tpaLowAlways;
     bool useEzDisarm;
     float landingDisarmThreshold;

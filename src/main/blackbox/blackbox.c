@@ -1531,10 +1531,11 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THR_MID, "%d",                currentControlRateProfile->thrMid8);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THR_EXPO, "%d",               currentControlRateProfile->thrExpo8);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_THR_HOVER, "%d",              currentControlRateProfile->thrHover8);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_MODE, "%d",               currentPidProfile->tpa_mode);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_RATE, "%d",               currentPidProfile->tpa_rate);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_P_RATE, "%d",             currentPidProfile->tpa_p_rate);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_D_RATE, "%d",             currentPidProfile->tpa_d_rate);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_BREAKPOINT, "%d",         currentPidProfile->tpa_breakpoint);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_LOW_RATE, "%d",           currentPidProfile->tpa_low_rate);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_LOW_P_RATE, "%d",         currentPidProfile->tpa_low_p_rate);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_LOW_D_RATE, "%d",         currentPidProfile->tpa_low_d_rate);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_LOW_BREAKPOINT, "%d",     currentPidProfile->tpa_low_breakpoint);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_TPA_LOW_ALWAYS, "%d",         currentPidProfile->tpa_low_always);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_MIXER_TYPE, "%s",             lookupTableMixerType[mixerConfig()->mixer_type]);
