@@ -114,6 +114,7 @@
 #define PARAM_NAME_PIDSUM_LIMIT "pidsum_limit"
 #define PARAM_NAME_PIDSUM_LIMIT_YAW "pidsum_limit_yaw"
 #define PARAM_NAME_YAW_LOWPASS_HZ "yaw_lowpass_hz"
+#define PARAM_NAME_PTERM_LOWPASS_HZ "pterm_lowpass_hz"
 #define PARAM_NAME_THROTTLE_BOOST "throttle_boost"
 #define PARAM_NAME_THROTTLE_BOOST_CUTOFF "throttle_boost_cutoff"
 #define PARAM_NAME_THRUST_LINEARIZATION "thrust_linear"
