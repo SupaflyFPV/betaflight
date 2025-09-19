@@ -183,6 +183,8 @@ typedef struct gyroConfig_s {
     uint8_t simplified_gyro_filter;
     uint8_t simplified_gyro_filter_multiplier;
 
+    uint8_t biquad_response;
+
     uint8_t gyro_enabled_bitmask;
 } gyroConfig_t;
 

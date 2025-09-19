@@ -95,6 +95,7 @@
 #include "pg/msp.h"
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
+#include "pg/tl.h"
 #include "pg/pilot.h"
 #include "pg/pinio.h"
 #include "pg/piniobox.h"
@@ -567,6 +568,11 @@ const char * const lookupTableSimplifiedTuningPidsMode[] = {
     "OFF", "RP", "RPY",
 };
 
+const char * const lookupTableBiquadResponse[] = {
+    "BUTTERWORTH",
+    "BESSEL",
+};
+
 const char* const lookupTableMixerType[] = {
     "LEGACY", "LINEAR", "DYNAMIC", "EZLANDING",
 };
@@ -727,6 +733,7 @@ const lookupTableEntry_t lookupTables[] = {
 #endif
     LOOKUP_TABLE_ENTRY(lookupTableMixerType),
     LOOKUP_TABLE_ENTRY(lookupTableSimplifiedTuningPidsMode),
+    LOOKUP_TABLE_ENTRY(lookupTableBiquadResponse),
 #ifdef USE_OSD
     LOOKUP_TABLE_ENTRY(lookupTableCMSMenuBackgroundType),
 #endif
@@ -1344,6 +1351,10 @@ const clivalue_t valueTable[] = {
 
 #ifdef USE_THRUST_LINEARIZATION
     { "thrust_linear",              VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, thrustLinearization) },
+    { PARAM_NAME_TL_GAIN,            VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, gain) },
+    { PARAM_NAME_TL_SHAPE,           VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, shape) },
+    { PARAM_NAME_TL_MAX_GAIN,        VAR_FLOAT | MASTER_VALUE, .config.minmax = { 100, 500 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, maxGain) },
+    { PARAM_NAME_TL_SHAPE_BOOST,     VAR_FLOAT | MASTER_VALUE, .config.minmax = { 50, 300 }, PG_THRUST_LINEARIZATION_CONFIG, offsetof(tlConfig_t, shapeBoost) },
 #endif
 
 #ifdef USE_AIRMODE_LPF
@@ -1387,6 +1398,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_SIMPLIFIED_GYRO_FILTER,             VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, simplified_gyro_filter) },
     { PARAM_NAME_SIMPLIFIED_GYRO_FILTER_MULTIPLIER,  VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = { SIMPLIFIED_TUNING_FILTERS_MIN, SIMPLIFIED_TUNING_MAX }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, simplified_gyro_filter_multiplier) },
 #endif
+    { PARAM_NAME_BIQUAD_RESPONSE, VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_BIQUAD_RESPONSE }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, biquad_response) },
     { PARAM_NAME_TPA_MODE,             VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_TPA_MODE }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_mode) },
     { PARAM_NAME_TPA_RATE,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, TPA_MAX}, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_rate) },
     { PARAM_NAME_TPA_BREAKPOINT,    VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { PWM_RANGE_MIN, PWM_RANGE_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_breakpoint) },
