@@ -161,6 +161,8 @@
 
 extern uint32_t SystemCoreClock;
 
+bool usbCableIsInserted(void);
+
 typedef enum
 {
     Mode_TEST = 0x0,
