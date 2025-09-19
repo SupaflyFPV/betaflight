@@ -259,6 +259,16 @@ void gyroInitFilters(void)
     dynNotchInit(dynNotchConfig(), gyro.targetLooptime);
 #endif
 
+    if (gyroConfig()->gyro_sg_window >= 3 && (gyroConfig()->gyro_sg_window & 1)) {
+        gyro.sgFilterApplyFn = (filterApplyFnPtr)sgFilterApply;
+        for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+            sgFilterInit(&gyro.sgFilter[axis], gyroConfig()->gyro_sg_window);
+            gyro.gyroADCfDelta[axis] = 0.0f;
+        }
+    } else {
+        gyro.sgFilterApplyFn = NULL;
+    }
+
     const float k = pt1FilterGain(GYRO_IMU_DOWNSAMPLE_CUTOFF_HZ, gyro.targetLooptime * 1e-6f);
     for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
         pt1FilterInit(&gyro.imuGyroFilter[axis], k);

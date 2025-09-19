@@ -81,7 +81,14 @@ static FAST_CODE void GYRO_FILTER_FUNCTION_NAME(void)
         // DEBUG_GYRO_FILTERED records the scaled, filtered, after all software filtering has been applied.
         GYRO_FILTER_DEBUG_SET(DEBUG_GYRO_FILTERED, axis, lrintf(gyroADCf));
 
+        float delta;
+        if (gyro.sgFilterApplyFn) {
+            delta = gyro.sgFilterApplyFn((filter_t *)&gyro.sgFilter[axis], gyroADCf);
+        } else {
+            delta = gyroADCf - gyro.gyroADCf[axis];
+        }
         gyro.gyroADCf[axis] = gyroADCf;
+        gyro.gyroADCfDelta[axis] = delta;
     }
     gyro.sampleCount = 0;
 }

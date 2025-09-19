@@ -78,6 +78,7 @@ typedef struct gyro_s {
     float scale;
     float gyroADC[XYZ_AXIS_COUNT];     // aligned, calibrated, scaled, but unfiltered data from the sensor(s)
     float gyroADCf[XYZ_AXIS_COUNT];    // filtered gyro data
+    float gyroADCfDelta[XYZ_AXIS_COUNT]; // derivative of filtered gyro data
     uint8_t sampleCount;               // gyro sensor sample counter
     float sampleSum[XYZ_AXIS_COUNT];   // summed samples used for downsampling
     bool downsampleFilterEnabled;      // if true then downsample using gyro lowpass 2, otherwise use averaging
@@ -100,6 +101,10 @@ typedef struct gyro_s {
 
     filterApplyFnPtr notchFilter2ApplyFn;
     biquadFilter_t notchFilter2[XYZ_AXIS_COUNT];
+
+    // Savitzky-Golay filter
+    filterApplyFnPtr sgFilterApplyFn;
+    sgFilter_t sgFilter[XYZ_AXIS_COUNT];
 
     uint16_t accSampleRateHz;
     uint8_t gyroEnabledBitmask;
@@ -156,6 +161,8 @@ typedef struct gyroConfig_s {
 
     uint16_t gyro_lpf1_static_hz;
     uint16_t gyro_lpf2_static_hz;
+
+    uint8_t gyro_sg_window;
 
     uint16_t gyro_soft_notch_hz_1;
     uint16_t gyro_soft_notch_cutoff_1;
