@@ -228,6 +228,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .tpa_mode = TPA_MODE_D,
         .tpa_rate = 65,
         .tpa_breakpoint = 1350,
+        .tpa_d_gscopic = 0,
         .angle_feedforward_smoothing_ms = 80,
         .angle_earth_ref = 100,
         .horizon_delay_ms = 500, // 500ms time constant on any increase in horizon strength
@@ -426,8 +427,11 @@ static float getTpaFactorClassic(float tpaArgument)
         if (!pidRuntime.tpaLowAlways && !isTpaLowFaded) {
             isTpaLowFaded = true;
         }
+        const float tpaRateD = tpaRate * (1.0f + pidRuntime.tpaDMultiplier);
+        pidRuntime.tpaFactorD = 1.0f - constrainf(tpaRateD, 0.0f, 1.0f);
     } else {
         tpaRate = pidRuntime.tpaLowMultiplier * (pidRuntime.tpaLowBreakpoint - tpaArgument);
+        pidRuntime.tpaFactorD = 1.0f - tpaRate;
     }
 
     return 1.0f - tpaRate;
@@ -459,6 +463,12 @@ void pidUpdateTpaFactor(float throttle)
 
     DEBUG_SET(DEBUG_TPA, 0, lrintf(tpaFactor * 1000));
     pidRuntime.tpaFactor = tpaFactor;
+
+    if (pidRuntime.tpaCurveType != TPA_CURVE_CLASSIC) {
+        const float tpaRate = 1.0f - tpaFactor;
+        const float tpaRateD = tpaRate * (1.0f + pidRuntime.tpaDMultiplier);
+        pidRuntime.tpaFactorD = 1.0f - constrainf(tpaRateD, 0.0f, 1.0f);
+    }
 
 #ifdef USE_WING
     switch (currentPidProfile->yaw_type) {
@@ -1032,7 +1042,7 @@ static float getTpaFactor(const pidProfile_t *pidProfile, int axis, term_e term)
     case TERM_P:
         return tpaActive ? tpaFactor : 1.0f;
     case TERM_D:
-        return tpaFactor;
+        return pidRuntime.tpaFactorD;
 #ifdef USE_WING
     case TERM_S:
         return tpaActive ? pidRuntime.tpaFactorSterm[axis] : 1.0f;
