@@ -465,11 +465,13 @@ void pidUpdateTpaFactor(float throttle)
     DEBUG_SET(DEBUG_TPA, 0, lrintf(tpaFactor * 1000));
     pidRuntime.tpaFactor = tpaFactor;
 
+#ifdef USE_ADVANCED_TPA
     if (pidRuntime.tpaCurveType != TPA_CURVE_CLASSIC) {
         const float tpaRate = 1.0f - tpaFactor;
         const float tpaRateD = tpaRate * (1.0f + pidRuntime.tpaDMultiplier);
         pidRuntime.tpaFactorD = 1.0f - constrainf(tpaRateD, 0.0f, 1.0f);
     }
+#endif
 
 #ifdef USE_WING
     switch (currentPidProfile->yaw_type) {

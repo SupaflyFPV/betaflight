@@ -10,26 +10,20 @@
 # - value_str: merge adjacent strings and remove quotes ("a""b" "B C" -> abB C)
 ###############################################################################
 
-_pp_expand_raw = $(strip $(shell \
-  printf '%s' "$2" | \
+_pp_expand_raw = $(strip $(shell printf '%s' "$2" | \
   $(CROSS_CC) $(CPPFLAGS) \
     $(addprefix -D,$(OPTIONS)) \
     $(addprefix -I,$(INCLUDE_DIRS)) \
     $(addprefix -isystem,$(SYS_INCLUDE_DIRS)) \
-    -E -P -xc -imacros "$1" - \
-  | tr -d '\r\n' \
-))
+    -E -P -xc -imacros "$1" - | tr -d '\r\n'))
 
 # Expand only if the macro NAME is defined in header $1; otherwise yield empty
-_pp_expand_guarded_raw = $(strip $(shell \
-  printf '#if defined(%s)\n%s\n#endif\n' "$2" "$2" | \
+_pp_expand_guarded_raw = $(strip $(shell printf '\#if defined(%s)\n%s\n\#endif\n' "$2" "$2" | \
   $(CROSS_CC) $(CPPFLAGS) \
     $(addprefix -D,$(OPTIONS)) \
     $(addprefix -I,$(INCLUDE_DIRS)) \
     $(addprefix -isystem,$(SYS_INCLUDE_DIRS)) \
-    -E -P -xc -imacros "$1" - \
-  | tr -d '\r\n' \
-))
+    -E -P -xc -imacros "$1" - | tr -d '\r\n'))
 
 # Concatenate adjacent strings (C rules) and remove quotes
 # Preprocessor already merged whitespace between tokens
