@@ -106,6 +106,7 @@ bool cliMode = false;
 #include "flight/imu.h"
 #include "flight/mixer.h"
 #include "flight/pid.h"
+#include "fc/parameter_names.h"
 #include "flight/position.h"
 #include "flight/servos.h"
 
@@ -542,6 +543,17 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
         }
     } else {
+        if ((var->type & VALUE_MODE_MASK) == MODE_DIRECT
+            && (var->type & VALUE_TYPE_MASK) == VAR_UINT8
+            && strcmp(var->name, PARAM_NAME_TPA_PD_DMULT) == 0) {
+            const uint8_t storedValue = *(const uint8_t *)valuePointer;
+            cliPrintf("%d", storedValue);
+            if (full) {
+                cliPrintf(" %d %d", TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+            }
+            return;
+        }
+
         int value = 0;
 
         switch (var->type & VALUE_TYPE_MASK) {
@@ -819,6 +831,13 @@ static void cliPrintVar(const char *cmdName, const clivalue_t *var, bool full)
 
 static void cliPrintVarRange(const clivalue_t *var)
 {
+    if ((var->type & VALUE_MODE_MASK) == MODE_DIRECT
+        && (var->type & VALUE_TYPE_MASK) == VAR_UINT8
+        && strcmp(var->name, PARAM_NAME_TPA_PD_DMULT) == 0) {
+        cliPrintLinef("Allowed range: %d - %d", TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+        return;
+    }
+
     switch (var->type & VALUE_MODE_MASK) {
     case (MODE_DIRECT): {
         switch (var->type & VALUE_TYPE_MASK) {
@@ -4491,6 +4510,26 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
         int16_t value  = 0;
         switch (val->type & VALUE_MODE_MASK) {
         case MODE_DIRECT: {
+                if ((val->type & VALUE_TYPE_MASK) == VAR_UINT8 && strcmp(val->name, PARAM_NAME_TPA_PD_DMULT) == 0) {
+                    char *endptr;
+                    const float multiplier = strtof(eqptr, &endptr);
+                    if (endptr == eqptr || !isfinite(multiplier)) {
+                        cliPrintErrorLinef(cmdName, "INVALID VALUE: %s", eqptr);
+                        return;
+                    }
+
+                    if (multiplier < TPA_PD_D_MULTIPLIER_MIN || multiplier > TPA_PD_D_MULTIPLIER_MAX) {
+                        cliPrintErrorLinef(cmdName, "VALUE OUT OF RANGE");
+                        cliPrintLinef("Allowed range: %d - %d", TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+                        return;
+                    }
+
+                    const uint8_t storedValue = pidEncodeTpaPdDmult(multiplier);
+
+                    cliSetVar(val, storedValue);
+                    valueChanged = true;
+                    break;
+                }
                 if ((val->type & VALUE_TYPE_MASK) == VAR_UINT32) {
                     uint32_t value = strtoul(eqptr, NULL, 10);
 

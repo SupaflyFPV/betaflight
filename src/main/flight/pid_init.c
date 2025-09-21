@@ -572,7 +572,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     pidRuntime.tpaBreakpoint = constrainf((pidProfile->tpa_breakpoint - PWM_RANGE_MIN) / 1000.0f, 0.0f, 0.99f);
     // default of 1350 returns 0.35. range limited to 0 to 0.99
     pidRuntime.tpaMultiplier = (pidProfile->tpa_rate / 100.0f) / (1.0f - pidRuntime.tpaBreakpoint);
-    pidRuntime.tpaDMultiplier = (pidProfile->tpa_mode == TPA_MODE_PD) ? pidProfile->tpa_pd_dmult / 100.0f : 0.0f;
+    pidRuntime.tpaDMultiplier = (pidProfile->tpa_mode == TPA_MODE_PD) ? pidDecodeTpaPdDmultAdditional(pidProfile->tpa_pd_dmult) : 0.0f;
     // it is assumed that tpaLowBreakpoint is always less than or equal to tpaBreakpoint
     pidRuntime.tpaLowBreakpoint = constrainf((pidProfile->tpa_low_breakpoint - PWM_RANGE_MIN) / 1000.0f, 0.01f, 1.0f);
     pidRuntime.tpaLowBreakpoint = MIN(pidRuntime.tpaLowBreakpoint, pidRuntime.tpaBreakpoint);
