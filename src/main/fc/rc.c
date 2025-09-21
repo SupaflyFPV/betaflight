@@ -365,16 +365,16 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
 
     // Update the RC Setpoint/Deflection filter and FeedForward Filter
     // all cutoffs will be the same, we can optimize :)
-    const float pt3K = pt3FilterGain(setpointCutoffFrequency, dT);
+    const float pt2K = pt2FilterGain(setpointCutoffFrequency, dT);
     for (int i = FD_ROLL; i <= FD_YAW; i++) {
-        pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt3K);
-        pt3FilterUpdateCutoff(&smoothingData->filterFeedforward[i], pt3K);
+        pt2FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt2K);
+        pt2FilterUpdateCutoff(&smoothingData->filterFeedforward[i], pt2K);
     }
     for (int i = FD_ROLL; i <= FD_PITCH; i++) {
-        pt3FilterUpdateCutoff(&smoothingData->filterRcDeflection[i], pt3K);
+        pt2FilterUpdateCutoff(&smoothingData->filterRcDeflection[i], pt2K);
     }
 
-    pt3FilterUpdateCutoff(&smoothingData->filterSetpoint[THROTTLE], pt3FilterGain(throttleCutoffFrequency, dT));
+    pt2FilterUpdateCutoff(&smoothingData->filterSetpoint[THROTTLE], pt2FilterGain(throttleCutoffFrequency, dT));
 
     DEBUG_SET(DEBUG_RC_SMOOTHING, 2, smoothingData->setpointCutoffFrequency);
     DEBUG_SET(DEBUG_RC_SMOOTHING, 3, smoothingData->throttleCutoffFrequency);
@@ -424,16 +424,16 @@ static FAST_CODE void processRcSmoothingFilter(void)
     // each pid loop, apply the last received channel value to the filter, if initialised - thanks @klutvott
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
         float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
-        *dst = pt3FilterApply(&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
+        *dst = pt2FilterApply(&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
     }
 
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         // Feedforward smoothing
-        feedforwardSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
+        feedforwardSmoothed[axis] = pt2FilterApply(&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
         // Horizon mode smoothing of rcDeflection on pitch and roll to provide a smooth angle element
         const bool smoothRcDeflection = FLIGHT_MODE(HORIZON_MODE);
         if (smoothRcDeflection && axis < FD_YAW) {
-            rcDeflectionSmoothed[axis] = pt3FilterApply(&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
+            rcDeflectionSmoothed[axis] = pt2FilterApply(&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
         } else {
             rcDeflectionSmoothed[axis] = rcDeflection[axis];
         }
