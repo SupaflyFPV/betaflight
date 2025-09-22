@@ -272,6 +272,21 @@ static void validateAndFixConfig(void)
             }
         }
 
+        uint8_t storedTpaPdDmult = pidProfilesMutable(i)->tpa_pd_dmult;
+        if (storedTpaPdDmult < TPA_PD_D_MULTIPLIER_MIN || storedTpaPdDmult > TPA_PD_D_MULTIPLIER_MAX) {
+            float multiplier = 1.0f;
+
+            if (storedTpaPdDmult >= 10 && storedTpaPdDmult <= 50) {
+                multiplier = storedTpaPdDmult / 10.0f;
+            } else if (storedTpaPdDmult >= 100 && storedTpaPdDmult <= 150) {
+                multiplier = (storedTpaPdDmult - 100) / 10.0f;
+            } else if (storedTpaPdDmult <= 100) {
+                multiplier = 1.0f + storedTpaPdDmult / 100.0f;
+            }
+
+            pidProfilesMutable(i)->tpa_pd_dmult = pidEncodeTpaPdDmult(multiplier);
+        }
+
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
         if (batteryConfig()->voltageMeterSource != VOLTAGE_METER_ADC) {
             pidProfilesMutable(i)->vbat_sag_compensation = 0;

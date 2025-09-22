@@ -51,6 +51,9 @@
 // This value gives the same "feel" as the previous Kd default of 26 (26 * DTERM_SCALE)
 #define FEEDFORWARD_SCALE 0.013754f
 
+#define TPA_PD_D_MULTIPLIER_MIN             1
+#define TPA_PD_D_MULTIPLIER_MAX             5
+
 // Full iterm suppression in setpoint mode at high-passed setpoint rate > 40deg/sec
 #define ITERM_RELAX_SETPOINT_THRESHOLD 40.0f
 #define ITERM_RELAX_CUTOFF_DEFAULT 15
@@ -292,7 +295,7 @@ typedef struct pidProfile_s {
     uint8_t tpa_mode;                       // Controls which PID terms TPA effects
     uint8_t tpa_rate;                       // Percent reduction in P or D at full throttle
     uint16_t tpa_breakpoint;                // Breakpoint where TPA is activated
-    uint8_t tpa_d_gscopic;                  // Additional D-term TPA multiplier, 0 = off, 100 = double
+    uint8_t tpa_pd_dmult;                   // Additional D-term TPA multiplier stored directly (1-5)
 
     uint8_t angle_feedforward_smoothing_ms; // Smoothing factor for angle feedforward as time constant in milliseconds
     uint8_t angle_earth_ref;                // Control amount of "co-ordination" from yaw into roll while pitched forward in angle mode
@@ -580,6 +583,10 @@ void pidUpdateAntiGravityThrottleFilter(float throttle);
 bool pidOsdAntiGravityActive(void);
 void pidSetAntiGravityState(bool newState);
 bool pidAntiGravityEnabled(void);
+
+uint8_t pidEncodeTpaPdDmult(float multiplier);
+float pidDecodeTpaPdDmult(uint8_t storedValue);
+float pidDecodeTpaPdDmultAdditional(uint8_t storedValue);
 
 #ifdef USE_THRUST_LINEARIZATION
 float pidApplyThrustLinearization(float motorValue);

@@ -81,6 +81,23 @@ FAST_DATA_ZERO_INIT uint32_t targetPidLooptime;
 FAST_DATA_ZERO_INIT pidAxisData_t pidData[XYZ_AXIS_COUNT];
 FAST_DATA_ZERO_INIT pidRuntime_t pidRuntime;
 
+uint8_t pidEncodeTpaPdDmult(float multiplier)
+{
+    const float clampedMultiplier = constrainf(multiplier, (float)TPA_PD_D_MULTIPLIER_MIN, (float)TPA_PD_D_MULTIPLIER_MAX);
+    return constrain((uint8_t)lrintf(clampedMultiplier), TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+}
+
+float pidDecodeTpaPdDmult(uint8_t storedValue)
+{
+    storedValue = constrain(storedValue, TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+    return (float)storedValue;
+}
+
+float pidDecodeTpaPdDmultAdditional(uint8_t storedValue)
+{
+    return pidDecodeTpaPdDmult(storedValue) - 1.0f;
+}
+
 #if defined(USE_ABSOLUTE_CONTROL)
 STATIC_UNIT_TESTED FAST_DATA_ZERO_INIT float axisError[XYZ_AXIS_COUNT];
 #endif
@@ -229,7 +246,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .tpa_mode = TPA_MODE_D,
         .tpa_rate = 65,
         .tpa_breakpoint = 1350,
-        .tpa_d_gscopic = 0,
+        .tpa_pd_dmult = TPA_PD_D_MULTIPLIER_MIN,
         .angle_feedforward_smoothing_ms = 80,
         .angle_earth_ref = 100,
         .horizon_delay_ms = 500, // 500ms time constant on any increase in horizon strength
@@ -464,6 +481,13 @@ void pidUpdateTpaFactor(float throttle)
 
     DEBUG_SET(DEBUG_TPA, 0, lrintf(tpaFactor * 1000));
     pidRuntime.tpaFactor = tpaFactor;
+#ifdef USE_ADVANCED_TPA
+    if (pidRuntime.tpaCurveType != TPA_CURVE_CLASSIC) {
+        const float tpaRate = 1.0f - tpaFactor;
+        const float tpaRateD = tpaRate * (1.0f + pidRuntime.tpaDMultiplier);
+        pidRuntime.tpaFactorD = 1.0f - constrainf(tpaRateD, 0.0f, 1.0f);
+    }
+#endif
 
 #ifdef USE_ADVANCED_TPA
     if (pidRuntime.tpaCurveType != TPA_CURVE_CLASSIC) {
