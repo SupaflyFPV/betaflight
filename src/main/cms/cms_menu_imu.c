@@ -793,7 +793,7 @@ static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
 
     { "GYRO LPF1",  OME_UINT16 | SLIDER_GYRO, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_lpf1_static_hz, 0, LPF_MAX_HZ, 1 } },
 #ifdef USE_GYRO_LPF2
-    { "GYRO LPF2",  OME_UINT16 | SLIDER_GYRO, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_lpf2_static_hz,  0, LPF_MAX_HZ, 1 } },
+    { "GYRO LPF2",  OME_UINT16 | SLIDER_GYRO, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_lpf2_static_hz,  0, GYRO_LPF2_STATIC_HZ_MAX, 1 } },
 #endif
     { "GYRO NF1",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_1,     0, 500, 1 } },
     { "GYRO NF1C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_1, 0, 500, 1 } },

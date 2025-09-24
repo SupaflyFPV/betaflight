@@ -37,7 +37,8 @@
 
 #include "pg/pg.h"
 
-#define LPF_MAX_HZ 1000 // so little filtering above 1000hz that if the user wants less delay, they must disable the filter
+#define LPF_MAX_HZ 1000 // legacy ceiling for most LPF settings
+#define GYRO_LPF2_STATIC_HZ_MAX 3500 // megamix allows gyro LPF2 up to 3.5 kHz
 #define DYN_LPF_MAX_HZ 1000
 
 #define GYRO_LPF1_DYN_MIN_HZ_DEFAULT 250
