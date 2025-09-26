@@ -474,6 +474,33 @@ void beeperUpdate(timeUs_t currentTimeUs)
         return;
     }
 
+#ifdef USE_DSHOT
+    const bool usbBeaconGuardActive = usbConnected &&
+        (currentBeeperEntry->mode == BEEPER_RX_LOST || currentBeeperEntry->mode == BEEPER_RX_SET);
+    if (!areMotorsRunning()
+        && (DSHOT_BEACON_ALLOWED_MODES & BEEPER_GET_FLAG(currentBeeperEntry->mode))
+        && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(currentBeeperEntry->mode))
+        && !usbBeaconGuardActive) {
+        const timeDelta_t dShotBeaconInterval =
+#ifdef DSHOT_BEACON_RXLOSS_INTERVAL_US
+            (currentBeeperEntry->mode == BEEPER_RX_SET)
+                ? DSHOT_BEACON_MODE_INTERVAL_US
+                : DSHOT_BEACON_RXLOSS_INTERVAL_US;
+#else
+            DSHOT_BEACON_MODE_INTERVAL_US;
+#endif
+        if (cmpTimeUs(currentTimeUs, getLastDisarmTimeUs()) > DSHOT_BEACON_GUARD_DELAY_US
+            && !isTryingToArm()) {
+            if (cmpTimeUs(currentTimeUs, lastDshotBeaconCommandTimeUs) > dShotBeaconInterval) {
+                lastDshotBeaconCommandTimeUs = currentTimeUs;
+                dshotCommandWrite(ALL_MOTORS, getMotorCount(), beeperConfig()->dshotBeaconTone, DSHOT_CMD_TYPE_INLINE);
+            }
+        } else {
+            lastDshotBeaconCommandTimeUs = currentTimeUs - dShotBeaconInterval;
+        }
+    }
+#endif
+
     bool visualBeep = false;
     switch (beeperSequenceAdvance(currentTimeUs)) {
     case BeepOnFirst:
