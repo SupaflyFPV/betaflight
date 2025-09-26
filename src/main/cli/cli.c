@@ -542,32 +542,31 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
             }
         }
     } else {
-        int value = 0;
-
+        int32_t value = 0;
+        float floatValue = 0.0f;
+        bool isFloat = false;
         switch (var->type & VALUE_TYPE_MASK) {
         case VAR_UINT8:
             value = *(uint8_t *)valuePointer;
-
             break;
         case VAR_INT8:
             value = *(int8_t *)valuePointer;
-
             break;
         case VAR_UINT16:
             value = *(uint16_t *)valuePointer;
-
             break;
         case VAR_INT16:
             value = *(int16_t *)valuePointer;
-
             break;
         case VAR_UINT32:
             value = *(uint32_t *)valuePointer;
-
             break;
         case VAR_INT32:
             value = *(int32_t *)valuePointer;
-
+            break;
+        case VAR_FLOAT:
+            isFloat = true;
+            floatValue = *(float *)valuePointer;
             break;
         }
 
@@ -588,6 +587,10 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
                 } else if (full) {
                     cliPrintf(" 0 %u", var->config.u32Max);
                 }
+            } else if (isFloat) {
+                char buf[16];
+                ftoa(floatValue, buf);
+                cliPrintf("%s", buf);
             } else {
                 int min;
                 int max;
@@ -622,7 +625,7 @@ static void printValuePointer(const char *cmdName, const clivalue_t *var, const 
 
         if (valueIsCorrupted) {
             cliPrintLinefeed();
-            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, value);
+            cliPrintError(cmdName, "CORRUPTED CONFIG: %s = %d", var->name, isFloat ? (int)(floatValue) : value);
         }
     }
 }
@@ -830,6 +833,9 @@ static void cliPrintVarRange(const clivalue_t *var)
             cliPrintLinef("Allowed range: %d - %d", -var->config.d32Max, var->config.d32Max);
 
             break;
+        case VAR_FLOAT:
+            cliPrintLinef("Allowed range: %.2f - %.2f", (double)(var->config.minmax.min / 100.0f), (double)(var->config.minmax.max / 100.0f));
+            break;
         case VAR_UINT8:
         case VAR_UINT16:
             cliPrintLinef("Allowed range: %d - %d", var->config.minmaxUnsigned.min, var->config.minmaxUnsigned.max);
@@ -946,6 +952,16 @@ static void cliSetVar(const clivalue_t *var, const uint32_t value)
         case VAR_INT32:
             *(int32_t *)ptr = value;
             break;
+        case VAR_FLOAT:
+        {
+            union {
+                uint32_t u;
+                float f;
+            } converter;
+            converter.u = value;
+            *(float *)ptr = converter.f;
+            break;
+        }
         }
     }
 }
@@ -4489,6 +4505,7 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
 
         bool valueChanged = false;
         int16_t value  = 0;
+        float floatValue = 0.0f;
         switch (val->type & VALUE_MODE_MASK) {
         case MODE_DIRECT: {
                 if ((val->type & VALUE_TYPE_MASK) == VAR_UINT32) {
@@ -4504,6 +4521,15 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
                     // INT32s are limited to being symmetric, so we test both bounds with the same magnitude
                     if (value <= val->config.d32Max && value >= -val->config.d32Max) {
                         cliSetVar(val, value);
+                        valueChanged = true;
+                    }
+                } else if ((val->type & VALUE_TYPE_MASK) == VAR_FLOAT) {
+                    floatValue = fastA2F(eqptr);
+                    float min = val->config.minmax.min / 100.0f;
+                    float max = val->config.minmax.max / 100.0f;
+                    if (floatValue >= min && floatValue <= max) {
+                        union { float f; uint32_t u; } conv = { .f = floatValue };
+                        cliSetVar(val, conv.u);
                         valueChanged = true;
                     }
                 } else {

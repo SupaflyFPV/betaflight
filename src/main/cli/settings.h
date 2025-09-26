@@ -139,6 +139,7 @@ typedef enum {
 #endif
     TABLE_MIXER_TYPE,
     TABLE_SIMPLIFIED_TUNING_PIDS_MODE,
+    TABLE_BIQUAD_RESPONSE,
 #ifdef USE_OSD
     TABLE_CMS_BACKGROUND,
 #endif
@@ -172,6 +173,7 @@ typedef enum {
     VAR_INT16 = (3 << VALUE_TYPE_OFFSET),
     VAR_UINT32 = (4 << VALUE_TYPE_OFFSET),
     VAR_INT32 = (5 << VALUE_TYPE_OFFSET),
+    VAR_FLOAT = (6 << VALUE_TYPE_OFFSET),
 
     // value section, bits 3-4
     MASTER_VALUE = (0 << VALUE_SECTION_OFFSET),
@@ -280,6 +282,7 @@ extern const char * const lookupTableFeedforwardAveraging[];
 extern const char * const lookupTableOffOn[];
 
 extern const char * const lookupTableSimplifiedTuningPidsMode[];
+extern const char * const lookupTableBiquadResponse[];
 
 extern const char * const lookupTableMixerType[];
 
