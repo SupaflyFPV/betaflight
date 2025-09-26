@@ -907,9 +907,15 @@ static CMS_Menu cmsx_menuDynFilt = {
 
 static uint16_t cmsx_dterm_lpf1_static_hz;
 static uint16_t cmsx_dterm_lpf2_static_hz;
+static uint8_t cmsx_dterm_lpf1_type;
+static uint8_t cmsx_dterm_lpf2_type;
 static uint16_t cmsx_dterm_notch_hz;
 static uint16_t cmsx_dterm_notch_cutoff;
 static uint16_t cmsx_yaw_lowpass_hz;
+static uint8_t cmsx_dterm_cheby2_filter;
+static uint8_t cmsx_dterm_sg_filter;
+static uint8_t cmsx_dterm_sg_window;
+static uint8_t cmsx_biquad_response;
 
 static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
 {
@@ -919,9 +925,15 @@ static const void *cmsx_FilterPerProfileRead(displayPort_t *pDisp)
 
     cmsx_dterm_lpf1_static_hz   = pidProfile->dterm_lpf1_static_hz;
     cmsx_dterm_lpf2_static_hz   = pidProfile->dterm_lpf2_static_hz;
+    cmsx_dterm_lpf1_type        = pidProfile->dterm_lpf1_type;
+    cmsx_dterm_lpf2_type        = pidProfile->dterm_lpf2_type;
     cmsx_dterm_notch_hz         = pidProfile->dterm_notch_hz;
     cmsx_dterm_notch_cutoff     = pidProfile->dterm_notch_cutoff;
     cmsx_yaw_lowpass_hz         = pidProfile->yaw_lowpass_hz;
+    cmsx_dterm_cheby2_filter    = pidProfile->dterm_cheby2_filter;
+    cmsx_dterm_sg_filter        = pidProfile->dterm_sg_filter;
+    cmsx_dterm_sg_window        = pidProfile->dterm_sg_window;
+    cmsx_biquad_response        = pidProfile->biquad_response;
 
     return NULL;
 }
@@ -935,9 +947,15 @@ static const void *cmsx_FilterPerProfileWriteback(displayPort_t *pDisp, const OS
 
     pidProfile->dterm_lpf1_static_hz  = cmsx_dterm_lpf1_static_hz;
     pidProfile->dterm_lpf2_static_hz  = cmsx_dterm_lpf2_static_hz;
+    pidProfile->dterm_lpf1_type       = cmsx_dterm_lpf1_type;
+    pidProfile->dterm_lpf2_type       = cmsx_dterm_lpf2_type;
     pidProfile->dterm_notch_hz        = cmsx_dterm_notch_hz;
     pidProfile->dterm_notch_cutoff    = cmsx_dterm_notch_cutoff;
     pidProfile->yaw_lowpass_hz        = cmsx_yaw_lowpass_hz;
+    pidProfile->dterm_cheby2_filter   = cmsx_dterm_cheby2_filter;
+    pidProfile->dterm_sg_filter       = cmsx_dterm_sg_filter;
+    pidProfile->dterm_sg_window       = cmsx_dterm_sg_window;
+    pidProfile->biquad_response       = cmsx_biquad_response;
 
     return NULL;
 }
@@ -947,9 +965,15 @@ static const OSD_Entry cmsx_menuFilterPerProfileEntries[] =
     { "-- FILTER PP  --", OME_Label, NULL, NULL },
 
     { "DTERM LPF1", OME_UINT16 | SLIDER_DTERM, NULL, &(OSD_UINT16_t){ &cmsx_dterm_lpf1_static_hz, 0, LPF_MAX_HZ, 1 } },
+    { "LPF1T", OME_TAB, NULL, &(OSD_TAB_t){ &cmsx_dterm_lpf1_type, FILTER_PT3, lookupTableDtermLowpassType } },
     { "DTERM LPF2", OME_UINT16 | SLIDER_DTERM, NULL, &(OSD_UINT16_t){ &cmsx_dterm_lpf2_static_hz, 0, LPF_MAX_HZ, 1 } },
+    { "LPF2T", OME_TAB, NULL, &(OSD_TAB_t){ &cmsx_dterm_lpf2_type, FILTER_PT3, lookupTableDtermLowpassType } },
     { "DTERM NF",   OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_hz,       0, LPF_MAX_HZ, 1 } },
     { "DTERM NFCO", OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_dterm_notch_cutoff,   0, LPF_MAX_HZ, 1 } },
+    { "CHBY2",    OME_TAB,   NULL, &(OSD_TAB_t){ &cmsx_dterm_cheby2_filter, 1, lookupTableOffOn } },
+    { "SG",       OME_TAB,   NULL, &(OSD_TAB_t){ &cmsx_dterm_sg_filter, 1, lookupTableOffOn } },
+    { "SGWIN",    OME_UINT8, NULL, &(OSD_UINT8_t){ &cmsx_dterm_sg_window, 5, 11, 1 } },
+    { "BIQRES",   OME_TAB,   NULL, &(OSD_TAB_t){ &cmsx_biquad_response, 1, lookupTableBiquadResponse } },
     { "YAW LPF",    OME_UINT16, NULL, &(OSD_UINT16_t){ &cmsx_yaw_lowpass_hz,       0, 500, 1 } },
 
     { "BACK", OME_Back, NULL, NULL },

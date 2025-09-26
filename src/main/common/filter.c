@@ -30,6 +30,18 @@
 
 #define BIQUAD_Q 1.0f / sqrtf(2.0f)     /* quality factor - 2nd order butterworth*/
 
+biquadResponse_e biquadFilterResponse = BIQUAD_RESPONSE_BUTTERWORTH;
+
+void biquadFilterSetResponse(biquadResponse_e response)
+{
+    biquadFilterResponse = response;
+}
+
+static inline float biquadGetQ(void)
+{
+    return (biquadFilterResponse == BIQUAD_RESPONSE_BESSEL) ? BIQUAD_Q_BESSEL : BIQUAD_Q;
+}
+
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
 #define CUTOFF_CORRECTION_PT3 1.961459177f
@@ -171,7 +183,7 @@ float filterGetNotchQ(float centerFreq, float cutoffFreq)
 /* sets up a biquad filter as a 2nd order butterworth LPF */
 void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterInit(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
+    biquadFilterInit(filter, filterFreq, refreshRate, biquadGetQ(), FILTER_LPF, 1.0f);
 }
 
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight)
@@ -232,7 +244,7 @@ FAST_CODE void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint
 
 FAST_CODE void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterUpdate(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
+    biquadFilterUpdate(filter, filterFreq, refreshRate, biquadGetQ(), FILTER_LPF, 1.0f);
 }
 
 /* Computes a biquadFilter_t filter on a sample (slightly less precise than df2 but works in dynamic mode) */
@@ -405,4 +417,104 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
         return retVal;
     }
     return defaultValue;
+}
+
+static const float sosCheby220[][6] = {
+    { 0.013356f, 0.013356f, 0.0f, 1.0f, -0.890256f, 0.0f },
+    { 1.0f, -1.960390f, 1.0f, 1.0f, -1.907327f, 0.916968f },
+};
+
+void cheby2FilterInit(cheby2Filter_t *filter)
+{
+    memset(filter, 0, sizeof(*filter));
+
+    for (size_t i = 0; i < ARRAYLEN(sosCheby220); i++) {
+        biquadFilter_t *s = &filter->stage[i];
+        s->b0 = sosCheby220[i][0];
+        s->b1 = sosCheby220[i][1];
+        s->b2 = sosCheby220[i][2];
+        s->a1 = sosCheby220[i][4];
+        s->a2 = sosCheby220[i][5];
+    }
+
+    filter->stageCount = ARRAYLEN(sosCheby220);
+}
+
+FAST_CODE float cheby2FilterApply(cheby2Filter_t *filter, float input)
+{
+    float out = input;
+
+    for (int i = 0; i < filter->stageCount; i++) {
+        biquadFilter_t *s = &filter->stage[i];
+        float result = s->b0 * out + s->b1 * s->x1 + s->b2 * s->x2
+                                  - s->a1 * s->y1 - s->a2 * s->y2;
+
+        s->x2 = s->x1;
+        s->x1 = out;
+        s->y2 = s->y1;
+        s->y1 = result;
+        out = result;
+    }
+
+    return out;
+}
+
+// Savitzky-Golay derivative coefficients (order 2) for the current sample
+static const float sgCoeffs5[]  = { -0.77142857f,  0.18571429f,  0.57142857f,  0.38571429f, -0.37142857f };
+static const float sgCoeffs7[]  = { -0.46428571f, -0.07142857f,  0.17857143f,  0.28571429f,  0.25000000f,  0.07142857f, -0.25000000f };
+static const float sgCoeffs9[]  = { -0.30909091f, -0.11060606f,  0.03593074f,  0.13051948f,  0.17316017f,  0.16385281f,  0.10259740f, -0.01060606f, -0.17575758f };
+static const float sgCoeffs11[] = { -0.22027972f, -0.10629371f, -0.01561772f,  0.05174825f,  0.09580420f,  0.11655012f,  0.11398601f,  0.08811189f,  0.03892774f, -0.03356643f, -0.12937063f };
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
+{
+    memset(filter, 0, sizeof(*filter));
+    filter->windowSize = windowSize;
+}
+
+void sgFilterSetWindowSize(sgFilter_t *filter, uint8_t windowSize)
+{
+    filter->windowSize = windowSize;
+    filter->count = 0;
+    memset(filter->buf, 0, sizeof(filter->buf));
+}
+
+FAST_CODE float sgFilterApply(sgFilter_t *filter, float input, float dT)
+{
+    const uint8_t n = filter->windowSize;
+
+    for (int i = n - 1; i > 0; i--) {
+        filter->buf[i] = filter->buf[i - 1];
+    }
+    filter->buf[0] = input;
+
+    if (filter->count < n) {
+        filter->count++;
+        if (filter->count < 2) {
+            return 0.0f;
+        }
+    }
+
+    const float *coeff;
+    switch (n) {
+    case 5:
+        coeff = sgCoeffs5;
+        break;
+    case 7:
+        coeff = sgCoeffs7;
+        break;
+    case 9:
+        coeff = sgCoeffs9;
+        break;
+    case 11:
+    default:
+        coeff = sgCoeffs11;
+        break;
+    }
+
+    float sum = 0.0f;
+    for (int i = 0; i < n; i++) {
+        sum += coeff[i] * filter->buf[i];
+    }
+
+    return sum / dT;
 }
