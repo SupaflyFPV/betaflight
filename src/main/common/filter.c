@@ -28,7 +28,23 @@
 #include "common/maths.h"
 #include "common/utils.h"
 
-#define BIQUAD_Q 1.0f / sqrtf(2.0f)     /* quality factor - 2nd order butterworth*/
+#define BIQUAD_Q_BUTTERWORTH 0.70710678f
+#define BIQUAD_Q_BESSEL      0.57735027f
+
+static float biquadQ = BIQUAD_Q_BUTTERWORTH;
+
+void biquadFilterSetResponse(biquadResponse_e response)
+{
+    switch (response) {
+    case BIQUAD_RESPONSE_BESSEL:
+        biquadQ = BIQUAD_Q_BESSEL;
+        break;
+    case BIQUAD_RESPONSE_BUTTERWORTH:
+    default:
+        biquadQ = BIQUAD_Q_BUTTERWORTH;
+        break;
+    }
+}
 
 // PTn cutoff correction = 1 / sqrt(2^(1/n) - 1)
 #define CUTOFF_CORRECTION_PT2 1.553773974f
@@ -171,7 +187,7 @@ float filterGetNotchQ(float centerFreq, float cutoffFreq)
 /* sets up a biquad filter as a 2nd order butterworth LPF */
 void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterInit(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
+    biquadFilterInit(filter, filterFreq, refreshRate, biquadQ, FILTER_LPF, 1.0f);
 }
 
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight)
@@ -232,7 +248,7 @@ FAST_CODE void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint
 
 FAST_CODE void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate)
 {
-    biquadFilterUpdate(filter, filterFreq, refreshRate, BIQUAD_Q, FILTER_LPF, 1.0f);
+    biquadFilterUpdate(filter, filterFreq, refreshRate, biquadQ, FILTER_LPF, 1.0f);
 }
 
 /* Computes a biquadFilter_t filter on a sample (slightly less precise than df2 but works in dynamic mode) */
@@ -405,4 +421,42 @@ int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue)
         return retVal;
     }
     return defaultValue;
+}
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize)
+{
+    filter->windowSize = windowSize;
+    filter->halfWindow = (windowSize - 1) / 2;
+    filter->denom = (float)(filter->halfWindow * (filter->halfWindow + 1) * (2 * filter->halfWindow + 1)) / 3.0f;
+    filter->index = 0;
+    filter->count = 0;
+    filter->last = 0.0f;
+    for (int i = 0; i < SG_MAX_WINDOW; i++) {
+        filter->buf[i] = 0.0f;
+    }
+}
+
+float sgFilterApply(sgFilter_t *filter, float input)
+{
+    filter->buf[filter->index] = input;
+    filter->index = (filter->index + 1) % filter->windowSize;
+
+    if (filter->count < filter->windowSize) {
+        float delta = input - filter->last;
+        filter->last = input;
+        filter->count++;
+        if (filter->count < 2) {
+            return 0.0f;
+        }
+        return delta;
+    }
+
+    const int center = (filter->index + filter->halfWindow) % filter->windowSize;
+    float acc = 0.0f;
+    for (int j = 1; j <= filter->halfWindow; j++) {
+        const int idxPlus = (center + j) % filter->windowSize;
+        const int idxMinus = (center + filter->windowSize - j) % filter->windowSize;
+        acc += j * (filter->buf[idxPlus] - filter->buf[idxMinus]);
+    }
+    return acc / filter->denom;
 }

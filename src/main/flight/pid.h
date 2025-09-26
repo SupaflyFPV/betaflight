@@ -198,6 +198,7 @@ typedef struct pidProfile_s {
     pidf_t  pid[PID_ITEM_COUNT];
 
     uint8_t dterm_lpf1_type;                // Filter type for dterm lowpass 1
+    uint8_t dterm_sg_window;                // Savitzky-Golay window size (0 to disable)
     uint8_t itermWindup;                    // iterm windup threshold, percentage of pidSumLimit within which to limit iTerm
     uint16_t pidSumLimit;                   // pidSum limit value for pitch and roll
     uint16_t pidSumLimitYaw;                // pidSum limit value for yaw
@@ -393,6 +394,8 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
+    filterApplyFnPtr dtermSgFilterApplyFn;
+    sgFilter_t dtermSgFilter[XYZ_AXIS_COUNT];
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;

@@ -40,6 +40,11 @@ typedef enum {
     FILTER_BPF,
 } biquadFilterType_e;
 
+typedef enum {
+    BIQUAD_RESPONSE_BUTTERWORTH = 0,
+    BIQUAD_RESPONSE_BESSEL,
+} biquadResponse_e;
+
 typedef struct pt1Filter_s {
     float state;
     float k;
@@ -64,6 +69,8 @@ typedef struct biquadFilter_s {
     float x1, x2, y1, y2;
     float weight;
 } biquadFilter_t;
+
+void biquadFilterSetResponse(biquadResponse_e response);
 
 typedef struct phaseComp_s {
     float b0, b1, a1;
@@ -141,3 +148,18 @@ int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal);
 void meanAccumulatorInit(meanAccumulator_t *filter);
 void meanAccumulatorAdd(meanAccumulator_t *filter, const int8_t newVal);
 int8_t meanAccumulatorCalc(meanAccumulator_t *filter, const int8_t defaultValue);
+
+#define SG_MAX_WINDOW 13
+
+typedef struct sgFilter_s {
+    float buf[SG_MAX_WINDOW];
+    uint8_t windowSize;
+    uint8_t halfWindow;
+    float denom;
+    uint8_t index;
+    uint8_t count;
+    float last;
+} sgFilter_t;
+
+void sgFilterInit(sgFilter_t *filter, uint8_t windowSize);
+float sgFilterApply(sgFilter_t *filter, float input);
