@@ -60,6 +60,10 @@ void pgResetFn_mixerConfig(mixerConfig_t *mixerConfig)
     mixerConfig->crashflip_rate = 0;
 #endif
     mixerConfig->mixer_type = MIXER_LEGACY;
+#ifdef USE_DYN_LPF
+    mixerConfig->dyn_lpf_throttle_update_delay_us = 2000; // 2ms default
+    mixerConfig->dyn_lpf_throttle_steps = 200;            // finer granularity
+#endif
 #ifdef USE_RPM_LIMIT
     mixerConfig->rpm_limit = false;
     mixerConfig->rpm_limit_p = 25;
