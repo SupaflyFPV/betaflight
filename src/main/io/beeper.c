@@ -428,11 +428,12 @@ void beeperUpdate(timeUs_t currentTimeUs)
     bool dshotBeaconRequested = false;
 
     const bool usbConnected = usbVcpIsConnected();
+    const bool usbCableInserted = usbCableIsInserted();
 
     if (!areMotorsRunning()) {
         // Failsafe-triggered beacon when the RX link is lost and USB is disconnected
         if (!failsafeIsReceivingRxData()
-            && !usbCableIsInserted()
+            && !usbCableInserted
             && !usbConnected
             && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(BEEPER_RX_LOST)) ) {
             dshotBeaconRequested = true;
@@ -441,6 +442,7 @@ void beeperUpdate(timeUs_t currentTimeUs)
         // User-triggered beacon when the RX link is active and the AUX switch is engaged
         if (failsafeIsReceivingRxData()
             && !usbConnected
+            && !usbCableInserted
             && IS_RC_MODE_ACTIVE(BOXBEEPERON)
             && !(beeperConfig()->dshotBeaconOffFlags & BEEPER_GET_FLAG(BEEPER_RX_SET)) ) {
             dshotBeaconRequested = true;
@@ -461,7 +463,10 @@ void beeperUpdate(timeUs_t currentTimeUs)
             lastDshotBeaconCommandTimeUs = currentTimeUs - dshotBeaconIntervalUs;
         }
     } else {
-        lastDshotBeaconCommandTimeUs = currentTimeUs - dshotBeaconIntervalUs;
+        const timeDelta_t guardOffset = (usbConnected || usbCableInserted)
+            ? DSHOT_BEACON_GUARD_DELAY_US
+            : dshotBeaconIntervalUs;
+        lastDshotBeaconCommandTimeUs = currentTimeUs - guardOffset;
     }
 #endif
     // Beeper routine doesn't need to update if there aren't any sounds ongoing
@@ -475,7 +480,7 @@ void beeperUpdate(timeUs_t currentTimeUs)
     }
 
 #ifdef USE_DSHOT
-    const bool usbBeaconGuardActive = usbConnected &&
+    const bool usbBeaconGuardActive = (usbConnected || usbCableInserted) &&
         (currentBeeperEntry->mode == BEEPER_RX_LOST || currentBeeperEntry->mode == BEEPER_RX_SET);
     if (!areMotorsRunning()
         && (DSHOT_BEACON_ALLOWED_MODES & BEEPER_GET_FLAG(currentBeeperEntry->mode))
