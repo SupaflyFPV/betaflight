@@ -84,7 +84,8 @@ FAST_DATA_ZERO_INIT pidRuntime_t pidRuntime;
 uint8_t pidEncodeTpaPdDmult(float multiplier)
 {
     const float clampedMultiplier = constrainf(multiplier, (float)TPA_PD_D_MULTIPLIER_MIN, (float)TPA_PD_D_MULTIPLIER_MAX);
-    return constrain((uint8_t)lrintf(clampedMultiplier), TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
+    const long roundedMultiplier = lroundf(clampedMultiplier);
+    return constrain((uint8_t)roundedMultiplier, TPA_PD_D_MULTIPLIER_MIN, TPA_PD_D_MULTIPLIER_MAX);
 }
 
 float pidDecodeTpaPdDmult(uint8_t storedValue)
