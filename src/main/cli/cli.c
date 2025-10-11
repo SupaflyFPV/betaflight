@@ -5051,9 +5051,9 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
         cliPrintLine("OFF");
     }
     cliPrint("# RC Smoothing: ");
-    cliPrintLine(rxConfig()->rc_smoothing ? "ON" : "OFF");
+    cliPrintLine(rxConfig()->rc_smoothing_mode ? "ON" : "OFF");
 
-    if (!rxConfig()->rc_smoothing) {
+    if (!rxConfig()->rc_smoothing_mode) {
         return;
     }
 
