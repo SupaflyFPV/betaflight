@@ -40,6 +40,8 @@
 #define PARAM_NAME_RC_SMOOTHING_SETPOINT_CUTOFF "rc_smoothing_setpoint_cutoff"
 #define PARAM_NAME_RC_SMOOTHING_THROTTLE_CUTOFF "rc_smoothing_throttle_cutoff"
 #define PARAM_NAME_RC_SMOOTHING_DEBUG_AXIS "rc_smoothing_debug_axis"
+#define PARAM_NAME_RC_SMOOTHING_FILTER_TYPE "rc_smoothing_filter_type"
+#define PARAM_NAME_FEEDFORWARD_SMOOTHING_FILTER_TYPE "feedforward_smoothing_filter_type"
 #define PARAM_NAME_RC_SMOOTHING_ACTIVE_CUTOFFS "rc_smoothing_active_cutoffs_ff_sp_thr"
 #define PARAM_NAME_SERIAL_RX_PROVIDER "serialrx_provider"
 #define PARAM_NAME_MOTOR_IDLE "motor_idle"

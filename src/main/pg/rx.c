@@ -76,7 +76,7 @@
 #endif
 #endif
 
-PG_REGISTER_WITH_RESET_FN(rxConfig_t, rxConfig, PG_RX_CONFIG, 4);
+PG_REGISTER_WITH_RESET_FN(rxConfig_t, rxConfig, PG_RX_CONFIG, 5);
 void pgResetFn_rxConfig(rxConfig_t *rxConfig)
 {
     RESET_CONFIG_2(rxConfig_t, rxConfig,
@@ -106,6 +106,8 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rc_smoothing_setpoint_cutoff = 0,
         .rc_smoothing_throttle_cutoff = 0,
         .rc_smoothing_debug_axis = ROLL,
+        .rc_smoothing_filter_type = RC_SMOOTHING_FILTER_PT2,
+        .feedforward_smoothing_filter_type = RC_SMOOTHING_FILTER_PT2,
         .rc_smoothing_auto_factor_rpy = 30,
         .rc_smoothing_auto_factor_throttle = 30,
         .srxl2_unit_id = 1,
