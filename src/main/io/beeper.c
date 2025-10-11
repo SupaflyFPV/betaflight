@@ -463,9 +463,7 @@ void beeperUpdate(timeUs_t currentTimeUs)
             lastDshotBeaconCommandTimeUs = currentTimeUs - dshotBeaconIntervalUs;
         }
     } else {
-        const timeDelta_t guardOffset = (usbConnected || usbCableInserted)
-            ? DSHOT_BEACON_GUARD_DELAY_US
-            : dshotBeaconIntervalUs;
+        const timeDelta_t guardOffset = MAX(DSHOT_BEACON_GUARD_DELAY_US, dshotBeaconIntervalUs);
         lastDshotBeaconCommandTimeUs = currentTimeUs - guardOffset;
     }
 #endif
