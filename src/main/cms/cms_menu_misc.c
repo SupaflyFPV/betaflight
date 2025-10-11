@@ -36,6 +36,7 @@
 #include "cms/cms_menu_ledstrip.h"
 
 #include "common/utils.h"
+#include "common/maths.h"
 
 #include "config/config.h"
 #include "config/feature.h"
@@ -177,7 +178,7 @@ static const void *cmsx_menuRcSmoothingOnEnter(displayPort_t *pDisp)
 {
     UNUSED(pDisp);
 
-    cmsx_rc_smoothing_enabled = rxConfig()->rc_smoothing;
+    cmsx_rc_smoothing_enabled = rxConfig()->rc_smoothing_mode;
     cmsx_rc_smoothing_filter_type = MIN(rxConfig()->rc_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
     cmsx_feedforward_filter_type_menu = MIN(rxConfig()->feedforward_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
     cmsx_rc_smoothing_setpoint_cutoff = rxConfig()->rc_smoothing_setpoint_cutoff;
@@ -193,7 +194,7 @@ static const void *cmsx_menuRcSmoothingOnExit(displayPort_t *pDisp, const OSD_En
     UNUSED(pDisp);
     UNUSED(self);
 
-    rxConfigMutable()->rc_smoothing = cmsx_rc_smoothing_enabled;
+    rxConfigMutable()->rc_smoothing_mode = cmsx_rc_smoothing_enabled;
     rxConfigMutable()->rc_smoothing_filter_type = MIN(cmsx_rc_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
     rxConfigMutable()->feedforward_smoothing_filter_type = MIN(cmsx_feedforward_filter_type_menu, (uint8_t)RC_SMOOTHING_FILTER_PT3);
     rxConfigMutable()->rc_smoothing_setpoint_cutoff = cmsx_rc_smoothing_setpoint_cutoff;
