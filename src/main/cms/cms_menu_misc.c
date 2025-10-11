@@ -43,8 +43,10 @@
 #include "drivers/time.h"
 
 #include "fc/rc_controls.h"
+#include "fc/rc.h"
 
 #include "flight/mixer.h"
+#include "flight/pid.h"
 
 #include "pg/motor.h"
 #include "pg/pg.h"
@@ -131,6 +133,22 @@ static uint8_t motorConfig_motorIdle;
 static uint8_t rxConfig_fpvCamAngleDegrees;
 static uint8_t mixerConfig_crashflip_rate;
 
+#ifdef USE_RC_SMOOTHING_FILTER
+static uint8_t cmsx_rc_smoothing_enabled;
+static uint8_t cmsx_rc_smoothing_filter_type;
+static uint8_t cmsx_feedforward_filter_type_menu;
+static uint8_t cmsx_rc_smoothing_setpoint_cutoff;
+static uint8_t cmsx_rc_smoothing_throttle_cutoff;
+static uint8_t cmsx_rc_smoothing_auto_factor_rpy;
+static uint8_t cmsx_rc_smoothing_auto_factor_throttle;
+static uint16_t cmsx_rc_smoothing_active_setpoint;
+static uint16_t cmsx_rc_smoothing_active_throttle;
+static uint16_t cmsx_rc_smoothing_detected_rate;
+static uint8_t cmsx_ff_smooth_value;
+
+static const char * const cmsx_rc_smoothing_filter_names[] = { "PT2", "PT3" };
+#endif
+
 static const void *cmsx_menuMiscOnEnter(displayPort_t *pDisp)
 {
     UNUSED(pDisp);
@@ -154,6 +172,89 @@ static const void *cmsx_menuMiscOnExit(displayPort_t *pDisp, const OSD_Entry *se
     return NULL;
 }
 
+#ifdef USE_RC_SMOOTHING_FILTER
+static const void *cmsx_menuRcSmoothingOnEnter(displayPort_t *pDisp)
+{
+    UNUSED(pDisp);
+
+    cmsx_rc_smoothing_enabled = rxConfig()->rc_smoothing;
+    cmsx_rc_smoothing_filter_type = MIN(rxConfig()->rc_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
+    cmsx_feedforward_filter_type_menu = MIN(rxConfig()->feedforward_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
+    cmsx_rc_smoothing_setpoint_cutoff = rxConfig()->rc_smoothing_setpoint_cutoff;
+    cmsx_rc_smoothing_throttle_cutoff = rxConfig()->rc_smoothing_throttle_cutoff;
+    cmsx_rc_smoothing_auto_factor_rpy = rxConfig()->rc_smoothing_auto_factor_rpy;
+    cmsx_rc_smoothing_auto_factor_throttle = rxConfig()->rc_smoothing_auto_factor_throttle;
+    cmsx_ff_smooth_value = currentPidProfile->feedforward_smooth_factor;
+    return NULL;
+}
+
+static const void *cmsx_menuRcSmoothingOnExit(displayPort_t *pDisp, const OSD_Entry *self)
+{
+    UNUSED(pDisp);
+    UNUSED(self);
+
+    rxConfigMutable()->rc_smoothing = cmsx_rc_smoothing_enabled;
+    rxConfigMutable()->rc_smoothing_filter_type = MIN(cmsx_rc_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
+    rxConfigMutable()->feedforward_smoothing_filter_type = MIN(cmsx_feedforward_filter_type_menu, (uint8_t)RC_SMOOTHING_FILTER_PT3);
+    rxConfigMutable()->rc_smoothing_setpoint_cutoff = cmsx_rc_smoothing_setpoint_cutoff;
+    rxConfigMutable()->rc_smoothing_throttle_cutoff = cmsx_rc_smoothing_throttle_cutoff;
+    rxConfigMutable()->rc_smoothing_auto_factor_rpy = cmsx_rc_smoothing_auto_factor_rpy;
+    rxConfigMutable()->rc_smoothing_auto_factor_throttle = cmsx_rc_smoothing_auto_factor_throttle;
+
+    initRcProcessing();
+
+    return NULL;
+}
+
+static const void *cmsx_menuRcSmoothingOnDisplayUpdate(displayPort_t *pDisp, const OSD_Entry *selected)
+{
+    UNUSED(pDisp);
+    UNUSED(selected);
+
+    const rcSmoothingFilter_t *data = getRcSmoothingData();
+    if (data) {
+        cmsx_rc_smoothing_active_setpoint = data->setpointCutoffFrequency;
+        cmsx_rc_smoothing_active_throttle = data->throttleCutoffFrequency;
+    } else {
+        cmsx_rc_smoothing_active_setpoint = 0;
+        cmsx_rc_smoothing_active_throttle = 0;
+    }
+
+    cmsx_rc_smoothing_detected_rate = getRxRateValid() ? lrintf(getCurrentRxRateHz()) : 0;
+    cmsx_ff_smooth_value = currentPidProfile->feedforward_smooth_factor;
+
+    return NULL;
+}
+
+static const OSD_Entry cmsx_menuRcSmoothingEntries[] = {
+    { "-- RC SMOOTH --", OME_Label, NULL, NULL },
+    { "RC SMOOTH",    OME_Bool,   NULL, &cmsx_rc_smoothing_enabled },
+    { "RC FILTER",    OME_TAB,    NULL, &(OSD_TAB_t){ &cmsx_rc_smoothing_filter_type, ARRAYLEN(cmsx_rc_smoothing_filter_names) - 1, cmsx_rc_smoothing_filter_names } },
+    { "FF FILTER",    OME_TAB,    NULL, &(OSD_TAB_t){ &cmsx_feedforward_filter_type_menu, ARRAYLEN(cmsx_rc_smoothing_filter_names) - 1, cmsx_rc_smoothing_filter_names } },
+    { "SP CUT",       OME_UINT8,  NULL, &(OSD_UINT8_t){ &cmsx_rc_smoothing_setpoint_cutoff, 0, UINT8_MAX, 1 } },
+    { "THR CUT",      OME_UINT8,  NULL, &(OSD_UINT8_t){ &cmsx_rc_smoothing_throttle_cutoff, 0, UINT8_MAX, 1 } },
+    { "AUTO FACTOR",  OME_UINT8,  NULL, &(OSD_UINT8_t){ &cmsx_rc_smoothing_auto_factor_rpy, RC_SMOOTHING_AUTO_FACTOR_MIN, RC_SMOOTHING_AUTO_FACTOR_MAX, 1 } },
+    { "THR FACTOR",   OME_UINT8,  NULL, &(OSD_UINT8_t){ &cmsx_rc_smoothing_auto_factor_throttle, RC_SMOOTHING_AUTO_FACTOR_MIN, RC_SMOOTHING_AUTO_FACTOR_MAX, 1 } },
+    { "RC AUTO SP",   OME_UINT16 | DYNAMIC, NULL, &(OSD_UINT16_t){ &cmsx_rc_smoothing_active_setpoint, 0, 2000, 0 } },
+    { "RC AUTO TH",   OME_UINT16 | DYNAMIC, NULL, &(OSD_UINT16_t){ &cmsx_rc_smoothing_active_throttle, 0, 2000, 0 } },
+    { "RC RATE",      OME_UINT16 | DYNAMIC, NULL, &(OSD_UINT16_t){ &cmsx_rc_smoothing_detected_rate, 0, 4000, 0 } },
+    { "FF SMOOTH",    OME_UINT8  | DYNAMIC, NULL, &(OSD_UINT8_t){ &cmsx_ff_smooth_value, 0, 95, 0 } },
+    { "BACK",         OME_Back, NULL, NULL },
+    { NULL,            OME_END, NULL, NULL }
+};
+
+static CMS_Menu cmsx_menuRcSmoothing = {
+#ifdef CMS_MENU_DEBUG
+    .GUARD_text = "XRC_SMTH",
+    .GUARD_type = OME_MENU,
+#endif
+    .onEnter = cmsx_menuRcSmoothingOnEnter,
+    .onExit = cmsx_menuRcSmoothingOnExit,
+    .onDisplayUpdate = cmsx_menuRcSmoothingOnDisplayUpdate,
+    .entries = cmsx_menuRcSmoothingEntries
+};
+#endif
+
 static const OSD_Entry menuMiscEntries[]=
 {
     { "-- MISC --", OME_Label, NULL, NULL },
@@ -161,6 +262,9 @@ static const OSD_Entry menuMiscEntries[]=
     { "IDLE OFFSET",   OME_UINT8 | REBOOT_REQUIRED, NULL, &(OSD_UINT8_t) { &motorConfig_motorIdle,      0,  200, 1 } },
     { "FPV CAM ANGLE", OME_UINT8,                   NULL, &(OSD_UINT8_t) { &rxConfig_fpvCamAngleDegrees, 0,   90, 1 } },
     { "CRASHFLIP RATE", OME_UINT8 | REBOOT_REQUIRED,   NULL,          &(OSD_UINT8_t) { &mixerConfig_crashflip_rate,           0,  100, 1 } },
+#ifdef USE_RC_SMOOTHING_FILTER
+    { "RC SMOOTH",    OME_Submenu, cmsMenuChange, &cmsx_menuRcSmoothing },
+#endif
     { "RC PREV",       OME_Submenu, cmsMenuChange, &cmsx_menuRcPreview},
 #ifdef USE_GPS_LAP_TIMER
     { "GPS LAP TIMER",  OME_Submenu, cmsMenuChange, &cms_menuGpsLapTimer },

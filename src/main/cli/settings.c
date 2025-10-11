@@ -475,6 +475,9 @@ static const char * const lookupTableAcroTrainerDebug[] = {
 static const char * const lookupTableRcSmoothingDebug[] = {
     "ROLL", "PITCH", "YAW", "THROTTLE"
 };
+static const char * const lookupTableRcSmoothingFilterType[] = {
+    "PT2", "PT3"
+};
 #endif // USE_RC_SMOOTHING_FILTER
 
 #ifdef USE_VTX_COMMON
@@ -696,6 +699,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableAcroTrainerDebug),
 #endif // USE_ACRO_TRAINER
 #ifdef USE_RC_SMOOTHING_FILTER
+    LOOKUP_TABLE_ENTRY(lookupTableRcSmoothingFilterType),
     LOOKUP_TABLE_ENTRY(lookupTableRcSmoothingDebug),
 #endif // USE_RC_SMOOTHING_FILTER
 #ifdef USE_VTX_COMMON
@@ -868,6 +872,8 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_RC_SMOOTHING_SETPOINT_CUTOFF,    VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, UINT8_MAX }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_setpoint_cutoff) },
     { PARAM_NAME_RC_SMOOTHING_THROTTLE_CUTOFF,    VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, UINT8_MAX }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_throttle_cutoff) },
     { PARAM_NAME_RC_SMOOTHING_DEBUG_AXIS,         VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_RC_SMOOTHING_DEBUG }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_debug_axis) },
+    { PARAM_NAME_RC_SMOOTHING_FILTER_TYPE,        VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_RC_SMOOTHING_FILTER_TYPE }, PG_RX_CONFIG, offsetof(rxConfig_t, rc_smoothing_filter_type) },
+    { PARAM_NAME_FEEDFORWARD_SMOOTHING_FILTER_TYPE, VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_RC_SMOOTHING_FILTER_TYPE }, PG_RX_CONFIG, offsetof(rxConfig_t, feedforward_smoothing_filter_type) },
 #endif // USE_RC_SMOOTHING_FILTER
 
     { "fpv_mix_degrees",             VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 90 }, PG_RX_CONFIG, offsetof(rxConfig_t, fpvCamAngleDegrees) },

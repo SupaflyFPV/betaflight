@@ -1609,11 +1609,11 @@ case MSP_NAME:
         sbufWriteU8(dst, rxConfig()->fpvCamAngleDegrees);
         sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rcSmoothingChannels
 #if defined(USE_RC_SMOOTHING_FILTER)
-        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rc_smoothing_type
+        sbufWriteU8(dst, rxConfig()->rc_smoothing_filter_type);
         sbufWriteU8(dst, rxConfig()->rc_smoothing_setpoint_cutoff);
         sbufWriteU8(dst, rxConfig()->rc_smoothing_throttle_cutoff); // was rc_smoothing_feedforward_cutoff
         sbufWriteU8(dst, rxConfig()->rc_smoothing_auto_factor_throttle); //, was rxConfig()->rc_smoothing_input_type
-        sbufWriteU8(dst, 0); // not required in API 1.44, was rxConfig()->rc_smoothing_derivative_type
+        sbufWriteU8(dst, rxConfig()->feedforward_smoothing_filter_type); // was rc_smoothing_derivative_type
 #else
         sbufWriteU8(dst, 0);
         sbufWriteU8(dst, 0);
@@ -3775,11 +3775,13 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             // Added in MSP API 1.40
             sbufReadU8(src); // not required in API 1.44, was rxConfigMutable()->rcSmoothingChannels
 #if defined(USE_RC_SMOOTHING_FILTER)
-            sbufReadU8(src); // not required in API 1.44, was rc_smoothing_type
+            const uint8_t rcFilter = MIN(sbufReadU8(src), (uint8_t)RC_SMOOTHING_FILTER_PT3);
+            configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_filter_type, rcFilter);
             configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_setpoint_cutoff, sbufReadU8(src));
             configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_throttle_cutoff, sbufReadU8(src)); // was rc_smoothing_feedforward_cutoff
             configRebootUpdateCheckU8(&rxConfigMutable()->rc_smoothing_auto_factor_throttle, sbufReadU8(src)); // was rc_smoothing_input_type
-            sbufReadU8(src); // not required in API 1.44, was rc_smoothing_derivative_type
+            const uint8_t ffFilter = MIN(sbufReadU8(src), (uint8_t)RC_SMOOTHING_FILTER_PT3);
+            configRebootUpdateCheckU8(&rxConfigMutable()->feedforward_smoothing_filter_type, ffFilter); // was rc_smoothing_derivative_type
 #else
             sbufReadU8(src);
             sbufReadU8(src);
