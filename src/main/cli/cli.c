@@ -5047,6 +5047,11 @@ static void cliRcSmoothing(const char *cmdName, char *cmdline)
 
     if (!rxConfig()->rc_smoothing) return;
 
+    cliPrint("# RC filter type: ");
+    cliPrintLine((rcSmoothingData->rcFilterType == RC_SMOOTHING_FILTER_PT3) ? "PT3" : "PT2");
+    cliPrint("# FF filter type: ");
+    cliPrintLine((rcSmoothingData->feedforwardFilterType == RC_SMOOTHING_FILTER_PT3) ? "PT3" : "PT2");
+
     cliPrintf("# Active setpoint and FF cutoff: %dHz ", rcSmoothingData->setpointCutoffFrequency);
     cliPrintLine(rcSmoothingData->setpointCutoffSetting ? "(manual)" : "(auto)");
     cliPrintf("# Active throttle cutoff: %dHz ", rcSmoothingData->throttleCutoffFrequency);

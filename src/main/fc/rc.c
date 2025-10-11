@@ -111,6 +111,21 @@ float getFeedforward(int axis)
 #ifdef USE_RC_SMOOTHING_FILTER
 static FAST_DATA_ZERO_INIT rcSmoothingFilter_t rcSmoothingData;
 static float rcDeflectionSmoothed[3];
+
+static inline void rcSmoothingFilterUpdateCutoff(rcSmoothingDualFilter_t *filter, rcSmoothingFilterType_e type, float k)
+{
+    if (type == RC_SMOOTHING_FILTER_PT2) {
+        pt2FilterUpdateCutoff(&filter->pt2, k);
+    } else {
+        pt3FilterUpdateCutoff(&filter->pt3, k);
+    }
+}
+
+static inline float rcSmoothingFilterApply(rcSmoothingDualFilter_t *filter, rcSmoothingFilterType_e type, float input)
+{
+    return (type == RC_SMOOTHING_FILTER_PT2) ? pt2FilterApply(&filter->pt2, input)
+                                             : pt3FilterApply(&filter->pt3, input);
+}
 #endif // USE_RC_SMOOTHING_FILTER
 
 float getSetpointRate(int axis)
@@ -356,22 +371,33 @@ static FAST_CODE_NOINLINE void rcSmoothingSetFilterCutoffs(rcSmoothingFilter_t *
         ? MAX(minCutoffHz, smoothedRxRateHz * smoothingData->autoSmoothnessFactorThrottle)
         : smoothingData->throttleCutoffSetting;
 
-    // Always update all filters with their respective cutoffs
-    const float pt2K_SP = pt2FilterGain(smoothingData->setpointCutoffFrequency, dT);
-    const float pt2K_Thr = pt2FilterGain(smoothingData->throttleCutoffFrequency, dT);
+    const rcSmoothingFilterType_e rcFilterType = smoothingData->rcFilterType;
+    const rcSmoothingFilterType_e feedforwardFilterType = smoothingData->feedforwardFilterType;
+
+    const float rcSetpointGain = (rcFilterType == RC_SMOOTHING_FILTER_PT2)
+        ? pt2FilterGain(smoothingData->setpointCutoffFrequency, dT)
+        : pt3FilterGain(smoothingData->setpointCutoffFrequency, dT);
+
+    const float rcThrottleGain = (rcFilterType == RC_SMOOTHING_FILTER_PT2)
+        ? pt2FilterGain(smoothingData->throttleCutoffFrequency, dT)
+        : pt3FilterGain(smoothingData->throttleCutoffFrequency, dT);
+
+    const float feedforwardGain = (feedforwardFilterType == RC_SMOOTHING_FILTER_PT2)
+        ? pt2FilterGain(smoothingData->setpointCutoffFrequency, dT)
+        : pt3FilterGain(smoothingData->setpointCutoffFrequency, dT);
 
     // Update setpoint and feedforward filters
     for (int i = FD_ROLL; i <= FD_YAW; i++) {
-        pt2FilterUpdateCutoff(&smoothingData->filterSetpoint[i], pt2K_SP);
-        pt2FilterUpdateCutoff(&smoothingData->filterFeedforward[i], pt2K_SP);
+        rcSmoothingFilterUpdateCutoff(&smoothingData->filterSetpoint[i], rcFilterType, rcSetpointGain);
+        rcSmoothingFilterUpdateCutoff(&smoothingData->filterFeedforward[i], feedforwardFilterType, feedforwardGain);
     }
 
     // Update throttle filter with its own cutoff
-    pt2FilterUpdateCutoff(&smoothingData->filterSetpoint[THROTTLE], pt2K_Thr);
+    rcSmoothingFilterUpdateCutoff(&smoothingData->filterSetpoint[THROTTLE], rcFilterType, rcThrottleGain);
 
     // Update RC deflection filters with setpoint cutoff
     for (int i = FD_ROLL; i <= FD_PITCH; i++) {
-        pt2FilterUpdateCutoff(&smoothingData->filterRcDeflection[i], pt2K_SP);
+        rcSmoothingFilterUpdateCutoff(&smoothingData->filterRcDeflection[i], rcFilterType, rcSetpointGain);
     }
 
     DEBUG_SET(DEBUG_RC_SMOOTHING, 2, smoothingData->setpointCutoffFrequency);
@@ -413,15 +439,15 @@ static FAST_CODE void processRcSmoothingFilter(void)
     // Apply smoothing filters when RC smoothing is enabled
     for (int i = 0; i < PRIMARY_CHANNEL_COUNT; i++) {
         float *dst = i == THROTTLE ? &rcCommand[i] : &setpointRate[i];
-        *dst = pt2FilterApply(&rcSmoothingData.filterSetpoint[i], rxDataToSmooth[i]);
+        *dst = rcSmoothingFilterApply(&rcSmoothingData.filterSetpoint[i], rcSmoothingData.rcFilterType, rxDataToSmooth[i]);
     }
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         // Feedforward smoothing
-        feedforwardSmoothed[axis] = pt2FilterApply(&rcSmoothingData.filterFeedforward[axis], feedforwardRaw[axis]);
+        feedforwardSmoothed[axis] = rcSmoothingFilterApply(&rcSmoothingData.filterFeedforward[axis], rcSmoothingData.feedforwardFilterType, feedforwardRaw[axis]);
         // Horizon mode smoothing of rcDeflection on pitch and roll to provide a smooth angle element
         const bool smoothRcDeflection = FLIGHT_MODE(HORIZON_MODE);
         if (smoothRcDeflection && axis < FD_YAW) {
-            rcDeflectionSmoothed[axis] = pt2FilterApply(&rcSmoothingData.filterRcDeflection[axis], rcDeflection[axis]);
+            rcDeflectionSmoothed[axis] = rcSmoothingFilterApply(&rcSmoothingData.filterRcDeflection[axis], rcSmoothingData.rcFilterType, rcDeflection[axis]);
         } else {
             rcDeflectionSmoothed[axis] = rcDeflection[axis];
         }
@@ -893,9 +919,13 @@ void initRcProcessing(void)
 
     rcSmoothingData.setpointCutoffSetting = rxConfig()->rc_smoothing_setpoint_cutoff;
     rcSmoothingData.throttleCutoffSetting = rxConfig()->rc_smoothing_throttle_cutoff;
+    rcSmoothingData.rcFilterType = MIN(rxConfig()->rc_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
+    rcSmoothingData.feedforwardFilterType = MIN(rxConfig()->feedforward_smoothing_filter_type, (uint8_t)RC_SMOOTHING_FILTER_PT3);
 
     rcSmoothingData.setpointCutoffFrequency = rcSmoothingData.setpointCutoffSetting; //initialise to user's cutoff setting, but if 0, will be replaced with auto values from rcSmoothingSetFilterCutoffs()
     rcSmoothingData.throttleCutoffFrequency = rcSmoothingData.throttleCutoffSetting;
+
+    rcSmoothingSetFilterCutoffs(&rcSmoothingData);
 #endif
 
 #ifdef USE_FEEDFORWARD
