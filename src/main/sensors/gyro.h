@@ -59,6 +59,7 @@ typedef union gyroLowpassFilter_u {
     biquadFilter_t biquadFilterState;
     pt2Filter_t pt2FilterState;
     pt3Filter_t pt3FilterState;
+    biquadCascadeFilter_t biquadCascadeFilterState;
 } gyroLowpassFilter_t;
 
 typedef struct gyroCalibration_s {
@@ -170,6 +171,8 @@ typedef struct gyroConfig_s {
     // Lowpass primary/secondary
     uint8_t gyro_lpf1_type;
     uint8_t gyro_lpf2_type;
+    uint8_t gyro_biquad_lpf_response;      // Response shape used when a gyro lowpass is configured as BIQUAD
+    uint8_t gyro_biquad_bessel_order;      // Order to use when gyro BIQUAD response is BESSEL
 
     uint8_t yaw_spin_recovery;
     int16_t yaw_spin_threshold;

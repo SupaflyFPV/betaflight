@@ -69,6 +69,7 @@ typedef enum {
 #endif
     TABLE_GYRO_LPF_TYPE,
     TABLE_DTERM_LPF_TYPE,
+    TABLE_BIQUAD_LPF_RESPONSE,
     TABLE_FAILSAFE,
     TABLE_FAILSAFE_SWITCH_MODE,
     TABLE_CRASH_RECOVERY,
@@ -277,6 +278,7 @@ extern const char * const lookupTableItermRelaxType[];
 extern const char * const lookupTableOsdDisplayPortDevice[];
 
 extern const char * const lookupTableFeedforwardAveraging[];
+extern const char * const lookupTableBiquadLpfResponse[];
 
 extern const char * const lookupTableOffOn[];
 

@@ -95,7 +95,7 @@ STATIC_UNIT_TESTED gyroDev_t * const gyroDevPtr = &gyro.gyroSensor[0].gyroDev;
 #define GYRO_OVERFLOW_TRIGGER_THRESHOLD 31980  // 97.5% full scale (1950dps for 2000dps gyro)
 #define GYRO_OVERFLOW_RESET_THRESHOLD 30340    // 92.5% full scale (1850dps for 2000dps gyro)
 
-PG_REGISTER_WITH_RESET_FN(gyroConfig_t, gyroConfig, PG_GYRO_CONFIG, 10);
+PG_REGISTER_WITH_RESET_FN(gyroConfig_t, gyroConfig, PG_GYRO_CONFIG, 12);
 
 #ifndef DEFAULT_GYRO_ENABLED
 // enable the first gyro if none are enabled
@@ -115,6 +115,8 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
         // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
     gyroConfig->gyro_lpf2_type = FILTER_PT1;
     gyroConfig->gyro_lpf2_static_hz = GYRO_LPF2_HZ_DEFAULT;
+    gyroConfig->gyro_biquad_lpf_response = BIQUAD_LPF_RESPONSE_BUTTERWORTH;
+    gyroConfig->gyro_biquad_bessel_order = 2;
     gyroConfig->gyro_high_fsr = false;
     gyroConfig->gyro_soft_notch_hz_1 = 0;
     gyroConfig->gyro_soft_notch_cutoff_1 = 0;
@@ -597,11 +599,17 @@ void dynLpfGyroUpdate(float throttle)
                 pt1FilterUpdateCutoff(&gyro.lowpassFilter[axis].pt1FilterState, pt1FilterGain(cutoffFreq, gyroDt));
             }
             break;
-        case DYN_LPF_BIQUAD:
+        case DYN_LPF_BIQUAD: {
+            const bool useBesselOrder3 = (gyroConfig()->gyro_biquad_lpf_response == BIQUAD_LPF_RESPONSE_BESSEL) && (gyroConfig()->gyro_biquad_bessel_order == 3);
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                biquadFilterUpdateLPF(&gyro.lowpassFilter[axis].biquadFilterState, cutoffFreq, gyro.targetLooptime);
+                if (useBesselOrder3) {
+                    biquadCascadeFilterUpdateLPF(&gyro.lowpassFilter[axis].biquadCascadeFilterState, cutoffFreq, gyro.targetLooptime, gyroConfig()->gyro_biquad_lpf_response, gyroDt);
+                } else {
+                    biquadFilterUpdateLPF(&gyro.lowpassFilter[axis].biquadFilterState, cutoffFreq, gyro.targetLooptime, gyroConfig()->gyro_biquad_lpf_response);
+                }
             }
             break;
+        }
         case  DYN_LPF_PT2:
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
                 pt2FilterUpdateCutoff(&gyro.lowpassFilter[axis].pt2FilterState, pt2FilterGain(cutoffFreq, gyroDt));

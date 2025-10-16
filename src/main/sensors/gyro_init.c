@@ -180,19 +180,27 @@ static bool gyroInitLowpassFilterLpf(int slot, int type, uint16_t lpfHz, uint32_
             }
             ret = true;
             break;
-        case FILTER_BIQUAD:
+        case FILTER_BIQUAD: {
+            const biquadLpfResponse_e response = gyroConfig()->gyro_biquad_lpf_response;
+            const bool useBesselOrder3 = (response == BIQUAD_LPF_RESPONSE_BESSEL) && (gyroConfig()->gyro_biquad_bessel_order == 3);
+
             if (lpfHz <= gyroFrequencyNyquist) {
 #ifdef USE_DYN_LPF
-                *lowpassFilterApplyFn = (filterApplyFnPtr) biquadFilterApplyDF1;
+                *lowpassFilterApplyFn = useBesselOrder3 ? (filterApplyFnPtr)biquadCascadeFilterApplyDF1 : (filterApplyFnPtr)biquadFilterApplyDF1;
 #else
-                *lowpassFilterApplyFn = (filterApplyFnPtr) biquadFilterApply;
+                *lowpassFilterApplyFn = useBesselOrder3 ? (filterApplyFnPtr)biquadCascadeFilterApply : (filterApplyFnPtr)biquadFilterApply;
 #endif
                 for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                    biquadFilterInitLPF(&lowpassFilter[axis].biquadFilterState, lpfHz, looptime);
+                    if (useBesselOrder3) {
+                        biquadCascadeFilterInitLPF(&lowpassFilter[axis].biquadCascadeFilterState, lpfHz, looptime, response, gyroDt);
+                    } else {
+                        biquadFilterInitLPF(&lowpassFilter[axis].biquadFilterState, lpfHz, looptime, response);
+                    }
                 }
                 ret = true;
             }
             break;
+        }
         case FILTER_PT2:
             *lowpassFilterApplyFn = (filterApplyFnPtr) pt2FilterApply;
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {

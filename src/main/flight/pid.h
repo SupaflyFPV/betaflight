@@ -202,6 +202,8 @@ typedef struct pidProfile_s {
     pidf_t  pid[PID_ITEM_COUNT];
 
     uint8_t dterm_lpf1_type;                // Filter type for dterm lowpass 1
+    uint8_t dterm_biquad_lpf_response;      // Response shape used when a D-term lowpass is configured as BIQUAD
+    uint8_t dterm_biquad_bessel_order;      // Order to use when D-term BIQUAD response is BESSEL
     uint8_t itermWindup;                    // iterm windup threshold, percentage of pidSumLimit within which to limit iTerm
     uint16_t pidSumLimit;                   // pidSum limit value for pitch and roll
     uint16_t pidSumLimitYaw;                // pidSum limit value for yaw
@@ -368,6 +370,7 @@ typedef union dtermLowpass_u {
     biquadFilter_t biquadFilter;
     pt2Filter_t pt2Filter;
     pt3Filter_t pt3Filter;
+    biquadCascadeFilter_t biquadCascadeFilter;
 } dtermLowpass_t;
 
 typedef struct pidCoefficient_s {

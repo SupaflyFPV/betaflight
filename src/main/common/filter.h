@@ -40,6 +40,12 @@ typedef enum {
     FILTER_BPF,
 } biquadFilterType_e;
 
+typedef enum {
+    BIQUAD_LPF_RESPONSE_BUTTERWORTH = 0,
+    BIQUAD_LPF_RESPONSE_BESSEL,
+    BIQUAD_LPF_RESPONSE_COUNT,
+} biquadLpfResponse_e;
+
 typedef struct pt1Filter_s {
     float state;
     float k;
@@ -61,9 +67,14 @@ typedef struct pt3Filter_s {
 /* this holds the data required to update samples thru a filter */
 typedef struct biquadFilter_s {
     float b0, b1, b2, a1, a2;
-    float x1, x2, y1, y2;
+   float x1, x2, y1, y2;
     float weight;
 } biquadFilter_t;
+
+typedef struct biquadCascadeFilter_s {
+    biquadFilter_t biquad;
+    pt1Filter_t pt1;
+} biquadCascadeFilter_t;
 
 typedef struct phaseComp_s {
     float b0, b1, a1;
@@ -117,13 +128,17 @@ float pt3FilterApply(pt3Filter_t *filter, float input);
 
 float filterGetNotchQ(float centerFreq, float cutoffFreq);
 
-void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
+void biquadFilterInitLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, biquadLpfResponse_e response);
 void biquadFilterInit(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
 void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType, float weight);
-void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate);
+void biquadFilterUpdateLPF(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, biquadLpfResponse_e response);
 float biquadFilterApplyDF1(biquadFilter_t *filter, float input);
 float biquadFilterApplyDF1Weighted(biquadFilter_t *filter, float input);
 float biquadFilterApply(biquadFilter_t *filter, float input);
+void biquadCascadeFilterInitLPF(biquadCascadeFilter_t *filter, float filterFreq, uint32_t refreshRate, biquadLpfResponse_e response, float dT);
+void biquadCascadeFilterUpdateLPF(biquadCascadeFilter_t *filter, float filterFreq, uint32_t refreshRate, biquadLpfResponse_e response, float dT);
+float biquadCascadeFilterApply(biquadCascadeFilter_t *filter, float input);
+float biquadCascadeFilterApplyDF1(biquadCascadeFilter_t *filter, float input);
 
 void phaseCompInit(phaseComp_t *filter, const float centerFreq, const float centerPhase, const uint32_t looptimeUs);
 void phaseCompUpdate(phaseComp_t *filter, const float centerFreq, const float centerPhase, const uint32_t looptimeUs);

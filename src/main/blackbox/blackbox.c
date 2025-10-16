@@ -1605,6 +1605,8 @@ static bool blackboxWriteSysinfo(void)
 #endif
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF2_TYPE, "%d",        currentPidProfile->dterm_lpf2_type);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF2_STATIC_HZ, "%d",   currentPidProfile->dterm_lpf2_static_hz);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_BIQUAD_LPF_RESPONSE, "%d", currentPidProfile->dterm_biquad_lpf_response);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_BIQUAD_BESSEL_ORDER, "%d", currentPidProfile->dterm_biquad_bessel_order);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_YAW_LOWPASS_HZ, "%d",         currentPidProfile->yaw_lowpass_hz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_NOTCH_HZ, "%d",         currentPidProfile->dterm_notch_hz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_NOTCH_CUTOFF, "%d",     currentPidProfile->dterm_notch_cutoff);
@@ -1685,6 +1687,8 @@ static bool blackboxWriteSysinfo(void)
 #endif
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GYRO_LPF2_TYPE, "%d",         gyroConfig()->gyro_lpf2_type);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GYRO_LPF2_STATIC_HZ, "%d",    gyroConfig()->gyro_lpf2_static_hz);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GYRO_BIQUAD_LPF_RESPONSE, "%d", gyroConfig()->gyro_biquad_lpf_response);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GYRO_BIQUAD_BESSEL_ORDER, "%d", gyroConfig()->gyro_biquad_bessel_order);
         BLACKBOX_PRINT_HEADER_LINE("gyro_notch_hz", "%d,%d",                gyroConfig()->gyro_soft_notch_hz_1,
                                                                             gyroConfig()->gyro_soft_notch_hz_2);
         BLACKBOX_PRINT_HEADER_LINE("gyro_notch_cutoff", "%d,%d",            gyroConfig()->gyro_soft_notch_cutoff_1,

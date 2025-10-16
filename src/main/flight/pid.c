@@ -141,7 +141,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 12);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 14);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -199,6 +199,8 @@ void resetPidProfile(pidProfile_t *pidProfile)
             // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
         .dterm_lpf2_static_hz = DTERM_LPF2_HZ_DEFAULT,   // second Dterm LPF ON by default
         .dterm_lpf1_type = FILTER_PT1,
+        .dterm_biquad_lpf_response = BIQUAD_LPF_RESPONSE_BUTTERWORTH,
+        .dterm_biquad_bessel_order = 2,
         .dterm_lpf2_type = FILTER_PT1,
         .dterm_lpf1_dyn_min_hz = DTERM_LPF1_DYN_MIN_HZ_DEFAULT,
         .dterm_lpf1_dyn_max_hz = DTERM_LPF1_DYN_MAX_HZ_DEFAULT,
@@ -1637,11 +1639,17 @@ void dynLpfDTermUpdate(float throttle)
                 pt1FilterUpdateCutoff(&pidRuntime.dtermLowpass[axis].pt1Filter, pt1FilterGain(cutoffFreq, pidRuntime.dT));
             }
             break;
-        case DYN_LPF_BIQUAD:
+        case DYN_LPF_BIQUAD: {
+            const bool useBesselOrder3 = (currentPidProfile->dterm_biquad_lpf_response == BIQUAD_LPF_RESPONSE_BESSEL) && (currentPidProfile->dterm_biquad_bessel_order == 3);
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-                biquadFilterUpdateLPF(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime);
+                if (useBesselOrder3) {
+                    biquadCascadeFilterUpdateLPF(&pidRuntime.dtermLowpass[axis].biquadCascadeFilter, cutoffFreq, targetPidLooptime, currentPidProfile->dterm_biquad_lpf_response, pidRuntime.dT);
+                } else {
+                    biquadFilterUpdateLPF(&pidRuntime.dtermLowpass[axis].biquadFilter, cutoffFreq, targetPidLooptime, currentPidProfile->dterm_biquad_lpf_response);
+                }
             }
             break;
+        }
         case DYN_LPF_PT2:
             for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
                 pt2FilterUpdateCutoff(&pidRuntime.dtermLowpass[axis].pt2Filter, pt2FilterGain(cutoffFreq, pidRuntime.dT));

@@ -250,6 +250,10 @@ static void validateAndFixConfig(void)
             pidProfilesMutable(i)->dterm_notch_weight = 100;
         }
 
+        if (pidProfilesMutable(i)->dterm_biquad_bessel_order < 2 || pidProfilesMutable(i)->dterm_biquad_bessel_order > 3) {
+            pidProfilesMutable(i)->dterm_biquad_bessel_order = 2;
+        }
+
 #ifdef USE_DYN_LPF
         //Prevent invalid dynamic lowpass
         if (pidProfilesMutable(i)->dterm_lpf1_dyn_min_hz > pidProfilesMutable(i)->dterm_lpf1_dyn_max_hz) {
@@ -581,6 +585,10 @@ void validateAndFixGyroConfig(void)
     }
     if (gyroConfigMutable()->gyro_soft_notch_weight_2 > 100) {
         gyroConfigMutable()->gyro_soft_notch_weight_2 = 100;
+    }
+
+    if (gyroConfigMutable()->gyro_biquad_bessel_order < 2 || gyroConfigMutable()->gyro_biquad_bessel_order > 3) {
+        gyroConfigMutable()->gyro_biquad_bessel_order = 2;
     }
 
     // Prevent invalid notch cutoff

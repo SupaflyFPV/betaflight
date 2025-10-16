@@ -3066,16 +3066,37 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         if (sbufBytesRemaining(src) >= 9) {
             // Added in MSP API 1.41
             currentPidProfile->dterm_lpf2_type = sbufReadU8(src);
+
+            int remaining = sbufBytesRemaining(src);
+            if (remaining > 8) {
+                gyroConfigMutable()->gyro_biquad_lpf_response = sbufReadU8(src);
+                currentPidProfile->dterm_biquad_lpf_response = sbufReadU8(src);
+                remaining = sbufBytesRemaining(src);
+                if (remaining > 8) {
+                    gyroConfigMutable()->gyro_biquad_bessel_order = sbufReadU8(src);
+                    currentPidProfile->dterm_biquad_bessel_order = sbufReadU8(src);
+                }
+            }
+
 #if defined(USE_DYN_LPF)
-            gyroConfigMutable()->gyro_lpf1_dyn_min_hz = sbufReadU16(src);
-            gyroConfigMutable()->gyro_lpf1_dyn_max_hz = sbufReadU16(src);
-            currentPidProfile->dterm_lpf1_dyn_min_hz = sbufReadU16(src);
-            currentPidProfile->dterm_lpf1_dyn_max_hz = sbufReadU16(src);
+            if (sbufBytesRemaining(src) >= 8) {
+                gyroConfigMutable()->gyro_lpf1_dyn_min_hz = sbufReadU16(src);
+                gyroConfigMutable()->gyro_lpf1_dyn_max_hz = sbufReadU16(src);
+                currentPidProfile->dterm_lpf1_dyn_min_hz = sbufReadU16(src);
+                currentPidProfile->dterm_lpf1_dyn_max_hz = sbufReadU16(src);
+            } else {
+                gyroConfigMutable()->gyro_lpf1_dyn_min_hz = 0;
+                gyroConfigMutable()->gyro_lpf1_dyn_max_hz = 0;
+                currentPidProfile->dterm_lpf1_dyn_min_hz = 0;
+                currentPidProfile->dterm_lpf1_dyn_max_hz = 0;
+            }
 #else
-            sbufReadU16(src);
-            sbufReadU16(src);
-            sbufReadU16(src);
-            sbufReadU16(src);
+            if (sbufBytesRemaining(src) >= 8) {
+                sbufReadU16(src);
+                sbufReadU16(src);
+                sbufReadU16(src);
+                sbufReadU16(src);
+            }
 #endif
         }
         if (sbufBytesRemaining(src) >= 8) {
