@@ -269,6 +269,50 @@ static void validateAndFixConfig(void)
             }
         }
 
+        const uint8_t storedTpaPdDmult = pidProfilesMutable(i)->tpa_pd_dmult;
+        if (storedTpaPdDmult < TPA_PD_D_MULTIPLIER_MIN || storedTpaPdDmult > TPA_PD_D_MULTIPLIER_MAX) {
+            if (storedTpaPdDmult <= 100) {
+                const float percentMultiplier = 1.0f + ((float)storedTpaPdDmult / 100.0f);
+                pidProfilesMutable(i)->tpa_pd_dmult = pidEncodeTpaPdDmult(percentMultiplier);
+            } else {
+                float bestMultiplier = 1.0f;
+                float bestDifference = INFINITY;
+
+                const float percentMultiplier = 1.0f + ((float)storedTpaPdDmult / 100.0f);
+                if (percentMultiplier >= (float)TPA_PD_D_MULTIPLIER_MIN && percentMultiplier <= (float)TPA_PD_D_MULTIPLIER_MAX) {
+                    const uint8_t encodedPercent = pidEncodeTpaPdDmult(percentMultiplier);
+                    const float realisedPercent = (float)encodedPercent;
+                    const float percentDifference = fabsf(percentMultiplier - realisedPercent);
+                    bestDifference = percentDifference;
+                    bestMultiplier = percentMultiplier;
+                }
+
+                const float timesTenMultiplier = (float)storedTpaPdDmult / 10.0f;
+                if (timesTenMultiplier >= (float)TPA_PD_D_MULTIPLIER_MIN && timesTenMultiplier <= (float)TPA_PD_D_MULTIPLIER_MAX) {
+                    const uint8_t encodedTimesTen = pidEncodeTpaPdDmult(timesTenMultiplier);
+                    const float realisedTimesTen = (float)encodedTimesTen;
+                    const float timesTenDifference = fabsf(timesTenMultiplier - realisedTimesTen);
+                    if (timesTenDifference < bestDifference) {
+                        bestDifference = timesTenDifference;
+                        bestMultiplier = timesTenMultiplier;
+                    }
+                }
+
+                const float offsetTimesTenMultiplier = ((float)storedTpaPdDmult - 100.0f) / 10.0f;
+                if (offsetTimesTenMultiplier >= (float)TPA_PD_D_MULTIPLIER_MIN && offsetTimesTenMultiplier <= (float)TPA_PD_D_MULTIPLIER_MAX) {
+                    const uint8_t encodedOffsetTimesTen = pidEncodeTpaPdDmult(offsetTimesTenMultiplier);
+                    const float realisedOffsetTimesTen = (float)encodedOffsetTimesTen;
+                    const float offsetTimesTenDifference = fabsf(offsetTimesTenMultiplier - realisedOffsetTimesTen);
+                    if (offsetTimesTenDifference < bestDifference) {
+                        bestDifference = offsetTimesTenDifference;
+                        bestMultiplier = offsetTimesTenMultiplier;
+                    }
+                }
+
+                pidProfilesMutable(i)->tpa_pd_dmult = pidEncodeTpaPdDmult(bestMultiplier);
+            }
+        }
+
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
         if (batteryConfig()->voltageMeterSource != VOLTAGE_METER_ADC) {
             pidProfilesMutable(i)->vbat_sag_compensation = 0;
