@@ -1607,6 +1607,7 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_YAW_LOWPASS_HZ, "%d",         currentPidProfile->yaw_lowpass_hz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_NOTCH_HZ, "%d",         currentPidProfile->dterm_notch_hz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_NOTCH_CUTOFF, "%d",     currentPidProfile->dterm_notch_cutoff);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_NOTCH_WEIGHT, "%d",     currentPidProfile->dterm_notch_weight);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ITERM_WINDUP, "%d",           currentPidProfile->itermWindup);
 #if defined(USE_ITERM_RELAX)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ITERM_RELAX, "%d",            currentPidProfile->iterm_relax);
@@ -1687,6 +1688,8 @@ static bool blackboxWriteSysinfo(void)
                                                                             gyroConfig()->gyro_soft_notch_hz_2);
         BLACKBOX_PRINT_HEADER_LINE("gyro_notch_cutoff", "%d,%d",            gyroConfig()->gyro_soft_notch_cutoff_1,
                                                                             gyroConfig()->gyro_soft_notch_cutoff_2);
+        BLACKBOX_PRINT_HEADER_LINE("gyro_notch_weight", "%d,%d",            gyroConfig()->gyro_soft_notch_weight_1,
+                                                                            gyroConfig()->gyro_soft_notch_weight_2);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_GYRO_ENABLE_MASK, "%d",       gyroConfig()->gyro_enabled_bitmask);
         BLACKBOX_PRINT_HEADER_LINE("gyro_debug_axis", "%d",                 gyroConfig()->gyro_filter_debug_axis);
 #ifdef USE_DYN_NOTCH_FILTER
