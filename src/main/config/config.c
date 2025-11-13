@@ -178,9 +178,9 @@ static void activateConfig(void)
     initActiveBoxIds();
 }
 
-static void adjustFilterLimit(uint16_t *parm, uint16_t resetValue)
+static void adjustFilterLimit(uint16_t *parm, uint16_t limit, uint16_t resetValue)
 {
-    if (*parm > LPF_MAX_HZ) {
+    if (*parm > limit) {
         *parm = resetValue;
     }
 }
@@ -237,10 +237,10 @@ static void validateAndFixConfig(void)
     for (unsigned i = 0; i < PID_PROFILE_COUNT; i++) {
         // Fix filter settings to handle cases where an older configurator was used that
         // allowed higher cutoff limits from previous firmware versions.
-        adjustFilterLimit(&pidProfilesMutable(i)->dterm_lpf1_static_hz, LPF_MAX_HZ);
-        adjustFilterLimit(&pidProfilesMutable(i)->dterm_lpf2_static_hz, LPF_MAX_HZ);
-        adjustFilterLimit(&pidProfilesMutable(i)->dterm_notch_hz, LPF_MAX_HZ);
-        adjustFilterLimit(&pidProfilesMutable(i)->dterm_notch_cutoff, 0);
+        adjustFilterLimit(&pidProfilesMutable(i)->dterm_lpf1_static_hz, LPF_MAX_HZ, LPF_MAX_HZ);
+        adjustFilterLimit(&pidProfilesMutable(i)->dterm_lpf2_static_hz, LPF_MAX_HZ, LPF_MAX_HZ);
+        adjustFilterLimit(&pidProfilesMutable(i)->dterm_notch_hz, LPF_MAX_HZ, LPF_MAX_HZ);
+        adjustFilterLimit(&pidProfilesMutable(i)->dterm_notch_cutoff, LPF_MAX_HZ, 0);
 
         // Prevent invalid notch cutoff
         if (pidProfilesMutable(i)->dterm_notch_cutoff >= pidProfilesMutable(i)->dterm_notch_hz) {
@@ -599,12 +599,12 @@ void validateAndFixGyroConfig(void)
 {
     // Fix gyro filter settings to handle cases where an older configurator was used that
     // allowed higher cutoff limits from previous firmware versions.
-    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf1_static_hz, LPF_MAX_HZ);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf2_static_hz, GYRO_LPF2_MAX_HZ);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_1, LPF_MAX_HZ);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_1, 0);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2, LPF_MAX_HZ);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_2, 0);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf1_static_hz, LPF_MAX_HZ, LPF_MAX_HZ);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf2_static_hz, GYRO_LPF2_MAX_HZ, GYRO_LPF2_MAX_HZ);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_1, LPF_MAX_HZ, LPF_MAX_HZ);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_1, LPF_MAX_HZ, 0);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2, LPF_MAX_HZ, LPF_MAX_HZ);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_2, LPF_MAX_HZ, 0);
     if (gyroConfigMutable()->gyro_soft_notch_weight_1 > 100) {
         gyroConfigMutable()->gyro_soft_notch_weight_1 = 100;
     }
