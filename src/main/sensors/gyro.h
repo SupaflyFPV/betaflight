@@ -38,6 +38,7 @@
 #include "pg/pg.h"
 
 #define LPF_MAX_HZ 1000 // so little filtering above 1000hz that if the user wants less delay, they must disable the filter
+#define GYRO_LPF2_MAX_HZ 3500
 #define DYN_LPF_MAX_HZ 1000
 
 #define GYRO_LPF1_DYN_MIN_HZ_DEFAULT 250

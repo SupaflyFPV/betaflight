@@ -600,7 +600,7 @@ void validateAndFixGyroConfig(void)
     // Fix gyro filter settings to handle cases where an older configurator was used that
     // allowed higher cutoff limits from previous firmware versions.
     adjustFilterLimit(&gyroConfigMutable()->gyro_lpf1_static_hz, LPF_MAX_HZ);
-    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf2_static_hz, LPF_MAX_HZ);
+    adjustFilterLimit(&gyroConfigMutable()->gyro_lpf2_static_hz, GYRO_LPF2_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_1, LPF_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_1, 0);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2, LPF_MAX_HZ);

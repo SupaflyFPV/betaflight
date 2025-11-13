@@ -28,6 +28,8 @@
 
 #include "config/simplified_tuning.h"
 
+#include "sensors/gyro.h"
+
 static void calculateNewPidValues(pidProfile_t *pidProfile)
 {
     const pidf_t pidDefaults[FLIGHT_DYNAMICS_INDEX_COUNT] = {
@@ -90,7 +92,7 @@ static void calculateNewGyroFilterValues(gyroConfig_t *gyroConfig)
     }
 
     if (gyroConfig->gyro_lpf2_static_hz) {
-        gyroConfig->gyro_lpf2_static_hz = constrain(GYRO_LPF2_HZ_DEFAULT * gyroConfig->simplified_gyro_filter_multiplier / 100, 0, LPF_MAX_HZ);
+        gyroConfig->gyro_lpf2_static_hz = constrain(GYRO_LPF2_HZ_DEFAULT * gyroConfig->simplified_gyro_filter_multiplier / 100, 0, GYRO_LPF2_MAX_HZ);
     }
 }
 
