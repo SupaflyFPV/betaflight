@@ -91,7 +91,7 @@ static void calculateNewGyroFilterValues(gyroConfig_t *gyroConfig)
         gyroConfig->gyro_lpf1_static_hz = constrain(GYRO_LPF1_DYN_MIN_HZ_DEFAULT * gyroConfig->simplified_gyro_filter_multiplier / 100, 0, DYN_LPF_MAX_HZ);
     }
 
-    if (gyroConfig->gyro_lpf2_static_hz) {
+    if (gyroConfig->gyro_lpf2_static_hz && gyroConfig->gyro_lpf2_static_hz <= LPF_MAX_HZ) {
         gyroConfig->gyro_lpf2_static_hz = constrain(GYRO_LPF2_HZ_DEFAULT * gyroConfig->simplified_gyro_filter_multiplier / 100, 0, GYRO_LPF2_MAX_HZ);
     }
 }
