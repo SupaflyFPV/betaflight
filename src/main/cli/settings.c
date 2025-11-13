@@ -86,6 +86,7 @@
 #include "pg/dashboard.h"
 #include "pg/displayport_profiles.h"
 #include "pg/dyn_notch.h"
+#include "pg/filter.h"
 #include "pg/flash.h"
 #include "pg/gimbal.h"
 #include "pg/gyrodev.h"
@@ -379,6 +380,11 @@ static const char * const lookupTableDtermLowpassType[] = {
     "PT3",
 };
 
+static const char * const lookupTableBiquadLpfResponse[] = {
+    "BUTTERWORTH",
+    "BESSEL",
+};
+
 static const char * const lookupTableFailsafe[] = {
     "AUTO-LAND", "DROP", "GPS-RESCUE"
 };
@@ -500,6 +506,10 @@ static const char * const lookupTableTpaMode[] = {
 #ifdef USE_WING
     "PDS",
 #endif
+};
+
+const char * const lookupTableSdaMode[] = {
+    "PD", "D",
 };
 
 static const char * const lookupTableSpaMode[] = {
@@ -655,6 +665,7 @@ const lookupTableEntry_t lookupTables[] = {
 #endif
     LOOKUP_TABLE_ENTRY(lookupTableLowpassType),
     LOOKUP_TABLE_ENTRY(lookupTableDtermLowpassType),
+    LOOKUP_TABLE_ENTRY(lookupTableBiquadLpfResponse),
     LOOKUP_TABLE_ENTRY(lookupTableFailsafe),
     LOOKUP_TABLE_ENTRY(lookupTableFailsafeSwitchMode),
     LOOKUP_TABLE_ENTRY(lookupTableCrashRecovery),
@@ -709,6 +720,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableLaunchControlMode),
 #endif
     LOOKUP_TABLE_ENTRY(lookupTableTpaMode),
+    LOOKUP_TABLE_ENTRY(lookupTableSdaMode),
     LOOKUP_TABLE_ENTRY(lookupTableSpaMode),
 #ifdef USE_LED_STRIP
     LOOKUP_TABLE_ENTRY(lookupTableLEDProfile),
@@ -811,6 +823,9 @@ const clivalue_t valueTable[] = {
     { "gyro_lpf1_dyn_expo",         VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 10 }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_lpf1_dyn_expo) },
 #endif
     { "gyro_filter_debug_axis",     VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO_FILTER_DEBUG }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_filter_debug_axis) },
+
+// PG_FILTER_CONFIG
+    { PARAM_NAME_BIQUAD_LPF_RESPONSE, VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_BIQUAD_LPF_RESPONSE }, PG_FILTER_CONFIG, offsetof(filterConfig_t, biquad_lpf_response) },
 
 // PG_ACCELEROMETER_CONFIG
 #if defined(USE_ACC)
@@ -1395,6 +1410,8 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_TPA_LOW_RATE,            VAR_INT8  | PROFILE_VALUE, .config.minmax = { TPA_LOW_RATE_MIN, TPA_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_rate) },
     { PARAM_NAME_TPA_LOW_BREAKPOINT,      VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { PWM_RANGE_MIN, PWM_RANGE_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_breakpoint) },
     { PARAM_NAME_TPA_LOW_ALWAYS, VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_low_always) },
+    { PARAM_NAME_SDA_MODE,            VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_SDA_MODE }, PG_PID_PROFILE, offsetof(pidProfile_t, sda_mode) },
+    { PARAM_NAME_SDA_RATE,            VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, SDA_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, sda_rate) },
 
 #ifdef USE_WING
     { PARAM_NAME_TPA_SPEED_TYPE, VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_TPA_SPEED_TYPE }, PG_PID_PROFILE, offsetof(pidProfile_t, tpa_speed_type) },
