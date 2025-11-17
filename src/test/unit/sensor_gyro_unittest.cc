@@ -121,6 +121,9 @@ TEST(SensorGyro, Update)
     gyroConfigMutable()->gyro_lpf2_static_hz = 0;
     gyroConfigMutable()->gyro_soft_notch_hz_1 = 0;
     gyroConfigMutable()->gyro_soft_notch_hz_2 = 0;
+    for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+        gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis] = 0;
+    }
     gyroInit();
     gyroSetTargetLooptime(1);
     gyroDevPtr->readFn = virtualGyroRead;

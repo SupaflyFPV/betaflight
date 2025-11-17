@@ -101,6 +101,7 @@ typedef struct gyro_s {
 
     filterApplyFnPtr notchFilter2ApplyFn;
     biquadFilter_t notchFilter2[XYZ_AXIS_COUNT];
+    bool notchFilter2AxisEnabled[XYZ_AXIS_COUNT];
 
     uint16_t accSampleRateHz;
     uint8_t gyroEnabledBitmask;
@@ -187,6 +188,7 @@ typedef struct gyroConfig_s {
     uint8_t simplified_gyro_filter_multiplier;
 
     uint8_t gyro_enabled_bitmask;
+    uint16_t gyro_soft_notch_hz_2_axis[XYZ_AXIS_COUNT];
 } gyroConfig_t;
 
 PG_DECLARE(gyroConfig_t, gyroConfig);

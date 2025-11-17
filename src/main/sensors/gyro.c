@@ -119,6 +119,9 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->gyro_soft_notch_hz_1 = 0;
     gyroConfig->gyro_soft_notch_cutoff_1 = 0;
     gyroConfig->gyro_soft_notch_hz_2 = 0;
+    for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+        gyroConfig->gyro_soft_notch_hz_2_axis[axis] = 0;
+    }
     gyroConfig->gyro_soft_notch_cutoff_2 = 0;
     gyroConfig->gyro_soft_notch_weight_1 = 100;
     gyroConfig->gyro_soft_notch_weight_2 = 100;

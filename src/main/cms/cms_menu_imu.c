@@ -749,7 +749,7 @@ static uint16_t gyroConfig_gyro_lpf1_static_hz;
 static uint16_t gyroConfig_gyro_lpf2_static_hz;
 static uint16_t gyroConfig_gyro_soft_notch_hz_1;
 static uint16_t gyroConfig_gyro_soft_notch_cutoff_1;
-static uint16_t gyroConfig_gyro_soft_notch_hz_2;
+static uint16_t gyroConfig_gyro_soft_notch_hz_2_axis[XYZ_AXIS_COUNT];
 static uint16_t gyroConfig_gyro_soft_notch_cutoff_2;
 static uint8_t  gyroConfig_gyro_soft_notch_weight_1;
 static uint8_t  gyroConfig_gyro_soft_notch_weight_2;
@@ -762,7 +762,9 @@ static const void *cmsx_menuGyro_onEnter(displayPort_t *pDisp)
     gyroConfig_gyro_lpf2_static_hz =  gyroConfig()->gyro_lpf2_static_hz;
     gyroConfig_gyro_soft_notch_hz_1 = gyroConfig()->gyro_soft_notch_hz_1;
     gyroConfig_gyro_soft_notch_cutoff_1 = gyroConfig()->gyro_soft_notch_cutoff_1;
-    gyroConfig_gyro_soft_notch_hz_2 = gyroConfig()->gyro_soft_notch_hz_2;
+    for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+        gyroConfig_gyro_soft_notch_hz_2_axis[axis] = gyroConfig()->gyro_soft_notch_hz_2_axis[axis];
+    }
     gyroConfig_gyro_soft_notch_cutoff_2 = gyroConfig()->gyro_soft_notch_cutoff_2;
     gyroConfig_gyro_soft_notch_weight_1 = gyroConfig()->gyro_soft_notch_weight_1;
     gyroConfig_gyro_soft_notch_weight_2 = gyroConfig()->gyro_soft_notch_weight_2;
@@ -779,7 +781,10 @@ static const void *cmsx_menuGyro_onExit(displayPort_t *pDisp, const OSD_Entry *s
     gyroConfigMutable()->gyro_lpf2_static_hz =  gyroConfig_gyro_lpf2_static_hz;
     gyroConfigMutable()->gyro_soft_notch_hz_1 = gyroConfig_gyro_soft_notch_hz_1;
     gyroConfigMutable()->gyro_soft_notch_cutoff_1 = gyroConfig_gyro_soft_notch_cutoff_1;
-    gyroConfigMutable()->gyro_soft_notch_hz_2 = gyroConfig_gyro_soft_notch_hz_2;
+    for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
+        gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis] = gyroConfig_gyro_soft_notch_hz_2_axis[axis];
+    }
+    gyroConfigMutable()->gyro_soft_notch_hz_2 = gyroConfigMutable()->gyro_soft_notch_hz_2_axis[FD_ROLL];
     gyroConfigMutable()->gyro_soft_notch_cutoff_2 = gyroConfig_gyro_soft_notch_cutoff_2;
     gyroConfigMutable()->gyro_soft_notch_weight_1 = gyroConfig_gyro_soft_notch_weight_1;
     gyroConfigMutable()->gyro_soft_notch_weight_2 = gyroConfig_gyro_soft_notch_weight_2;
@@ -798,7 +803,9 @@ static const OSD_Entry cmsx_menuFilterGlobalEntries[] =
     { "GYRO NF1",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_1,     0, 500, 1 } },
     { "GYRO NF1C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_1, 0, 500, 1 } },
     { "GYRO NF1W",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &gyroConfig_gyro_soft_notch_weight_1, 0, 100, 1 } },
-    { "GYRO NF2",   OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2,     0, 500, 1 } },
+    { "GY2 NF R",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2_axis[FD_ROLL],  0, 500, 1 } },
+    { "GY2 NF P",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2_axis[FD_PITCH], 0, 500, 1 } },
+    { "GY2 NF Y",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_hz_2_axis[FD_YAW],   0, 500, 1 } },
     { "GYRO NF2C",  OME_UINT16, NULL, &(OSD_UINT16_t) { &gyroConfig_gyro_soft_notch_cutoff_2, 0, 500, 1 } },
     { "GYRO NF2W",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &gyroConfig_gyro_soft_notch_weight_2, 0, 100, 1 } },
 
