@@ -780,6 +780,35 @@ STATIC_UNIT_TESTED void *cliGetValuePointer(const clivalue_t *value)
     }
 }
 
+static gyroConfig_t *cliGetGyroConfigTarget(void)
+{
+    const pgRegistry_t *reg = pgFind(PG_GYRO_CONFIG);
+    return (gyroConfig_t *)(isWritingConfigToCopy() ? reg->copy : reg->address);
+}
+
+static bool cliHandleGyroNotch2GlobalSet(const clivalue_t *var, uint16_t value)
+{
+    if (strcmp(var->name, "gyro_notch2_hz") != 0) {
+        return false;
+    }
+
+    gyroConfig_t *gyroCfg = cliGetGyroConfigTarget();
+    gyroCfg->gyro_soft_notch_hz_2 = value;
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        gyroCfg->gyro_soft_notch_hz_2_axis[axis] = value;
+    }
+
+    return true;
+}
+
+static void cliHandleGyroNotch2AxisPostSet(const clivalue_t *var)
+{
+    if (strcmp(var->name, "gyro_notch2_hz_roll") == 0) {
+        gyroConfig_t *gyroCfg = cliGetGyroConfigTarget();
+        gyroCfg->gyro_soft_notch_hz_2 = gyroCfg->gyro_soft_notch_hz_2_axis[FD_ROLL];
+    }
+}
+
 static const char *dumpPgValue(const char *cmdName, const clivalue_t *value, dumpFlags_t dumpMask, const char *headingStr)
 {
     const pgRegistry_t *pg = pgFind(value->pgn);
@@ -4553,8 +4582,13 @@ STATIC_UNIT_TESTED void cliSet(const char *cmdName, char *cmdline)
                     getMinMax(val, &min, &max);
 
                     if (value >= min && value <= max) {
-                        cliSetVar(val, value);
-                        valueChanged = true;
+                        if (cliHandleGyroNotch2GlobalSet(val, (uint16_t)value)) {
+                            valueChanged = true;
+                        } else {
+                            cliSetVar(val, value);
+                            cliHandleGyroNotch2AxisPostSet(val);
+                            valueChanged = true;
+                        }
                     }
                 }
             }

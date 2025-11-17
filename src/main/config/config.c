@@ -185,6 +185,24 @@ static void adjustFilterLimit(uint16_t *parm, uint16_t limit, uint16_t resetValu
     }
 }
 
+static void ensureGyroNotch2AxisFrequencies(void)
+{
+    bool axisConfigured = false;
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        if (gyroConfig()->gyro_soft_notch_hz_2_axis[axis] != 0) {
+            axisConfigured = true;
+            break;
+        }
+    }
+
+    if (!axisConfigured && gyroConfig()->gyro_soft_notch_hz_2 != 0) {
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis] = gyroConfig()->gyro_soft_notch_hz_2;
+        }
+    }
+}
+
 static void validateAndFixRatesSettings(void)
 {
     for (unsigned profileIndex = 0; profileIndex < CONTROL_RATE_PROFILE_COUNT; profileIndex++) {
@@ -601,10 +619,16 @@ void validateAndFixGyroConfig(void)
     // allowed higher cutoff limits from previous firmware versions.
     adjustFilterLimit(&gyroConfigMutable()->gyro_lpf1_static_hz, LPF_MAX_HZ, LPF_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_lpf2_static_hz, GYRO_LPF2_MAX_HZ, GYRO_LPF2_MAX_HZ);
+    ensureGyroNotch2AxisFrequencies();
+
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_1, LPF_MAX_HZ, LPF_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_1, LPF_MAX_HZ, 0);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2, LPF_MAX_HZ, LPF_MAX_HZ);
     adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_cutoff_2, LPF_MAX_HZ, 0);
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adjustFilterLimit(&gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis], LPF_MAX_HZ, LPF_MAX_HZ);
+    }
     if (gyroConfigMutable()->gyro_soft_notch_weight_1 > 100) {
         gyroConfigMutable()->gyro_soft_notch_weight_1 = 100;
     }
@@ -619,6 +643,12 @@ void validateAndFixGyroConfig(void)
     if (gyroConfig()->gyro_soft_notch_cutoff_2 >= gyroConfig()->gyro_soft_notch_hz_2) {
         gyroConfigMutable()->gyro_soft_notch_hz_2 = 0;
     }
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        if (gyroConfig()->gyro_soft_notch_cutoff_2 >= gyroConfig()->gyro_soft_notch_hz_2_axis[axis]) {
+            gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis] = 0;
+        }
+    }
+    gyroConfigMutable()->gyro_soft_notch_hz_2 = gyroConfigMutable()->gyro_soft_notch_hz_2_axis[FD_ROLL];
 
     if (gyroConfig()->gyro_lpf2_static_hz > LPF_MAX_HZ) {
         gyroConfigMutable()->simplified_gyro_filter = false;

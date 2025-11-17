@@ -3056,7 +3056,11 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
             currentPidProfile->dterm_notch_cutoff = sbufReadU16(src);
         }
         if (sbufBytesRemaining(src) >= 4) {
-            gyroConfigMutable()->gyro_soft_notch_hz_2 = sbufReadU16(src);
+            const uint16_t notch2Hz = sbufReadU16(src);
+            gyroConfigMutable()->gyro_soft_notch_hz_2 = notch2Hz;
+            for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+                gyroConfigMutable()->gyro_soft_notch_hz_2_axis[axis] = notch2Hz;
+            }
             gyroConfigMutable()->gyro_soft_notch_cutoff_2 = sbufReadU16(src);
         }
         if (sbufBytesRemaining(src) >= 1) {
