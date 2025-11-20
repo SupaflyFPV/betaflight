@@ -1235,6 +1235,17 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_DTERM_NOTCH_HZ,        VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_hz) },
     { PARAM_NAME_DTERM_NOTCH_CUTOFF,    VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_cutoff) },
     { PARAM_NAME_DTERM_NOTCH_WEIGHT,    VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_notch_weight) },
+#ifdef USE_DTERM_CHEBY3_FILTER
+    // dterm_cheby3_enable:
+    //  0 = disabled (default)
+    //  1 = enable additional fixed Chebyshev-II D-term filter after standard D-term LPF stages
+    { "dterm_cheby3_enable", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 1 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_cheby3_enable) },
+    // dterm_cheby3_stopband:
+    //  0 = Rs 23 dB, ~2.0 ms latency
+    //  1 = Rs 25 dB, ~2.2 ms latency (default)
+    //  2 = Rs 27 dB, ~2.5 ms latency
+    { "dterm_cheby3_stopband", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { DTERM_CHEBY3_RS23, DTERM_CHEBY3_RS27 }, PG_PID_PROFILE, offsetof(pidProfile_t, dterm_cheby3_stopband) },
+#endif
 #if defined(USE_BATTERY_VOLTAGE_SAG_COMPENSATION)
     { PARAM_NAME_VBAT_SAG_COMPENSATION, VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 150 }, PG_PID_PROFILE, offsetof(pidProfile_t, vbat_sag_compensation) },
 #endif

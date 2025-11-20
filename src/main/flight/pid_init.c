@@ -132,6 +132,15 @@ void pidInitFilters(const pidProfile_t *pidProfile)
 {
     STATIC_ASSERT(FD_YAW == 2, FD_YAW_incorrect); // ensure yaw axis is 2
 
+#ifdef USE_DTERM_CHEBY3_FILTER
+    pidRuntime.dtermCheby3Enabled = (pidProfile->dterm_cheby3_enable != 0);
+    if (pidRuntime.dtermCheby3Enabled) {
+        for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+            dtermCheby3Init(&pidRuntime.dtermCheby3[axis], (dtermCheby3Stopband_e)pidProfile->dterm_cheby3_stopband);
+        }
+    }
+#endif
+
     if (targetPidLooptime == 0) {
         // no looptime set, so set all the filters to null
         pidRuntime.dtermNotchApplyFn = nullFilterApply;

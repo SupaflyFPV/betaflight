@@ -142,7 +142,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 12);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 14);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -198,6 +198,10 @@ void resetPidProfile(pidProfile_t *pidProfile)
             // overridden and the static lowpass 1 is disabled. We can't set this
             // value to 0 otherwise Configurator versions 10.4 and earlier will also
             // reset the lowpass filter type to PT1 overriding the desired BIQUAD setting.
+#ifdef USE_DTERM_CHEBY3_FILTER
+        .dterm_cheby3_enable = 0,
+        .dterm_cheby3_stopband = DTERM_CHEBY3_RS25,
+#endif
         .dterm_lpf2_static_hz = DTERM_LPF2_HZ_DEFAULT,   // second Dterm LPF ON by default
         .dterm_lpf1_type = FILTER_PT1,
         .dterm_lpf2_type = FILTER_PT1,
@@ -1225,6 +1229,11 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         gyroRateDterm[axis] = pidRuntime.dtermNotchApplyFn((filter_t *) &pidRuntime.dtermNotch[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpassApplyFn((filter_t *) &pidRuntime.dtermLowpass[axis], gyroRateDterm[axis]);
         gyroRateDterm[axis] = pidRuntime.dtermLowpass2ApplyFn((filter_t *) &pidRuntime.dtermLowpass2[axis], gyroRateDterm[axis]);
+#ifdef USE_DTERM_CHEBY3_FILTER
+        if (pidRuntime.dtermCheby3Enabled) {
+            gyroRateDterm[axis] = dtermCheby3Apply(&pidRuntime.dtermCheby3[axis], gyroRateDterm[axis]);
+        }
+#endif
     }
 
     rotateItermAndAxisError();

@@ -160,6 +160,7 @@ COMMON_SRC = \
             flight/autopilot_multirotor.c \
             flight/autopilot_wing.c \
             flight/dyn_notch_filter.c \
+            flight/dterm_cheby3_filter.c \
             flight/failsafe.c \
             flight/gps_rescue_multirotor.c \
             flight/gps_rescue_wing.c \
@@ -446,6 +447,7 @@ SPEED_OPTIMISED_SRC += \
             fc/rc_controls.c \
             fc/runtime_config.c \
             flight/dyn_notch_filter.c \
+            flight/dterm_cheby3_filter.c \
             flight/imu.c \
             flight/mixer.c \
             flight/pid.c \

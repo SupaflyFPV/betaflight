@@ -30,6 +30,10 @@
 
 #include "pg/pg.h"
 
+#ifdef USE_DTERM_CHEBY3_FILTER
+#include "flight/dterm_cheby3_filter.h"
+#endif
+
 #define MAX_PID_PROCESS_DENOM       16
 #define PID_CONTROLLER_BETAFLIGHT   1
 #define PID_MIXER_SCALING           1000.0f
@@ -202,6 +206,10 @@ typedef struct pidProfile_s {
     pidf_t  pid[PID_ITEM_COUNT];
 
     uint8_t dterm_lpf1_type;                // Filter type for dterm lowpass 1
+#ifdef USE_DTERM_CHEBY3_FILTER
+    uint8_t dterm_cheby3_enable;            // Enable optional Chebyshev-II D-term filter
+    uint8_t dterm_cheby3_stopband;          // Select Chebyshev stopband attenuation (Rs = 23/25/27 dB)
+#endif
     uint8_t itermWindup;                    // iterm windup threshold, percentage of pidSumLimit within which to limit iTerm
     uint16_t pidSumLimit;                   // pidSum limit value for pitch and roll
     uint16_t pidSumLimitYaw;                // pidSum limit value for yaw
@@ -398,6 +406,10 @@ typedef struct pidRuntime_s {
     dtermLowpass_t dtermLowpass[XYZ_AXIS_COUNT];
     filterApplyFnPtr dtermLowpass2ApplyFn;
     dtermLowpass_t dtermLowpass2[XYZ_AXIS_COUNT];
+#ifdef USE_DTERM_CHEBY3_FILTER
+    bool dtermCheby3Enabled;
+    dtermCheby3Filter_t dtermCheby3[XYZ_AXIS_COUNT];
+#endif
     filterApplyFnPtr ptermYawLowpassApplyFn;
     pt1Filter_t ptermYawLowpass;
     bool antiGravityEnabled;
