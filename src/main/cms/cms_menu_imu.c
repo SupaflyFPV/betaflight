@@ -519,6 +519,7 @@ static uint8_t  cmsx_horizonLimitDegrees;
 
 static uint8_t  cmsx_throttleBoost;
 static uint8_t  cmsx_thrustLinearization;
+static uint16_t cmsx_thrustLinearizationExpo;
 static uint8_t  cmsx_antiGravityGain;
 static uint8_t  cmsx_motorOutputLimit;
 static int8_t   cmsx_autoProfileCellCount;
@@ -573,6 +574,7 @@ static const void *cmsx_profileOtherOnEnter(displayPort_t *pDisp)
 
     cmsx_throttleBoost = pidProfile->throttle_boost;
     cmsx_thrustLinearization = pidProfile->thrustLinearization;
+    cmsx_thrustLinearizationExpo = pidProfile->thrustLinearizationExpo;
     cmsx_motorOutputLimit = pidProfile->motor_output_limit;
     cmsx_autoProfileCellCount = pidProfile->auto_profile_cell_count;
 
@@ -632,6 +634,7 @@ static const void *cmsx_profileOtherOnExit(displayPort_t *pDisp, const OSD_Entry
 
     pidProfile->throttle_boost = cmsx_throttleBoost;
     pidProfile->thrustLinearization = cmsx_thrustLinearization;
+    pidProfile->thrustLinearizationExpo = cmsx_thrustLinearizationExpo;
     pidProfile->motor_output_limit = cmsx_motorOutputLimit;
     pidProfile->auto_profile_cell_count = cmsx_autoProfileCellCount;
 
@@ -697,6 +700,7 @@ static const OSD_Entry cmsx_menuProfileOtherEntries[] = {
 #endif
 #ifdef USE_THRUST_LINEARIZATION
     { "THR LINEAR",  OME_UINT8,  NULL, &(OSD_UINT8_t)  { &cmsx_thrustLinearization,    0,    150,   1  }    },
+    { "THR LIN EXP", OME_UINT16, NULL, &(OSD_UINT16_t) { &cmsx_thrustLinearizationExpo, 100,   800,  10 }    },
 #endif
 #ifdef USE_ITERM_RELAX
     { "I_RELAX",         OME_TAB,    NULL, &(OSD_TAB_t)     { &cmsx_iterm_relax,        ITERM_RELAX_COUNT - 1,      lookupTableItermRelax       } },
