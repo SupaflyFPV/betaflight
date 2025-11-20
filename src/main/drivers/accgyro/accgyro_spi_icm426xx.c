@@ -136,7 +136,9 @@
 #define ICM426XX_INTF_CONFIG5_PIN9_FUNCTION_CLKIN   (2 << 1)   // PIN9 as CLKIN
 
 typedef enum {
-    ODR_CONFIG_8K = 0,
+    ODR_CONFIG_32K = 0,
+    ODR_CONFIG_16K,
+    ODR_CONFIG_8K,
     ODR_CONFIG_4K,
     ODR_CONFIG_2K,
     ODR_CONFIG_1K,
@@ -158,12 +160,43 @@ typedef struct aafConfig_s {
 } aafConfig_t;
 
 // Possible output data rates (ODRs)
-static uint8_t odrLUT[ODR_CONFIG_COUNT] = {  // see GYRO_ODR in section 5.6
-    [ODR_CONFIG_8K] = 3,
-    [ODR_CONFIG_4K] = 4,
-    [ODR_CONFIG_2K] = 5,
-    [ODR_CONFIG_1K] = 6,
+// GYRO_ODR (bits [3:0] of GYRO_CONFIG0 / ACCEL_CONFIG0)
+// 0 is reserved, 1 -> 32kHz, 2 -> 16kHz, 3 -> 8kHz, 4 -> 4kHz, 5 -> 2kHz, 6 -> 1kHz
+static uint8_t odrLUT[ODR_CONFIG_COUNT] = {
+    [ODR_CONFIG_32K] = 1,
+    [ODR_CONFIG_16K] = 2,
+    [ODR_CONFIG_8K]  = 3,
+    [ODR_CONFIG_4K]  = 4,
+    [ODR_CONFIG_2K]  = 5,
+    [ODR_CONFIG_1K]  = 6,
 };
+
+static uint8_t icm426xxSelectOdrConfig(const gyroDev_t *gyro)
+{
+    switch (gyro->gyroRateKHz) {
+    case GYRO_RATE_32_kHz:
+        return odrLUT[ODR_CONFIG_32K];
+    case GYRO_RATE_8_kHz:
+    case GYRO_RATE_9_kHz:          // closest available
+    case GYRO_RATE_6664_Hz:        // closest available
+    case GYRO_RATE_6400_Hz:        // closest available
+        return odrLUT[ODR_CONFIG_8K];
+    case GYRO_RATE_3200_Hz:
+        return odrLUT[ODR_CONFIG_4K];
+    case GYRO_RATE_1100_Hz:
+        return odrLUT[ODR_CONFIG_1K];
+    case GYRO_RATE_1_kHz:
+    default:
+        break;
+    }
+
+    const unsigned decim = llog2(gyro->mpuDividerDrops + 1);
+    if (decim < ODR_CONFIG_COUNT) {
+        return odrLUT[decim];
+    }
+
+    return odrLUT[ODR_CONFIG_1K];
+}
 
 // Possible gyro Anti-Alias Filter (AAF) cutoffs for ICM-42688P
 static aafConfig_t aafLUT42688[AAF_CONFIG_COUNT] = {  // see table in section 5.3
@@ -415,21 +448,15 @@ void icm426xxGyroInit(gyroDev_t *gyro)
     turnGyroAccOn(dev);
 
     // Get desired output data rate
-    uint8_t odrConfig;
-    const unsigned decim = llog2(gyro->mpuDividerDrops + 1);
-    if (gyro->gyroRateKHz && decim < ODR_CONFIG_COUNT) {
-        odrConfig = odrLUT[decim];
-    } else {
-        odrConfig = odrLUT[ODR_CONFIG_1K];
-        gyro->gyroRateKHz = GYRO_RATE_1_kHz;
-    }
+    const uint8_t odrConfig = icm426xxSelectOdrConfig(gyro);
+    const uint8_t accelOdrConfig = (gyro->gyroRateKHz == GYRO_RATE_32_kHz) ? odrLUT[ODR_CONFIG_1K] : odrConfig;
 
     // This sets the gyro/accel to the maximum FSR, depending on the chip
     // ICM42605, ICM_42688P: 2000DPS and 16G.
     // IIM42653: 4000DPS and 32G
     spiWriteReg(dev, ICM426XX_RA_GYRO_CONFIG0, (0 << 5) | (odrConfig & 0x0F));
     delay(15);
-    spiWriteReg(dev, ICM426XX_RA_ACCEL_CONFIG0, (0 << 5) | (odrConfig & 0x0F));
+    spiWriteReg(dev, ICM426XX_RA_ACCEL_CONFIG0, (0 << 5) | (accelOdrConfig & 0x0F));
     delay(15);
 }
 

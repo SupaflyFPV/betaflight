@@ -83,6 +83,11 @@ uint16_t gyroSetSampleRate(gyroDev_t *gyro)
             accSampleRateHz = 833;
             break;
 #endif
+        case ICM_42688P_SPI:
+            gyro->gyroRateKHz = GYRO_RATE_32_kHz;
+            gyroSampleRateHz = 32000;
+            accSampleRateHz = 1000;
+            break;
         case ICM_45686_SPI:
         case ICM_45605_SPI:
             gyro->gyroRateKHz = GYRO_RATE_6400_Hz;
