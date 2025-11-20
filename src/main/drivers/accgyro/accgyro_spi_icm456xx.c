@@ -271,6 +271,42 @@ Note: Now implemented only UI Interface with Low-Noise Mode
 #define ICM456XX_DATA_LENGTH                    6  // 3 axes * 2 bytes per axis
 #define ICM456XX_SPI_BUFFER_SIZE                (1 + ICM456XX_DATA_LENGTH) // 1 byte register + 6 bytes data
 
+typedef enum {
+    ICM456XX_ODR_CONFIG_6K4 = 0,
+    ICM456XX_ODR_CONFIG_3K2,
+    ICM456XX_ODR_CONFIG_1K6,
+    ICM456XX_ODR_CONFIG_800,
+    ICM456XX_ODR_CONFIG_COUNT
+} icm456xxOdrConfig_e;
+
+static const uint8_t icm456xxGyroOdrLut[ICM456XX_ODR_CONFIG_COUNT] = {
+    [ICM456XX_ODR_CONFIG_6K4] = ICM456XX_GYRO_ODR_6K4_LN,
+    [ICM456XX_ODR_CONFIG_3K2] = ICM456XX_GYRO_ODR_3K2_LN,
+    [ICM456XX_ODR_CONFIG_1K6] = ICM456XX_GYRO_ODR_1K6_LN,
+    [ICM456XX_ODR_CONFIG_800] = ICM456XX_GYRO_ODR_800_LN,
+};
+
+static const uint8_t icm456xxAccelOdrLut[ICM456XX_ODR_CONFIG_COUNT] = {
+    [ICM456XX_ODR_CONFIG_6K4] = ICM456XX_ACCEL_ODR_6K4_LN,
+    [ICM456XX_ODR_CONFIG_3K2] = ICM456XX_ACCEL_ODR_3K2_LN,
+    [ICM456XX_ODR_CONFIG_1K6] = ICM456XX_ACCEL_ODR_1K6_LN,
+    [ICM456XX_ODR_CONFIG_800] = ICM456XX_ACCEL_ODR_800_LN,
+};
+
+static const uint16_t icm456xxSampleRateHzLut[ICM456XX_ODR_CONFIG_COUNT] = {
+    [ICM456XX_ODR_CONFIG_6K4] = 6400,
+    [ICM456XX_ODR_CONFIG_3K2] = 3200,
+    [ICM456XX_ODR_CONFIG_1K6] = 1600,
+    [ICM456XX_ODR_CONFIG_800] = 800,
+};
+
+static const gyroRateKHz_e icm456xxRateEnumLut[ICM456XX_ODR_CONFIG_COUNT] = {
+    [ICM456XX_ODR_CONFIG_6K4] = GYRO_RATE_6400_Hz,
+    [ICM456XX_ODR_CONFIG_3K2] = GYRO_RATE_3200_Hz,
+    [ICM456XX_ODR_CONFIG_1K6] = GYRO_RATE_3200_Hz,
+    [ICM456XX_ODR_CONFIG_800] = GYRO_RATE_1_kHz,
+};
+
 static uint8_t getGyroLpfConfig(const gyroHardwareLpf_e hardwareLpf)
 {
     switch (hardwareLpf) {
@@ -387,7 +423,7 @@ void icm456xxGyroInit(gyroDev_t *gyro)
 
     spiWriteReg(dev, ICM456XX_REG_BANK_SEL, ICM456XX_BANK_0);
 
-    icm456xx_enableSensors(dev, true);
+    icm456xx_enableSensors(dev, false);
 
     // Enable Anti-Alias (AAF) Filter and Interpolator for Gyro
     icm456xx_enableAAFandInterpolator(dev, ICM456XX_GYRO_SRC_CTRL_IREG_ADDR, true, true);
@@ -395,18 +431,33 @@ void icm456xxGyroInit(gyroDev_t *gyro)
     // Set the Gyro UI LPF bandwidth cut-off
     icm456xx_configureLPF(dev, ICM456XX_GYRO_UI_LPF_CFG_IREG_ADDR, getGyroLpfConfig(gyroConfig()->gyro_hardware_lpf));
 
+    const unsigned decim = llog2(gyro->mpuDividerDrops + 1);
+    const unsigned odrIndex = decim < ICM456XX_ODR_CONFIG_COUNT ? decim : (ICM456XX_ODR_CONFIG_COUNT - 1);
+    const uint8_t gyroOdr = icm456xxGyroOdrLut[odrIndex];
+    const uint8_t accelOdr = icm456xxAccelOdrLut[odrIndex];
+    const uint16_t sampleRateHz = icm456xxSampleRateHzLut[odrIndex];
+
+    uint8_t accelFsSel = ICM456XX_ACCEL_FS_SEL_16G;
     switch (gyro->mpuDetectionResult.sensor) {
     case ICM_45686_SPI:
-    case ICM_45605_SPI:
+        accelFsSel = ICM456XX_ACCEL_FS_SEL_32G;
+        break;
     default:
-        gyro->scale = GYRO_SCALE_2000DPS;
-        gyro->gyroRateKHz = GYRO_RATE_6400_Hz;
-        gyro->gyroSampleRateHz = 6400;
-        spiWriteReg(dev, ICM456XX_GYRO_CONFIG0, ICM456XX_GYRO_FS_SEL_2000DPS | ICM456XX_GYRO_ODR_6K4_LN);
+        accelFsSel = ICM456XX_ACCEL_FS_SEL_16G;
         break;
     }
 
+    spiWriteReg(dev, ICM456XX_GYRO_CONFIG0, ICM456XX_GYRO_FS_SEL_2000DPS | gyroOdr);
+    spiWriteReg(dev, ICM456XX_ACCEL_CONFIG0, accelFsSel | accelOdr);
+
+    gyro->scale = GYRO_SCALE_2000DPS;
+    gyro->gyroSampleRateHz = sampleRateHz;
+    gyro->accSampleRateHz = sampleRateHz;
+    gyro->gyroRateKHz = icm456xxRateEnumLut[odrIndex];
+
     gyro->gyroShortPeriod = clockMicrosToCycles(HZ_TO_US(gyro->gyroSampleRateHz));
+
+    icm456xx_enableSensors(dev, true);
 
     spiWriteReg(dev, ICM456XX_INT1_CONFIG2, ICM456XX_INT1_MODE_PULSED | ICM456XX_INT1_DRIVE_CIRCUIT_PP |
                                             ICM456XX_INT1_POLARITY_ACTIVE_HIGH);
