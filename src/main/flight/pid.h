@@ -251,6 +251,7 @@ typedef struct pidProfile_s {
     uint8_t use_integrated_yaw;             // Selects whether the yaw pidsum should integrated
     uint8_t integrated_yaw_relax;           // Specifies how much integrated yaw should be reduced to offset the drag based yaw component
     uint8_t thrustLinearization;            // Compensation factor for pid linearization
+    uint16_t thrustLinearizationExpo;       // Exponent (scaled by 100) for thrust linearization curve shaping
     uint8_t d_max[XYZ_AXIS_COUNT];          // Maximum D value on each axis
     uint8_t d_max_gain;                     // Gain factor for amount of gyro / setpoint activity required to boost D
     uint8_t d_max_advance;                  // Percentage multiplier for setpoint input to boost algorithm
@@ -502,6 +503,7 @@ typedef struct pidRuntime_s {
 
 #ifdef USE_THRUST_LINEARIZATION
     float thrustLinearization;
+    float thrustLinearizationExpo;
     float throttleCompensateAmount;
 #endif
 

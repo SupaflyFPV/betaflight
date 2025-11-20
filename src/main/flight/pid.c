@@ -31,6 +31,7 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
+#include "common/maths.h"
 
 #include "config/config.h"
 #include "config/config_reset.h"
@@ -142,7 +143,7 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 12);
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 13);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -211,6 +212,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .use_integrated_yaw = false,
         .integrated_yaw_relax = 200,
         .thrustLinearization = 0,
+        .thrustLinearizationExpo = 300,    // 3.0 exponent default
         .d_max = D_MAX_DEFAULT,
         .d_max_gain = 37,
         .d_max_advance = 20,
@@ -537,16 +539,19 @@ void pidAcroTrainerInit(void)
 float pidCompensateThrustLinearization(float throttle)
 {
     if (pidRuntime.thrustLinearization != 0.0f) {
+        // Emphasize thrust boost at very low throttle with reduced mid-throttle effect
         // for whoops where a lot of TL is needed, allow more throttle boost
         const float throttleReversed = (1.0f - throttle);
-        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * sq(throttleReversed);
+        const float thrustBoostShape = powf(throttleReversed, pidRuntime.thrustLinearizationExpo);
+        throttle /= 1.0f + pidRuntime.throttleCompensateAmount * thrustBoostShape;
     }
     return throttle;
 }
 
 float pidApplyThrustLinearization(float motorOutput)
 {
-    motorOutput *= 1.0f + pidRuntime.thrustLinearization * sq(1.0f - motorOutput);
+    const float thrustBoostShape = powf(1.0f - motorOutput, pidRuntime.thrustLinearizationExpo);
+    motorOutput *= 1.0f + pidRuntime.thrustLinearization * thrustBoostShape;
     return motorOutput;
 }
 #endif
