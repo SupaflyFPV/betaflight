@@ -174,8 +174,8 @@ static uint8_t odrLUT[ODR_CONFIG_COUNT] = {
 static uint8_t icm426xxSelectOdrConfig(const gyroDev_t *gyro)
 {
     switch (gyro->gyroRateKHz) {
-    case GYRO_RATE_32_kHz:
-        return odrLUT[ODR_CONFIG_32K];
+    case GYRO_RATE_16_kHz:
+        return odrLUT[ODR_CONFIG_16K];
     case GYRO_RATE_8_kHz:
     case GYRO_RATE_9_kHz:          // closest available
     case GYRO_RATE_6664_Hz:        // closest available
@@ -449,7 +449,7 @@ void icm426xxGyroInit(gyroDev_t *gyro)
 
     // Get desired output data rate
     const uint8_t odrConfig = icm426xxSelectOdrConfig(gyro);
-    const uint8_t accelOdrConfig = (gyro->gyroRateKHz == GYRO_RATE_32_kHz) ? odrLUT[ODR_CONFIG_1K] : odrConfig;
+    const uint8_t accelOdrConfig = (gyro->gyroRateKHz > GYRO_RATE_8_kHz) ? odrLUT[ODR_CONFIG_1K] : odrConfig;
 
     // This sets the gyro/accel to the maximum FSR, depending on the chip
     // ICM42605, ICM_42688P: 2000DPS and 16G.
