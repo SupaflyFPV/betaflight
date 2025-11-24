@@ -480,21 +480,10 @@ void icm426xxGyroInit(gyroDev_t *gyro)
     // Configure gyro and acc UI Filters
     setUserBank(dev, ICM426XX_BANK_SELECT0);
     uint8_t gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_LOW_LATENCY;
-    if (icm42688Option1) {
-        gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_ODR_DIV40;
-    } else if (icm42688Option2) {
-        gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_ODR_DIV20;
-    } else if (icm42688Experimental) {
+    if (icm42688Experimental) {
         gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_ODR_DIV40;
     }
     spiWriteReg(dev, ICM426XX_RA_GYRO_ACCEL_CONFIG0, gyroAccelConfig0);
-
-    if (icm42688Option1 || icm42688Option2) {
-        uint8_t gyroConfig1 = spiReadRegMsk(dev, ICM426XX_RA_GYRO_CONFIG1);
-        gyroConfig1 &= ~ICM426XX_GYRO_UI_ORDER_MASK;
-        gyroConfig1 |= ICM426XX_GYRO_UI_ORDER_SECOND;
-        spiWriteReg(dev, ICM426XX_RA_GYRO_CONFIG1, gyroConfig1);
-    }
 
     // Configure interrupt pin
     spiWriteReg(dev, ICM426XX_RA_INT_CONFIG, ICM426XX_INT1_MODE_PULSED | ICM426XX_INT1_DRIVE_CIRCUIT_PP | ICM426XX_INT1_POLARITY_ACTIVE_HIGH);
@@ -584,9 +573,11 @@ static aafConfig_t getGyroAafConfig(const mpuSensor_e gyroModel, const aafConfig
         case GYRO_HARDWARE_LPF_NORMAL:
             return aafLUT42688[AAF_CONFIG_258HZ];
         case GYRO_HARDWARE_LPF_OPTION_1:
-            return aafLUT42688[AAF_CONFIG_536HZ];
+            // Option 1: 303 Hz (DELT=7, DELTSQR=49, BITSHIFT=9)
+            return (aafConfig_t){ 7, 49, 9 };
         case GYRO_HARDWARE_LPF_OPTION_2:
-            return aafLUT42688[AAF_CONFIG_536HZ];
+            // Option 2: 348 Hz (DELT=8, DELTSQR=64, BITSHIFT=9)
+            return (aafConfig_t){ 8, 64, 9 };
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
         case GYRO_HARDWARE_LPF_EXPERIMENTAL:
             return aafLUT42688[AAF_CONFIG_1962HZ];
