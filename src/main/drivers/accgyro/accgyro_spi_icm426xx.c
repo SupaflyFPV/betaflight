@@ -181,8 +181,6 @@ static uint8_t odrLUT[ODR_CONFIG_COUNT] = {
 static uint8_t icm426xxSelectOdrConfig(const gyroDev_t *gyro)
 {
     switch (gyro->gyroRateKHz) {
-    case GYRO_RATE_16_kHz:
-        return odrLUT[ODR_CONFIG_16K];
     case GYRO_RATE_8_kHz:
     case GYRO_RATE_9_kHz:          // closest available
     case GYRO_RATE_6664_Hz:        // closest available
@@ -231,7 +229,7 @@ static gyroRateKHz_e icm426xxRateEnumFromOdr(uint8_t odrConfig)
     case 1:
         return GYRO_RATE_32_kHz;
     case 2:
-        return GYRO_RATE_16_kHz;
+        return GYRO_RATE_8_kHz;
     case 3:
         return GYRO_RATE_8_kHz;
     case 4:
