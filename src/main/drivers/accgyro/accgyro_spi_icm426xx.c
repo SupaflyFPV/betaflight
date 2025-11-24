@@ -521,7 +521,7 @@ void icm426xxGyroInit(gyroDev_t *gyro)
     // Get desired output data rate
     const uint8_t selectedOdrConfig = icm426xxSelectOdrConfig(gyro);
     uint8_t gyroOdrConfig = selectedOdrConfig;
-    if (icm42688Option1 || icm42688Option2 || icm42688Experimental) {
+    if ((gyroModel == ICM_42688P_SPI) || icm42688Option1 || icm42688Option2 || icm42688Experimental) {
         gyroOdrConfig = odrLUT[ODR_CONFIG_8K];
     }
     const uint8_t accelOdrConfig = selectedOdrConfig;
