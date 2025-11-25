@@ -479,10 +479,8 @@ void icm426xxGyroInit(gyroDev_t *gyro)
 
     // Configure gyro and acc UI Filters
     setUserBank(dev, ICM426XX_BANK_SELECT0);
-    uint8_t gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_LOW_LATENCY;
-    if (icm42688Experimental) {
-        gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_ODR_DIV40;
-    }
+    // Force UI filter block to low latency for all 42688P LPF options
+    const uint8_t gyroAccelConfig0 = ICM426XX_ACCEL_UI_FILT_BW_LOW_LATENCY | ICM426XX_GYRO_UI_FILT_BW_LOW_LATENCY;
     spiWriteReg(dev, ICM426XX_RA_GYRO_ACCEL_CONFIG0, gyroAccelConfig0);
 
     // Configure interrupt pin
@@ -580,7 +578,8 @@ static aafConfig_t getGyroAafConfig(const mpuSensor_e gyroModel, const aafConfig
             return (aafConfig_t){ 8, 64, 9 };
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
         case GYRO_HARDWARE_LPF_EXPERIMENTAL:
-            return aafLUT42688[AAF_CONFIG_1962HZ];
+            // Experimental: match NORMAL AAF (213 Hz) per request
+            return (aafConfig_t){ 5, 25, 10 };
 #endif
         default:
             return aafLUT42688[AAF_CONFIG_258HZ];

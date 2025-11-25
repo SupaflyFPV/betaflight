@@ -692,7 +692,7 @@ void icm40609GyroInit(gyroDev_t *gyro)
         break;
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
     case GYRO_HARDWARE_LPF_EXPERIMENTAL:
-        gyroHWLpf = 1962;
+        gyroHWLpf = 213;
         break;
 #endif
         default:
