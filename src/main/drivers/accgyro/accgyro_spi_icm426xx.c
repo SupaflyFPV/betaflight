@@ -571,11 +571,11 @@ static aafConfig_t getGyroAafConfig(const mpuSensor_e gyroModel, const aafConfig
         case GYRO_HARDWARE_LPF_NORMAL:
             return aafLUT42688[AAF_CONFIG_258HZ];
         case GYRO_HARDWARE_LPF_OPTION_1:
-            // Option 1: 303 Hz (DELT=7, DELTSQR=49, BITSHIFT=9)
-            return (aafConfig_t){ 7, 49, 9 };
-        case GYRO_HARDWARE_LPF_OPTION_2:
-            // Option 2: 348 Hz (DELT=8, DELTSQR=64, BITSHIFT=9)
+            // Option 1: 348 Hz (DELT=8, DELTSQR=64, BITSHIFT=9)
             return (aafConfig_t){ 8, 64, 9 };
+        case GYRO_HARDWARE_LPF_OPTION_2:
+            // Option 2: 2900 Hz (DELT=50, DELTSQR=2496, BITSHIFT=4)
+            return (aafConfig_t){ 50, 2496, 4 };
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
         case GYRO_HARDWARE_LPF_EXPERIMENTAL:
             // Experimental: match NORMAL AAF (213 Hz) per request
