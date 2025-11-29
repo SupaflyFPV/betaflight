@@ -1801,6 +1801,10 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_SIMPLIFIED_PITCH_PI_GAIN, "%d",        currentPidProfile->simplified_pitch_pi_gain);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_SIMPLIFIED_DTERM_FILTER, "%d",         currentPidProfile->simplified_dterm_filter);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_SIMPLIFIED_DTERM_FILTER_MULTIPLIER, "%d", currentPidProfile->simplified_dterm_filter_multiplier);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_CHEBY2_FILTER, "%d", currentPidProfile->dterm_cheby2_filter);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_SG_FILTER, "%d", currentPidProfile->dterm_sg_filter);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_SG_WINDOW, "%d", currentPidProfile->dterm_sg_window);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_BIQUAD_RESPONSE, "%d", currentPidProfile->biquad_response);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_SIMPLIFIED_GYRO_FILTER, "%d",             gyroConfig()->simplified_gyro_filter);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_SIMPLIFIED_GYRO_FILTER_MULTIPLIER, "%d",  gyroConfig()->simplified_gyro_filter_multiplier);
 #endif
