@@ -1431,3 +1431,26 @@ bool isLaunchControlActive(void)
     return false;
 #endif
 }
+
+FAST_DATA_ZERO_INIT bool gyroPipelineIrqEnabled = false;
+
+void setGyroPipelineIrqEnabled(bool enabled)
+{
+    gyroPipelineIrqEnabled = enabled;
+}
+
+FAST_CODE void taskGyroPipeline(timeUs_t currentTimeUs)
+{
+    taskGyroSample(currentTimeUs);
+    if (gyroFilterReady()) {
+        taskFiltering(currentTimeUs);
+    }
+    if (pidLoopReady()) {
+        taskMainPidLoop(currentTimeUs);
+    }
+}
+
+FAST_CODE void taskGyroPipelineISR(void)
+{
+    taskGyroPipeline(microsISR());
+}

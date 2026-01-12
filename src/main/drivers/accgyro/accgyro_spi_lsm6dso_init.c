@@ -34,6 +34,7 @@
 #include "drivers/nvic.h"
 #include "drivers/sensor.h"
 #include "drivers/time.h"
+#include "fc/core.h"
 
 // 10 MHz max SPI frequency
 #define LSM6DSO_MAX_SPI_CLK_HZ 10000000
@@ -162,6 +163,7 @@ static void lsm6dsoIntExtiInit(gyroDev_t *gyro)
     EXTIHandlerInit(&gyro->exti, lsm6dsoExtiHandler);
     EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(mpuIntIO);
+    setGyroPipelineIrqEnabled(true);
 }
 
 static void lsm6dsoSpiGyroInit(gyroDev_t *gyro)

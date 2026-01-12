@@ -51,6 +51,7 @@
 #include "drivers/sensor.h"
 #include "drivers/system.h"
 #include "drivers/time.h"
+#include "fc/core.h"
 
 #include "sensors/gyro.h"
 
@@ -279,6 +280,10 @@ static busStatus_e bmi160Intcallback(uintptr_t arg)
 
     gyro->dataReady = true;
 
+    if (gyroPipelineIrqEnabled) {
+        taskGyroPipelineISR();
+    }
+
     return BUS_READY;
 }
 #endif
@@ -296,6 +301,11 @@ static void bmi160ExtiHandler(extiCallbackRec_t *cb)
 
     if (gyro->gyroModeSPI == GYRO_EXTI_INT_DMA) {
         spiSequence(dev, gyro->segments);
+    } else {
+        gyro->dataReady = true;
+        if (gyroPipelineIrqEnabled) {
+            taskGyroPipelineISR();
+        }
     }
 
     gyro->detectedEXTI++;
@@ -314,6 +324,7 @@ static void bmi160IntExtiInit(gyroDev_t *gyro)
     EXTIHandlerInit(&gyro->exti, bmi160ExtiHandler);
     EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(mpuIntIO);
+    setGyroPipelineIrqEnabled(true);
 }
 
 static bool bmi160AccRead(accDev_t *acc)

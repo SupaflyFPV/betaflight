@@ -59,6 +59,7 @@
 #include "drivers/accgyro/accgyro_spi_lsm6dsv16x.h"
 #include "drivers/accgyro/accgyro_mpu.h"
 #include "drivers/accgyro/accgyro_spi_icm40609.h"
+#include "fc/core.h"
 
 #include "pg/pg.h"
 #include "pg/gyrodev.h"
@@ -131,6 +132,10 @@ busStatus_e mpuIntCallback(uintptr_t arg)
 
     gyro->dataReady = true;
 
+    if (gyroPipelineIrqEnabled) {
+        taskGyroPipelineISR();
+    }
+
     return BUS_READY;
 }
 
@@ -150,6 +155,11 @@ static void mpuIntExtiHandler(extiCallbackRec_t *cb)
 
     if (gyro->gyroModeSPI == GYRO_EXTI_INT_DMA) {
         spiSequence(&gyro->dev, gyro->segments);
+    } else {
+        gyro->dataReady = true;
+        if (gyroPipelineIrqEnabled) {
+            taskGyroPipelineISR();
+        }
     }
 
     gyro->detectedEXTI++;
@@ -181,6 +191,7 @@ static void mpuIntExtiInit(gyroDev_t *gyro)
     EXTIHandlerInit(&gyro->exti, mpuIntExtiHandler);
     EXTIConfig(mpuIntIO, &gyro->exti, NVIC_PRIO_MPU_INT_EXTI, IOCFG_IN_FLOATING, BETAFLIGHT_EXTI_TRIGGER_RISING);
     EXTIEnable(mpuIntIO);
+    setGyroPipelineIrqEnabled(true);
 }
 
 bool mpuAccRead(accDev_t *acc)
