@@ -1403,6 +1403,13 @@ FAST_CODE void taskMainPidLoop(timeUs_t currentTimeUs)
     DEBUG_SET(DEBUG_CYCLETIME, 1, getAverageSystemLoadPercent());
 }
 
+FAST_CODE void taskGyroPipeline(timeUs_t currentTimeUs)
+{
+    gyroUpdate();
+    gyroFiltering(currentTimeUs);
+    taskMainPidLoop(currentTimeUs);
+}
+
 bool isCrashFlipModeActive(void)
 {
     return crashFlipModeActive;

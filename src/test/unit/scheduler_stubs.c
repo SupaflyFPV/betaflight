@@ -37,6 +37,7 @@ PG_RESET_TEMPLATE(schedulerConfig_t, schedulerConfig,
 void taskGyroSample(timeUs_t);
 void taskFiltering(timeUs_t);
 void taskMainPidLoop(timeUs_t);
+void taskGyroPipeline(timeUs_t);
 void taskUpdateAccelerometer(timeUs_t);
 void taskHandleSerial(timeUs_t);
 void taskUpdateBatteryVoltage(timeUs_t);
@@ -56,20 +57,8 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     },
     [TASK_GYRO] = {
         .taskName = "GYRO",
-        .taskFunc = taskGyroSample,
+        .taskFunc = taskGyroPipeline,
         .desiredPeriodUs = TASK_PERIOD_HZ(TEST_GYRO_SAMPLE_HZ),
-        .staticPriority = TASK_PRIORITY_REALTIME,
-    },
-    [TASK_FILTER] = {
-        .taskName = "FILTER",
-        .taskFunc = taskFiltering,
-        .desiredPeriodUs = TASK_PERIOD_HZ(4000),
-        .staticPriority = TASK_PRIORITY_REALTIME,
-    },
-    [TASK_PID] = {
-        .taskName = "PID",
-        .taskFunc = taskMainPidLoop,
-        .desiredPeriodUs = TASK_PERIOD_HZ(4000),
         .staticPriority = TASK_PRIORITY_REALTIME,
     },
     [TASK_ACCEL] = {

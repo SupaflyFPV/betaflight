@@ -369,9 +369,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_STACK_CHECK] = DEFINE_TASK("STACKCHECK", NULL, NULL, taskStackCheck, TASK_PERIOD_HZ(10), TASK_PRIORITY_LOWEST),
 #endif
 
-    [TASK_GYRO] = DEFINE_TASK("GYRO", NULL, NULL, taskGyroSample, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
-    [TASK_FILTER] = DEFINE_TASK("FILTER", NULL, NULL, taskFiltering, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
-    [TASK_PID] = DEFINE_TASK("PID", NULL, NULL, taskMainPidLoop, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
+    [TASK_GYRO] = DEFINE_TASK("GYRO", NULL, NULL, taskGyroPipeline, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
 
 #ifdef USE_ACC
     [TASK_ACCEL] = DEFINE_TASK("ACC", NULL, NULL, taskUpdateAccelerometer, TASK_PERIOD_HZ(1000), TASK_PRIORITY_MEDIUM),
@@ -523,11 +521,7 @@ void tasksInit(void)
 
     if (sensors(SENSOR_GYRO)) {
         rescheduleTask(TASK_GYRO, gyro.sampleLooptime);
-        rescheduleTask(TASK_FILTER, gyro.targetLooptime);
-        rescheduleTask(TASK_PID, gyro.targetLooptime);
         setTaskEnabled(TASK_GYRO, true);
-        setTaskEnabled(TASK_FILTER, true);
-        setTaskEnabled(TASK_PID, true);
         schedulerEnableGyro();
     }
 

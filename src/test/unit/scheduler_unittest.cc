@@ -81,6 +81,7 @@ extern "C" {
     void taskGyroSample(timeUs_t) { simulatedTime += TEST_GYRO_SAMPLE_TIME; taskGyroRan = true; }
     void taskFiltering(timeUs_t) { simulatedTime += TEST_FILTERING_TIME; taskFilterRan = true; }
     void taskMainPidLoop(timeUs_t) { simulatedTime += TEST_PID_LOOP_TIME; taskPidRan = true; }
+    void taskGyroPipeline(timeUs_t t) { taskGyroSample(t); taskFiltering(t); taskMainPidLoop(t); }
     void taskUpdateAccelerometer(timeUs_t) { simulatedTime += TEST_UPDATE_ACCEL_TIME; }
     void taskHandleSerial(timeUs_t) { simulatedTime += TEST_HANDLE_SERIAL_TIME; }
     void taskUpdateBatteryVoltage(timeUs_t) { simulatedTime += TEST_UPDATE_BATTERY_TIME; }
@@ -474,13 +475,11 @@ TEST(SchedulerUnittest, TestGyroTask)
     // enable the gyro
     schedulerEnableGyro();
 
-    // disable all tasks except TASK_GYRO, TASK_FILTER and TASK_PID
+    // disable all tasks except TASK_GYRO
     for (int taskId = 0; taskId < TASK_COUNT; ++taskId) {
         setTaskEnabled(static_cast<taskId_e>(taskId), false);
     }
     setTaskEnabled(TASK_GYRO, true);
-    setTaskEnabled(TASK_FILTER, true);
-    setTaskEnabled(TASK_PID, true);
 
     // First set it up so TASK_GYRO just ran
     simulatedTime = startTime;
@@ -492,7 +491,7 @@ TEST(SchedulerUnittest, TestGyroTask)
     scheduler();
     // no tasks should have run
     EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
-    // also the gyro, filter and PID task indicators should be false
+    // also pipeline functions should not have run
     EXPECT_FALSE(taskGyroRan);
     EXPECT_FALSE(taskFilterRan);
     EXPECT_FALSE(taskPidRan);
@@ -508,45 +507,9 @@ TEST(SchedulerUnittest, TestGyroTask)
     // run the scheduler
     scheduler();
 
-    // the gyro task indicator should be true and the TASK_FILTER and TASK_PID indicators should be false
-    EXPECT_TRUE(taskGyroRan);
-    EXPECT_FALSE(taskFilterRan);
-    EXPECT_FALSE(taskPidRan);
-    // expect that no other tasks other than TASK_GYRO should have run
-    EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
-
-    /* Test the gyro task running and triggering the filtering task */
-    // set the TASK_GYRO last executed time to be one period earlier
-    simulatedTime = startTime;
-    tasks[TASK_GYRO].lastExecutedAtUs = simulatedTime - TASK_PERIOD_HZ(TEST_GYRO_SAMPLE_HZ);
-
-    // reset the flags
-    resetGyroTaskTestFlags();
-    taskFilterReady = true;
-
-    // run the scheduler
-    scheduler();
-    // the gyro and filter task indicators should be true and TASK_PID indicator should be false
+    // pipeline should have run
     EXPECT_TRUE(taskGyroRan);
     EXPECT_TRUE(taskFilterRan);
-    EXPECT_FALSE(taskPidRan);
-    // expect that no other tasks other tasks should have run
-    EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
-
-    /* Test the gyro task running and triggering the PID task */
-    // set the TASK_GYRO last executed time to be one period earlier
-    simulatedTime = startTime;
-    tasks[TASK_GYRO].lastExecutedAtUs = simulatedTime - TASK_PERIOD_HZ(TEST_GYRO_SAMPLE_HZ);
-
-    // reset the flags
-    resetGyroTaskTestFlags();
-    taskPidReady = true;
-
-    // run the scheduler
-    scheduler();
-    // the gyro and PID task indicators should be true and TASK_FILTER indicator should be false
-    EXPECT_TRUE(taskGyroRan);
-    EXPECT_FALSE(taskFilterRan);
     EXPECT_TRUE(taskPidRan);
     // expect that no other tasks other tasks should have run
     EXPECT_EQ(static_cast<task_t*>(0), unittest_scheduler_selectedTask);
