@@ -194,6 +194,7 @@ typedef struct pidProfile_s {
     uint16_t dterm_lpf1_static_hz;          // Static Dterm lowpass 1 filter cutoff value in hz
     uint16_t dterm_notch_hz;                // Biquad dterm notch hz
     uint16_t dterm_notch_cutoff;            // Biquad dterm notch low cutoff
+    uint8_t dterm_notch_weight;             // Weight for static Dterm notch filter
 
     pidf_t  pid[PID_ITEM_COUNT];
 
