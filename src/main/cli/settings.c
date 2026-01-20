@@ -165,7 +165,9 @@ const char * const lookupTableAccHardware[] = {
     "ICM45686",
     "ICM40609D",
     "IIM42652",
-    "VIRTUAL"
+    "VIRTUAL",
+    "LSM6DSV320X",
+    "LSM6DSK320X" // Keep ordering aligned with accelerationSensor_e indices.
 };
 
 // sync with gyroHardware_e
@@ -193,7 +195,15 @@ const char * const lookupTableGyroHardware[] = {
     "ICM45686",
     "ICM40609D",
     "IIM42652",
-    "VIRTUAL"
+    "VIRTUAL",
+    "LSM6DSV320X",
+    "LSM6DSK320X" // Keep ordering aligned with gyroHardware_e indices.
+};
+
+// LSM6DSV family mode selection.
+const char * const lookupTableLsm6dsvMode[] = {
+    "HP",
+    "HAODR"
 };
 
 #if defined(USE_SENSOR_NAMES) || defined(USE_BARO)
@@ -641,6 +651,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableRxSpi),
 #endif
     LOOKUP_TABLE_ENTRY(lookupTableGyroHardwareLpf),
+    LOOKUP_TABLE_ENTRY(lookupTableLsm6dsvMode),
     LOOKUP_TABLE_ENTRY(lookupTableAccHardware),
 #ifdef USE_BARO
     LOOKUP_TABLE_ENTRY(lookupTableBaroHardware),
@@ -748,6 +759,7 @@ const lookupTableEntry_t lookupTables[] = {
 const clivalue_t valueTable[] = {
 // PG_GYRO_CONFIG
     { PARAM_NAME_GYRO_HARDWARE_LPF, VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_GYRO_HARDWARE_LPF }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_hardware_lpf) },
+    { "lsm6dsv_mode",              VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_LSM6DSV_MODE }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, lsm6dsv_mode) }, // LSM6DSV HP/HAODR selector.
 
 #if defined(USE_GYRO_SPI_ICM20649)
     { "gyro_high_range",            VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_GYRO_CONFIG, offsetof(gyroConfig_t, gyro_high_fsr) },

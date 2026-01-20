@@ -66,7 +66,9 @@ typedef enum {
     GYRO_ICM45686,
     GYRO_ICM40609D,
     GYRO_IIM42652,
-    GYRO_VIRTUAL
+    GYRO_VIRTUAL,
+    GYRO_LSM6DSV320X, // Keep at end to preserve enum indices for existing configs.
+    GYRO_LSM6DSK320X // Keep at end to preserve enum indices for existing configs.
 } gyroHardware_e;
 
 typedef enum {

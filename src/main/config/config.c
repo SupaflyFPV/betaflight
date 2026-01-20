@@ -401,6 +401,10 @@ static void validateAndFixConfig(void)
     if (gyroConfig()->gyro_hardware_lpf >= GYRO_HARDWARE_LPF_COUNT) {
         gyroConfigMutable()->gyro_hardware_lpf = GYRO_HARDWARE_LPF_NORMAL;
     }
+    // Guard against older configs carrying out-of-range values.
+    if (gyroConfig()->lsm6dsv_mode > LSM6DSV_MODE_HAODR) {
+        gyroConfigMutable()->lsm6dsv_mode = LSM6DSV_MODE_HP;
+    }
 
     // clear features that are not supported.
     featureDisableImmediate(~featuresSupportedByBuild);

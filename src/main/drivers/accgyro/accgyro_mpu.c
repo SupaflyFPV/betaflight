@@ -56,7 +56,7 @@
 #include "drivers/accgyro/accgyro_spi_mpu6500.h"
 #include "drivers/accgyro/accgyro_spi_mpu9250.h"
 #include "drivers/accgyro/accgyro_spi_l3gd20.h"
-#include "drivers/accgyro/accgyro_spi_lsm6dsv16x.h"
+#include "drivers/accgyro/accgyro_spi_lsm6dsv.h"
 #include "drivers/accgyro/accgyro_mpu.h"
 #include "drivers/accgyro/accgyro_spi_icm40609.h"
 
@@ -344,7 +344,7 @@ typedef uint8_t (*gyroSpiDetectFn_t)(const extDevice_t *dev);
 
 static gyroSpiDetectFn_t gyroSpiDetectFnTable[] = {
 #ifdef USE_ACCGYRO_LSM6DSV16X
-    lsm6dsv16xSpiDetect,
+    lsm6dsvSpiDetect,
 #endif
 #ifdef USE_GYRO_SPI_ICM20689
     icm20689SpiDetect,  // icm20689SpiDetect detects ICM20602 and ICM20689
@@ -436,6 +436,7 @@ bool mpuDetect(gyroDev_t *gyro, const gyroDeviceConfig_t *config)
 {
     static busDevice_t bus;
     gyro->dev.bus = &bus;
+    gyro->mpuDetectionResult.variant = 0; // Clear per-sensor variant before detection.
 
     // MPU datasheet specifies 30ms.
     delay(35);

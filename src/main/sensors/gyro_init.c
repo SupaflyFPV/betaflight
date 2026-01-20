@@ -52,7 +52,7 @@
 
 #include "drivers/accgyro/accgyro_spi_l3gd20.h"
 #include "drivers/accgyro/accgyro_spi_lsm6dso.h"
-#include "drivers/accgyro/accgyro_spi_lsm6dsv16x.h"
+#include "drivers/accgyro/accgyro_spi_lsm6dsv.h"
 
 #include "drivers/accgyro/accgyro_spi_mpu6000.h"
 #include "drivers/accgyro/accgyro_spi_mpu6500.h"
@@ -311,6 +311,7 @@ void gyroInitSensor(gyroSensor_t *gyroSensor, const gyroDeviceConfig_t *config)
     case GYRO_MPU9250:
     case GYRO_LSM6DSO:
     case GYRO_LSM6DSV16X:
+    case GYRO_LSM6DSV320X:
     case GYRO_ICM42688P:
     case GYRO_IIM42652:
     case GYRO_IIM42653:
@@ -506,8 +507,16 @@ STATIC_UNIT_TESTED gyroHardware_e gyroDetect(gyroDev_t *dev)
 
 #ifdef USE_ACCGYRO_LSM6DSV16X
     case GYRO_LSM6DSV16X:
-        if (lsm6dsv16xSpiGyroDetect(dev)) {
+    case GYRO_LSM6DSV320X:
+    case GYRO_LSM6DSK320X:
+        if (lsm6dsvSpiGyroDetect(dev)) {
+            // Pick the proper sensor name based on the LSM6DSV variant.
             gyroHardware = GYRO_LSM6DSV16X;
+            if (dev->mpuDetectionResult.variant == LSM6DSV_VARIANT_320X) {
+                gyroHardware = GYRO_LSM6DSV320X;
+            } else if (dev->mpuDetectionResult.variant == LSM6DSV_VARIANT_DSK320X) {
+                gyroHardware = GYRO_LSM6DSK320X;
+            }
             break;
         }
         FALLTHROUGH;

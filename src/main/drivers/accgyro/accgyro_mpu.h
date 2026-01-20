@@ -50,6 +50,8 @@
 #define IIM42652_WHO_AM_I_CONST             (0x6F)
 #define IIM42653_WHO_AM_I_CONST             (0x56)
 #define LSM6DSV16X_WHO_AM_I_CONST           (0x70)
+#define LSM6DSV320X_WHO_AM_I_CONST          (0x73) // Distinguish DSV320X from DSV16X at probe time.
+#define LSM6DSK320X_WHO_AM_I_CONST          (0x75) // DSK320X uses a different ID but shares the register map.
 #define ICM40609_WHO_AM_I_CONST             (0x3B)
 
 // RA = Register Address
@@ -228,6 +230,7 @@ typedef enum {
 typedef struct mpuDetectionResult_s {
     mpuSensor_e sensor;
     mpu6050Resolution_e resolution;
+    uint8_t variant; // Sensor-specific variant identifier (family drivers).
 } mpuDetectionResult_t;
 
 struct gyroDev_s;

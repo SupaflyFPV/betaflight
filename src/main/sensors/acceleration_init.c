@@ -51,7 +51,7 @@
 #include "drivers/accgyro/accgyro_spi_icm40609.h"
 
 #include "drivers/accgyro/accgyro_spi_lsm6dso.h"
-#include "drivers/accgyro/accgyro_spi_lsm6dsv16x.h"
+#include "drivers/accgyro/accgyro_spi_lsm6dsv.h"
 
 #include "drivers/accgyro/accgyro_spi_mpu6000.h"
 #include "drivers/accgyro/accgyro_spi_mpu6500.h"
@@ -295,8 +295,16 @@ retry:
 
 #ifdef USE_ACCGYRO_LSM6DSV16X
     case ACC_LSM6DSV16X:
-        if (lsm6dsv16xSpiAccDetect(dev)) {
+    case ACC_LSM6DSV320X:
+    case ACC_LSM6DSK320X:
+        if (lsm6dsvSpiAccDetect(dev)) {
+            // Pick the proper sensor name based on the LSM6DSV variant.
             accHardware = ACC_LSM6DSV16X;
+            if (dev->mpuDetectionResult.variant == LSM6DSV_VARIANT_320X) {
+                accHardware = ACC_LSM6DSV320X;
+            } else if (dev->mpuDetectionResult.variant == LSM6DSV_VARIANT_DSK320X) {
+                accHardware = ACC_LSM6DSK320X;
+            }
             break;
         }
         FALLTHROUGH;

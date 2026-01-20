@@ -138,6 +138,12 @@ enum {
     DYN_LPF_PT3,
 };
 
+// LSM6DSV family runtime operating modes.
+typedef enum {
+    LSM6DSV_MODE_HP = 0,
+    LSM6DSV_MODE_HAODR
+} lsm6dsvMode_e;
+
 typedef enum {
     YAW_SPIN_RECOVERY_OFF,
     YAW_SPIN_RECOVERY_ON,
@@ -152,6 +158,7 @@ enum {
 typedef struct gyroConfig_s {
     uint8_t gyroMovementCalibrationThreshold; // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
     uint8_t gyro_hardware_lpf;                // gyro DLPF setting
+    uint8_t lsm6dsv_mode;                     // LSM6DSV HP vs HAODR mode.
     uint8_t gyro_high_fsr;
 
     uint16_t gyro_lpf1_static_hz;

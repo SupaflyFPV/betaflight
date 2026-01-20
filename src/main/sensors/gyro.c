@@ -95,7 +95,7 @@ STATIC_UNIT_TESTED gyroDev_t * const gyroDevPtr = &gyro.gyroSensor[0].gyroDev;
 #define GYRO_OVERFLOW_TRIGGER_THRESHOLD 31980  // 97.5% full scale (1950dps for 2000dps gyro)
 #define GYRO_OVERFLOW_RESET_THRESHOLD 30340    // 92.5% full scale (1850dps for 2000dps gyro)
 
-PG_REGISTER_WITH_RESET_FN(gyroConfig_t, gyroConfig, PG_GYRO_CONFIG, 9);
+PG_REGISTER_WITH_RESET_FN(gyroConfig_t, gyroConfig, PG_GYRO_CONFIG, 12);
 
 #ifndef DEFAULT_GYRO_ENABLED
 // enable the first gyro if none are enabled
@@ -107,6 +107,7 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->gyroCalibrationDuration = 125;        // 1.25 seconds
     gyroConfig->gyroMovementCalibrationThreshold = 48;
     gyroConfig->gyro_hardware_lpf = GYRO_HARDWARE_LPF_NORMAL;
+    gyroConfig->lsm6dsv_mode = LSM6DSV_MODE_HP; // Default to HP for conservative bring-up.
     gyroConfig->gyro_lpf1_type = FILTER_PT1;
     gyroConfig->gyro_lpf1_static_hz = GYRO_LPF1_DYN_MIN_HZ_DEFAULT;
         // NOTE: dynamic lpf is enabled by default so this setting is actually

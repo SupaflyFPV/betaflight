@@ -26,7 +26,7 @@
 
 #if defined(USE_ACCGYRO_LSM6DSV16X)
 
-#include "accgyro_spi_lsm6dsv16x.h"
+#include "accgyro_spi_lsm6dsv.h"
 
 #include "sensors/gyro.h"
 
@@ -37,7 +37,7 @@
  */
 
 // 10 MHz max SPI frequency
-#define LSM6DSV16X_MAX_SPI_CLK_HZ 10000000
+#define LSM6DSV_MAX_SPI_CLK_HZ 10000000
 
 // Need to see at least this many interrupts during initialisation to confirm EXTI connectivity
 #define GYRO_EXTI_DETECT_THRESHOLD 1000
@@ -45,6 +45,14 @@
 // Macros to encode/decode multi-bit values
 #define LSM6DSV_ENCODE_BITS(val, mask, shift)   ((val << shift) & mask)
 #define LSM6DSV_DECODE_BITS(val, mask, shift)   ((val & mask) >> shift)
+
+typedef struct {
+    uint8_t whoami;
+    bool has_haodr_cfg;
+    bool has_highg;
+    uint8_t haodr_cfg_reg;
+    const char *name;
+} lsm6dsvVariant_t;
 
 // Enable embedded functions register (R/W)
 #define LSM6DSV_FUNC_CFG_ACCESS             0x01
@@ -319,16 +327,15 @@
 #define LSM6DSV_CTRL6_LPF1_G_BW_MASK                    0x70 // See table 64
 #define LSM6DSV_CTRL6_LPF1_G_BW_SHIFT                   4
 
-// Gyro LPF1 + LPF2 bandwidth selection when ODR=7.68kHz
-// Note that these figures were advised by STmicro tech support and differ from the datasheet
-#define LSM6DSV_CTRL6_FS_G_BW_288HZ                     0
-#define LSM6DSV_CTRL6_FS_G_BW_215HZ                     1
-#define LSM6DSV_CTRL6_FS_G_BW_157HZ                     2
-#define LSM6DSV_CTRL6_FS_G_BW_455HZ                     3
-#define LSM6DSV_CTRL6_FS_G_BW_102HZ                     4
-#define LSM6DSV_CTRL6_FS_G_BW_58HZ                      5
-#define LSM6DSV_CTRL6_FS_G_BW_28_8HZ                    6
-#define LSM6DSV_CTRL6_FS_G_BW_14_4HZ                    7
+// Gyro LPF1 bandwidth ratios (CTRL6.LPF1_G_BW). LPF1 cutoff is derived from ODR.
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_2                  0
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_4                  1
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_10                 2
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_20                 3
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_45                 4
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_100                5
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_200                6
+#define LSM6DSV_CTRL6_LPF1_G_ODR_DIV_400                7
 
 #define LSM6DSV_CTRL6_FS_G_MASK                         0x0f
 #define LSM6DSV_CTRL6_FS_G_SHIFT                        0
@@ -337,7 +344,7 @@
 #define LSM6DSV_CTRL6_FS_G_500DPS                       0x02
 #define LSM6DSV_CTRL6_FS_G_1000DPS                      0x03
 #define LSM6DSV_CTRL6_FS_G_2000DPS                      0x04
-#define LSM6DSV_CTRL6_FS_G_4000DPS                      0xc0
+#define LSM6DSV_CTRL6_FS_G_4000DPS                      0x05
 
 // Control register 7 (R/W)
 #define LSM6DSV_CTRL7                       0x16
@@ -702,6 +709,31 @@
 #define LSM6DSV_HAODR_MODE1                                 1
 #define LSM6DSV_HAODR_MODE2                                 2
 
+// Family descriptor table keyed by WHO_AM_I.
+static const lsm6dsvVariant_t lsm6dsvVariants[LSM6DSV_VARIANT_COUNT] = {
+    [LSM6DSV_VARIANT_16X] = {
+        .whoami = LSM6DSV16X_WHO_AM_I_CONST,
+        .has_haodr_cfg = true,
+        .has_highg = false,
+        .haodr_cfg_reg = LSM6DSV_HAODR_CFG,
+        .name = "LSM6DSV16X"
+    },
+    [LSM6DSV_VARIANT_320X] = {
+        .whoami = LSM6DSV320X_WHO_AM_I_CONST,
+        .has_haodr_cfg = true,
+        .has_highg = true,
+        .haodr_cfg_reg = LSM6DSV_HAODR_CFG,
+        .name = "LSM6DSV320X"
+    },
+    [LSM6DSV_VARIANT_DSK320X] = {
+        .whoami = LSM6DSK320X_WHO_AM_I_CONST,
+        .has_haodr_cfg = true,
+        .has_highg = true,
+        .haodr_cfg_reg = LSM6DSV_HAODR_CFG,
+        .name = "LSM6DSK320X"
+    },
+};
+
 // Embedded functions configuration register (R/W)
 #define LSM6DSV_EMB_FUNC_CFG                0x63
 #define LSM6DSV_EMB_FUNC_CFG_XL_DUALC_BATCH_FROM_IF         0x80
@@ -845,24 +877,75 @@
 #define LSM6DSV_FIFO_DATA_OUT_Z_L           0x7D
 #define LSM6DSV_FIFO_DATA_OUT_Z_H           0x7E
 
-uint8_t lsm6dsv16xSpiDetect(const extDevice_t *dev)
+static const lsm6dsvVariant_t *lsm6dsvDetectVariant(const extDevice_t *dev, uint8_t *variantId)
 {
     const uint8_t whoAmI = spiReadRegMsk(dev, LSM6DSV_WHO_AM_I);
 
-    if (whoAmI != LSM6DSV16X_WHO_AM_I_CONST) {
+    for (uint8_t i = 0; i < LSM6DSV_VARIANT_COUNT; i++) {
+        if (whoAmI == lsm6dsvVariants[i].whoami) {
+            if (variantId) {
+                *variantId = i;
+            }
+            return &lsm6dsvVariants[i];
+        }
+    }
+
+    return NULL;
+}
+
+static const lsm6dsvVariant_t *lsm6dsvGetVariant(const gyroDev_t *gyro)
+{
+    const uint8_t variantId = gyro->mpuDetectionResult.variant;
+
+    if (variantId >= LSM6DSV_VARIANT_COUNT) {
+        return &lsm6dsvVariants[LSM6DSV_VARIANT_16X];
+    }
+
+    return &lsm6dsvVariants[variantId];
+}
+
+static lsm6dsvMode_e lsm6dsvSelectMode(const gyroDev_t *gyro, const lsm6dsvVariant_t *variant)
+{
+    const lsm6dsvMode_e requestedMode = gyroConfig()->lsm6dsv_mode;
+
+    UNUSED(gyro);
+
+    if (requestedMode == LSM6DSV_MODE_HAODR && variant->has_haodr_cfg) {
+        return LSM6DSV_MODE_HAODR;
+    }
+
+    return LSM6DSV_MODE_HP;
+}
+
+static void lsm6dsvWriteCtrl1Ctrl2(const extDevice_t *dev, uint8_t opModeXl, uint8_t odrXl, uint8_t opModeG, uint8_t odrG)
+{
+    // CTRL1/CTRL2 are atomic: set OP_MODE and ODR together to avoid clearing fields.
+    const uint8_t ctrl1 = LSM6DSV_ENCODE_BITS(opModeXl, LSM6DSV_CTRL1_OP_MODE_XL_MASK, LSM6DSV_CTRL1_OP_MODE_XL_SHIFT) |
+        LSM6DSV_ENCODE_BITS(odrXl, LSM6DSV_CTRL1_ODR_XL_MASK, LSM6DSV_CTRL1_ODR_XL_SHIFT);
+    const uint8_t ctrl2 = LSM6DSV_ENCODE_BITS(opModeG, LSM6DSV_CTRL2_OP_MODE_G_MASK, LSM6DSV_CTRL2_OP_MODE_G_SHIFT) |
+        LSM6DSV_ENCODE_BITS(odrG, LSM6DSV_CTRL2_ODR_G_MASK, LSM6DSV_CTRL2_ODR_G_SHIFT);
+
+    spiWriteReg(dev, LSM6DSV_CTRL1, ctrl1);
+    spiWriteReg(dev, LSM6DSV_CTRL2, ctrl2);
+}
+
+uint8_t lsm6dsvSpiDetect(const extDevice_t *dev)
+{
+    if (!lsm6dsvDetectVariant(dev, NULL)) {
         return MPU_NONE;
     }
 
+    // Use existing LSM6DSV SPI enum; variant is resolved later.
     return LSM6DSV16X_SPI;
 }
 
-static void lsm6dsv16xAccInit(accDev_t *acc)
+static void lsm6dsvAccInit(accDev_t *acc)
 {
     // ±16G mode
     acc->acc_1G = 512 * 4;
 }
 
-static bool lsm6dsv16xAccReadSPI(accDev_t *acc)
+static bool lsm6dsvAccReadSPI(accDev_t *acc)
 {
     switch (acc->gyro->gyroModeSPI) {
     case GYRO_EXTI_INT:
@@ -912,32 +995,41 @@ static bool lsm6dsv16xAccReadSPI(accDev_t *acc)
     return true;
 }
 
-bool lsm6dsv16xSpiAccDetect(accDev_t *acc)
+bool lsm6dsvSpiAccDetect(accDev_t *acc)
 {
     if (acc->mpuDetectionResult.sensor != LSM6DSV16X_SPI) {
         return false;
     }
 
-    acc->initFn = lsm6dsv16xAccInit;
-    acc->readFn = lsm6dsv16xAccReadSPI;
+    acc->initFn = lsm6dsvAccInit;
+    acc->readFn = lsm6dsvAccReadSPI;
 
     return true;
 }
 
-static void lsm6dsv16xGyroInit(gyroDev_t *gyro)
+static void lsm6dsvGyroInit(gyroDev_t *gyro)
 {
     const extDevice_t *dev = &gyro->dev;
-    // Set default LPF1 filter bandwidth to be as close as possible to MPU6000's 250Hz cutoff
-    uint8_t lsm6dsv16xLPF1BandwidthOptions[GYRO_HARDWARE_LPF_COUNT] = {
-            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_FS_G_BW_288HZ,
-            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_FS_G_BW_157HZ,
-            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_FS_G_BW_215HZ,
+    const lsm6dsvVariant_t *variant = lsm6dsvGetVariant(gyro);
+    const lsm6dsvMode_e mode = lsm6dsvSelectMode(gyro, variant);
+    const bool useHaodr = (mode == LSM6DSV_MODE_HAODR);
+    const uint8_t opModeXl = useHaodr ? LSM6DSV_CTRL1_OP_MODE_XL_HIGH_ACCURACY : LSM6DSV_CTRL1_OP_MODE_XL_HIGH_PERF;
+    const uint8_t opModeG = useHaodr ? LSM6DSV_CTRL2_OP_MODE_G_HIGH_ACCURACY : LSM6DSV_CTRL2_OP_MODE_G_HIGH_PERF;
+    const uint8_t odrXl = useHaodr ? LSM6DSV_CTRL1_ODR_XL_1000HZ : LSM6DSV_CTRL1_ODR_XL_960HZ;
+    const uint8_t odrG = useHaodr ? LSM6DSV_CTRL2_ODR_G_8000HZ : LSM6DSV_CTRL2_ODR_G_7680HZ;
+
+    // Map hardware LPF options to LPF1 ODR ratios for LSM6DSV-family parts.
+    uint8_t lsm6dsvLPF1BandwidthOptions[GYRO_HARDWARE_LPF_COUNT] = {
+            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_LPF1_G_ODR_DIV_20,
+            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_LPF1_G_ODR_DIV_10,
+            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_LPF1_G_ODR_DIV_4,
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
-            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_FS_G_BW_455HZ
+            // EXPERIMENTAL disables LPF1 (CTRL7), so the exact bandwidth value is ignored.
+            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_LPF1_G_ODR_DIV_4
 #endif
     };
 
-    spiSetClkDivisor(dev, spiCalculateDivider(LSM6DSV16X_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(dev, spiCalculateDivider(LSM6DSV_MAX_SPI_CLK_HZ));
 
     // Perform a software reset
     spiWriteReg(dev, LSM6DSV_CTRL3, LSM6DSV_CTRL3_SW_RESET);
@@ -948,23 +1040,19 @@ static void lsm6dsv16xGyroInit(gyroDev_t *gyro)
     // Autoincrement register address when doing block SPI reads and update continuously
     spiWriteReg(dev, LSM6DSV_CTRL3, LSM6DSV_CTRL3_IF_INC | LSM6DSV_CTRL3_BDU);      /*BDU bit need to be set*/
 
-    // Select high-accuracy ODR mode 1
-    spiWriteReg(dev, LSM6DSV_HAODR_CFG,
-                LSM6DSV_ENCODE_BITS(LSM6DSV_HAODR_MODE1,
-                                    LSM6DSV_HAODR_CFG_HAODR_SEL_MASK,
-                                    LSM6DSV_HAODR_CFG_HAODR_SEL_SHIFT));
+    // Ensure power-down before changing HAODR/OP_MODE selections.
+    lsm6dsvWriteCtrl1Ctrl2(dev,
+                           opModeXl, LSM6DSV_CTRL1_ODR_XL_POWERDOWN,
+                           opModeG, LSM6DSV_CTRL2_ODR_G_POWERDOWN);
 
-    // Enable the accelerometer in high accuracy
-    spiWriteReg(dev, LSM6DSV_CTRL1,
-                LSM6DSV_ENCODE_BITS(LSM6DSV_CTRL1_OP_MODE_XL_HIGH_ACCURACY,
-                                    LSM6DSV_CTRL1_OP_MODE_XL_MASK,
-                                    LSM6DSV_CTRL1_OP_MODE_XL_SHIFT));
-
-    // Enable the gyro in high accuracy
-    spiWriteReg(dev, LSM6DSV_CTRL2,
-                LSM6DSV_ENCODE_BITS(LSM6DSV_CTRL2_OP_MODE_G_HIGH_ACCURACY,
-                                    LSM6DSV_CTRL2_OP_MODE_G_MASK,
-                                    LSM6DSV_CTRL2_OP_MODE_G_SHIFT));
+    if (variant->has_haodr_cfg) {
+        const uint8_t haodrSel = useHaodr ? LSM6DSV_HAODR_MODE1 : LSM6DSV_HAODR_MODE0;
+        // HAODR selection must occur while powered down.
+        spiWriteReg(dev, variant->haodr_cfg_reg,
+                    LSM6DSV_ENCODE_BITS(haodrSel,
+                                        LSM6DSV_HAODR_CFG_HAODR_SEL_MASK,
+                                        LSM6DSV_HAODR_CFG_HAODR_SEL_SHIFT));
+    }
 
     // Enable 16G sensitivity
     spiWriteReg(dev, LSM6DSV_CTRL8,
@@ -972,30 +1060,27 @@ static void lsm6dsv16xGyroInit(gyroDev_t *gyro)
                                     LSM6DSV_CTRL8_FS_XL_MASK,
                                     LSM6DSV_CTRL8_FS_XL_SHIFT));
 
-    // Enable the accelerometer odr at 1kHz
-    spiWriteReg(dev, LSM6DSV_CTRL1,
-                LSM6DSV_ENCODE_BITS(LSM6DSV_CTRL1_ODR_XL_1000HZ,
-                                    LSM6DSV_CTRL1_ODR_XL_MASK,
-                                    LSM6DSV_CTRL1_ODR_XL_SHIFT));
-
-    // Enable the gyro odr at 8kHz
-    spiWriteReg(dev, LSM6DSV_CTRL2,
-                LSM6DSV_ENCODE_BITS(LSM6DSV_CTRL2_ODR_G_8000HZ,
-                                    LSM6DSV_CTRL2_ODR_G_MASK,
-                                    LSM6DSV_CTRL2_ODR_G_SHIFT));
-
     // Enable 2000 deg/s sensitivity and selected LPF1 filter setting
     // Set the LPF1 filter bandwidth
     spiWriteReg(dev, LSM6DSV_CTRL6,
-                LSM6DSV_ENCODE_BITS(lsm6dsv16xLPF1BandwidthOptions[gyroConfig()->gyro_hardware_lpf],
+                LSM6DSV_ENCODE_BITS(lsm6dsvLPF1BandwidthOptions[gyroConfig()->gyro_hardware_lpf],
                                     LSM6DSV_CTRL6_LPF1_G_BW_MASK,
                                     LSM6DSV_CTRL6_LPF1_G_BW_SHIFT) |
                 LSM6DSV_ENCODE_BITS(LSM6DSV_CTRL6_FS_G_2000DPS,
                                     LSM6DSV_CTRL6_FS_G_MASK,
                                     LSM6DSV_CTRL6_FS_G_SHIFT));
 
-    // Enable the gyro digital LPF1 filter
-    spiWriteReg(dev, LSM6DSV_CTRL7, LSM6DSV_CTRL7_LPF1_G_EN);
+    // Disable LPF1 only when EXPERIMENTAL is selected; otherwise enable LPF1.
+    bool enableLpf1 = true;
+#ifdef USE_GYRO_DLPF_EXPERIMENTAL
+    if (gyroConfig()->gyro_hardware_lpf == GYRO_HARDWARE_LPF_EXPERIMENTAL) {
+        enableLpf1 = false;
+    }
+#endif
+    spiWriteReg(dev, LSM6DSV_CTRL7, enableLpf1 ? LSM6DSV_CTRL7_LPF1_G_EN : 0);
+
+    // Apply final ODR and op mode selections (atomic CTRL1/CTRL2 writes)
+    lsm6dsvWriteCtrl1Ctrl2(dev, opModeXl, odrXl, opModeG, odrG);
 
     // Generate pulse on interrupt line, not requiring a read to clear
     spiWriteReg(dev, LSM6DSV_CTRL4, LSM6DSV_CTRL4_DRDY_PULSED);
@@ -1004,12 +1089,17 @@ static void lsm6dsv16xGyroInit(gyroDev_t *gyro)
     gyro->scale = 0.070f;
 
     // Enable the INT1 output to interrupt when new gyro data is ready
+#ifdef USE_LSM6DSV_INT2
+    // Optional routing to INT2 for targets wired that way.
+    spiWriteReg(dev, LSM6DSV_INT2_CTRL, LSM6DSV_INT2_CTRL_INT2_DRDY_G);
+#else
     spiWriteReg(dev, LSM6DSV_INT1_CTRL, LSM6DSV_INT1_CTRL_INT1_DRDY_G);
+#endif
 
     mpuGyroInit(gyro);
 }
 
-static bool lsm6dsv16xGyroReadSPI(gyroDev_t *gyro)
+static bool lsm6dsvGyroReadSPI(gyroDev_t *gyro)
 {
     int16_t *gyroData = (int16_t *)gyro->dev.rxBuf;
     switch (gyro->gyroModeSPI) {
@@ -1086,14 +1176,21 @@ static bool lsm6dsv16xGyroReadSPI(gyroDev_t *gyro)
     return true;
 }
 
-bool lsm6dsv16xSpiGyroDetect(gyroDev_t *gyro)
+bool lsm6dsvSpiGyroDetect(gyroDev_t *gyro)
 {
     if (gyro->mpuDetectionResult.sensor != LSM6DSV16X_SPI) {
         return false;
     }
 
-    gyro->initFn = lsm6dsv16xGyroInit;
-    gyro->readFn = lsm6dsv16xGyroReadSPI;
+    uint8_t variantId = 0;
+    if (!lsm6dsvDetectVariant(&gyro->dev, &variantId)) {
+        return false;
+    }
+
+    gyro->mpuDetectionResult.variant = variantId;
+
+    gyro->initFn = lsm6dsvGyroInit;
+    gyro->readFn = lsm6dsvGyroReadSPI;
 
     return true;
 }

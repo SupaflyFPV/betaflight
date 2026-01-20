@@ -27,7 +27,15 @@
 #include "drivers/accgyro/accgyro.h"
 #include "drivers/bus_spi.h"
 
+// LSM6DSV variant identifiers derived from WHO_AM_I.
+typedef enum {
+    LSM6DSV_VARIANT_16X = 0,
+    LSM6DSV_VARIANT_320X,
+    LSM6DSV_VARIANT_DSK320X,
+    LSM6DSV_VARIANT_COUNT
+} lsm6dsvVariantId_e;
+
 // Discovery functions
-uint8_t lsm6dsv16xSpiDetect(const extDevice_t *dev);
-bool lsm6dsv16xSpiAccDetect(accDev_t *acc);
-bool lsm6dsv16xSpiGyroDetect(gyroDev_t *gyro);
+uint8_t lsm6dsvSpiDetect(const extDevice_t *dev);
+bool lsm6dsvSpiAccDetect(accDev_t *acc);
+bool lsm6dsvSpiGyroDetect(gyroDev_t *gyro);

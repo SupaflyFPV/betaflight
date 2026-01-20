@@ -33,6 +33,7 @@
 #include "drivers/sensor.h"
 #include "drivers/accgyro/accgyro.h"
 #include "drivers/accgyro/gyro_sync.h"
+#include "sensors/gyro.h"
 
 bool gyroSyncCheckUpdate(gyroDev_t *gyro)
 {
@@ -83,6 +84,18 @@ uint16_t gyroSetSampleRate(gyroDev_t *gyro)
             accSampleRateHz = 833;
             break;
 #endif
+        case LSM6DSV16X_SPI:
+            // Align reported rates with selected LSM6DSV operating mode.
+            if (gyroConfig()->lsm6dsv_mode == LSM6DSV_MODE_HAODR) {
+                gyro->gyroRateKHz = GYRO_RATE_8_kHz;
+                gyroSampleRateHz = 8000;
+                accSampleRateHz = 1000;
+            } else {
+                gyro->gyroRateKHz = GYRO_RATE_8_kHz;
+                gyroSampleRateHz = 7680;
+                accSampleRateHz = 960;
+            }
+            break;
         case ICM_45686_SPI:
         case ICM_45605_SPI:
             gyro->gyroRateKHz = GYRO_RATE_6400_Hz;
