@@ -41,16 +41,18 @@ althold_unittest_SRC := \
 		$(USER_DIR)/flight/autopilot_multirotor.c \
 		$(USER_DIR)/common/maths.c \
 		$(USER_DIR)/common/vector.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/pg/rx.c
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/pg/rx.c
 
 althold_unittest_DEFINES := \
 		USE_ALTITUDE_HOLD= \
 
 arming_prevention_unittest_SRC := \
 		$(USER_DIR)/common/bitarray.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/common/vector.c \
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/common/vector.c \
 		$(USER_DIR)/fc/core.c \
 		$(USER_DIR)/fc/dispatch.c \
 		$(USER_DIR)/fc/rc_controls.c \
@@ -149,8 +151,9 @@ cms_unittest_SRC := \
 
 
 common_filter_unittest_SRC := \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/common/maths.c
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/common/maths.c
 
 
 encoding_unittest_SRC := \
@@ -170,9 +173,10 @@ flight_failsafe_unittest_DEFINES := \
 flight_imu_unittest_SRC := \
 		$(USER_DIR)/common/bitarray.c \
 		$(USER_DIR)/common/maths.c \
-		$(USER_DIR)/common/vector.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/config/feature.c \
+                 $(USER_DIR)/common/vector.c \
+                 $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                 $(USER_DIR)/config/feature.c \
 		$(USER_DIR)/fc/rc_modes.c \
 		$(USER_DIR)/flight/position.c \
 		$(USER_DIR)/flight/imu.c
@@ -218,8 +222,9 @@ osd_unittest_SRC := \
 		$(USER_DIR)/osd/osd.c \
 		$(USER_DIR)/osd/osd_elements.c \
 		$(USER_DIR)/osd/osd_warnings.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/common/maths.c \
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/common/maths.c \
 		$(USER_DIR)/common/printf.c \
 		$(USER_DIR)/common/time.c \
 		$(USER_DIR)/common/typeconversion.c \
@@ -329,8 +334,9 @@ sensor_gyro_unittest_SRC := \
 		$(USER_DIR)/sensors/gyro_init.c \
 		$(USER_DIR)/sensors/boardalignment.c \
 		$(USER_DIR)/common/crc.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/common/maths.c \
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/common/maths.c \
 		$(USER_DIR)/common/streambuf.c \
 		$(USER_DIR)/common/sensor_alignment.c \
 		$(USER_DIR)/common/vector.c \
@@ -409,8 +415,9 @@ rcdevice_unittest_SRC := \
 
 pid_unittest_SRC :=  \
 		$(USER_DIR)/common/crc.c \
-		$(USER_DIR)/common/filter.c \
-		$(USER_DIR)/common/maths.c \
+                $(USER_DIR)/common/filter.c \
+                $(USER_DIR)/pg/filter.c \
+                $(USER_DIR)/common/maths.c \
 		$(USER_DIR)/common/pwl.c \
 		$(USER_DIR)/common/streambuf.c \
 		$(USER_DIR)/drivers/accgyro/gyro_sync.c \

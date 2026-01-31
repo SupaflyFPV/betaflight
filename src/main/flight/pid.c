@@ -43,6 +43,7 @@
 #include "fc/core.h"
 #include "fc/rc.h"
 #include "fc/rc_controls.h"
+#include "rx/rx.h"
 #include "fc/runtime_config.h"
 
 #include "flight/autopilot.h"
@@ -234,6 +235,8 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .tpa_low_rate = 20,
         .tpa_low_breakpoint = 1050,
         .tpa_low_always = 0,
+        .sda_mode = SDA_MODE_D,
+        .sda_rate = 0,
         .ez_landing_threshold = 25,
         .ez_landing_limit = 15,
         .ez_landing_speed = 50,
@@ -283,6 +286,47 @@ static bool isTpaActive(tpaMode_e tpaMode, term_e term) {
     default:
         return false;
     }
+}
+
+#ifndef UNIT_TEST
+static bool isSdaActive(sdaMode_e sdaMode, term_e term) {
+    switch (sdaMode) {
+    case SDA_MODE_PD:
+        return term == TERM_P || term == TERM_D;
+    case SDA_MODE_D:
+    default:
+        return term == TERM_D;
+    }
+}
+#endif
+
+static float getSdaFactor(const pidProfile_t *pidProfile, int axis, term_e term) {
+#ifdef UNIT_TEST
+    UNUSED(pidProfile);
+    UNUSED(axis);
+    UNUSED(term);
+    return 1.0f;
+#else
+    const float rc = constrainf(rcData[axis], PWM_RANGE_MIN, PWM_RANGE_MAX);
+
+    if (!isSdaActive(pidProfile->sda_mode, term) || pidProfile->sda_rate == 0) {
+        if (term == TERM_P) {
+            DEBUG_SET(DEBUG_SDA, axis, lrintf(rc));
+            DEBUG_SET(DEBUG_SDA, axis + 3, 0);
+        }
+        return 1.0f;
+    }
+
+    const float deflection = fabsf(rc - PWM_RANGE_MIDDLE) / (float)(PWM_RANGE_MAX - PWM_RANGE_MIDDLE);
+    const float attenuation = pidRuntime.sdaMultiplier * deflection;
+
+    if (term == TERM_P) {
+        DEBUG_SET(DEBUG_SDA, axis, lrintf(rc));
+        DEBUG_SET(DEBUG_SDA, axis + 3, lrintf(attenuation * 1000.0f));
+    }
+
+    return 1.0f - attenuation;
+#endif
 }
 
 void pgResetFn_pidProfiles(pidProfile_t *pidProfiles)
@@ -1340,7 +1384,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         // --------low-level gyro-based PID based on 2DOF PID controller. ----------
 
         // -----calculate P component
-        pidData[axis].P = pidRuntime.pidCoefficient[axis].Kp * errorRate * getTpaFactor(pidProfile, axis, TERM_P);
+        pidData[axis].P = pidRuntime.pidCoefficient[axis].Kp * errorRate * getTpaFactor(pidProfile, axis, TERM_P) * getSdaFactor(pidProfile, axis, TERM_P);
         if (axis == FD_YAW) {
             pidData[axis].P = pidRuntime.ptermYawLowpassApplyFn((filter_t *) &pidRuntime.ptermYawLowpass, pidData[axis].P);
         }
@@ -1438,7 +1482,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             preTpaD *= dMaxMultiplier;
 #endif
 
-            pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D);
+            pidData[axis].D = preTpaD * getTpaFactor(pidProfile, axis, TERM_D) * getSdaFactor(pidProfile, axis, TERM_D);
 
             // Log the value of D pre application of TPA
             if (axis != FD_YAW) {
