@@ -138,15 +138,7 @@ static void mpuIntExtiHandler(extiCallbackRec_t *cb)
 {
     gyroDev_t *gyro = container_of(cb, gyroDev_t, exti);
 
-    // Ideally we'd use a timer to capture such information, but unfortunately the port used for EXTI interrupt does
-    // not have an associated timer
-    uint32_t nowCycles = getCycleCounter();
-    int32_t gyroLastPeriod = cmpTimeCycles(nowCycles, gyro->gyroLastEXTI);
-    // This detects the short (~79us) EXTI interval of an MPU6xxx gyro
-    if ((gyro->gyroShortPeriod == 0) || (gyroLastPeriod < gyro->gyroShortPeriod)) {
-        gyro->gyroSyncEXTI = gyro->gyroLastEXTI + gyro->gyroDmaMaxDuration;
-    }
-    gyro->gyroLastEXTI = nowCycles;
+    gyro->gyroLastEXTI = getCycleCounter();
 
     if (gyro->gyroModeSPI == GYRO_EXTI_INT_DMA) {
         spiSequence(&gyro->dev, gyro->segments);
@@ -222,22 +214,23 @@ bool mpuAccReadSPI(accDev_t *acc)
     case GYRO_EXTI_INT:
     case GYRO_EXTI_NO_INT:
     {
+        // consume data from previous transaction before queuing the next one
+        int16_t *accData = (int16_t *)acc->gyro->dev.rxBuf;
+        acc->ADCRaw[X] = __builtin_bswap16(accData[1]);
+        acc->ADCRaw[Y] = __builtin_bswap16(accData[2]);
+        acc->ADCRaw[Z] = __builtin_bswap16(accData[3]);
+
         acc->gyro->dev.txBuf[0] = acc->gyro->accDataReg | 0x80;
 
         busSegment_t segments[] = {
-                {.u.buffers = {NULL, NULL}, 7, true, NULL},
+                {.u.buffers = {NULL, NULL}, 7, true, mpuIntCallback},
                 {.u.link = {NULL, NULL}, 0, true, NULL},
         };
         segments[0].u.buffers.txData = acc->gyro->dev.txBuf;
         segments[0].u.buffers.rxData = &acc->gyro->dev.rxBuf[1];
 
         spiSequence(&acc->gyro->dev, &segments[0]);
-
-        // Wait for completion
-        spiWait(&acc->gyro->dev);
-
-        // Fall through
-        FALLTHROUGH;
+        break;
     }
 
     case GYRO_EXTI_INT_DMA:
@@ -300,23 +293,21 @@ bool mpuGyroReadSPI(gyroDev_t *gyro)
     case GYRO_EXTI_INT:
     case GYRO_EXTI_NO_INT:
     {
+        // read previously captured sample before kicking off the next SPI transfer
+        gyro->gyroADCRaw[X] = __builtin_bswap16(gyroData[1]);
+        gyro->gyroADCRaw[Y] = __builtin_bswap16(gyroData[2]);
+        gyro->gyroADCRaw[Z] = __builtin_bswap16(gyroData[3]);
+
         gyro->dev.txBuf[0] = gyro->gyroDataReg | 0x80;
 
         busSegment_t segments[] = {
-                {.u.buffers = {NULL, NULL}, 7, true, NULL},
+                {.u.buffers = {NULL, NULL}, 7, true, mpuIntCallback},
                 {.u.link = {NULL, NULL}, 0, true, NULL},
         };
         segments[0].u.buffers.txData = gyro->dev.txBuf;
         segments[0].u.buffers.rxData = &gyro->dev.rxBuf[1];
 
         spiSequence(&gyro->dev, &segments[0]);
-
-        // Wait for completion
-        spiWait(&gyro->dev);
-
-        gyro->gyroADCRaw[X] = __builtin_bswap16(gyroData[1]);
-        gyro->gyroADCRaw[Y] = __builtin_bswap16(gyroData[2]);
-        gyro->gyroADCRaw[Z] = __builtin_bswap16(gyroData[3]);
         break;
     }
 

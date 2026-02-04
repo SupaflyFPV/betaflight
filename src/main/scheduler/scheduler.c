@@ -546,6 +546,7 @@ FAST_CODE void scheduler(void)
             }
 #if !defined(UNIT_TEST)
             while (schedLoopRemainingCycles > 0) {
+                __WFI();
                 nowCycles = getCycleCounter();
                 schedLoopRemainingCycles = cmpTimeCycles(nextTargetCycles, nowCycles);
             }
