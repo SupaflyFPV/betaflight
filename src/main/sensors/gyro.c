@@ -136,6 +136,8 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->gyro_soft_notch_cutoff_1 = 0;
     gyroConfig->gyro_soft_notch_hz_2 = 0;
     gyroConfig->gyro_soft_notch_cutoff_2 = 0;
+    gyroConfig->gyro_soft_notch_weight_1 = 100;
+    gyroConfig->gyro_soft_notch_weight_2 = 100;
     gyroConfig->checkOverflow = GYRO_OVERFLOW_CHECK_ALL_AXES;
     gyroConfig->gyro_offset_yaw = 0;
     gyroConfig->yaw_spin_recovery = YAW_SPIN_RECOVERY_AUTO;
