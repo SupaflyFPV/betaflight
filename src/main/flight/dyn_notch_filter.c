@@ -68,17 +68,10 @@
 // For Bosch at 3200Hz gyro, max of 600, int(3200/1200) = 2, sdftSampleRateHz = 1600, range to 800hz.
 // For Bosch on XClass, better to set a max of 300, int(3200/600) = 5, sdftSampleRateHz = 640, range to 320Hz.
 
-// When sampleIndex reaches sampleCount, the averaged gyro value is put into the corresponding SDFT.
-// At 8k, with 600Hz max, sampleCount = 6, this happens every 6 * 0.125us, or every 0.75ms.
-// Hence to completely replace all 72 samples of the SDFT input buffer with clean new data takes 54ms.
-
-// The SDFT code is split into steps. It takes 4 PID loops to calculate the SDFT, track peaks and update the filters for one axis.
-// Since there are three axes, it takes 12 PID loops to completely update all axes.
-// At 8k, any one axis gets updated at 8000 / 12 or 666hz or every 1.5ms
-// In this time, 2 points in the SDFT buffer will have changed.
-// At 4k, it takes twice as long to update an axis, i.e. each axis updates only every 3ms.
-// Four points in the buffer will have changed in that time, and each point will be the average of three samples.
-// Hence output jitter at 4k is about four times worse than at 8k. At 2k output jitter is quite bad.
+// When sampleIndex reaches sampleCount, the averaged gyro value is put into the corresponding SDFT and
+// the analysis chain (windowing, peak detection and filter update) is executed in a single call.
+// At 8k with 600Hz max this happens every 0.75ms (sampleCount = 6).  The update rate therefore equals
+// looprateHz / sampleCount, e.g. 1333Hz at 8k.
 
 // Each SDFT output bin has width sdftSampleRateHz/72, ie 18.5Hz per bin at 1333Hz.
 // Usable bandwidth is half this, ie 666Hz if sdftSampleRateHz is 1333Hz, i.e. bin 1 is 18.5Hz, bin 2 is 37.0Hz etc.
@@ -188,7 +181,8 @@ void dynNotchInit(const dynNotchConfig_t *config, const timeUs_t targetLooptimeU
     sdftResolutionHz = sdftSampleRateHz / SDFT_SAMPLE_SIZE; // 18.5hz per bin at 8k and 600Hz maxHz
     sdftStartBin = MAX(1, lrintf(dynNotch.minHz / sdftResolutionHz)); // can't use bin 0 because it is DC.
     sdftEndBin = MIN(SDFT_BIN_COUNT - 1, lrintf(dynNotch.maxHz / sdftResolutionHz)); // can't use more than SDFT_BIN_COUNT bins.
-    pt1LooptimeS = DYN_NOTCH_CALC_TICKS / looprateHz;
+    // notch frequencies are updated once per averaged sample
+    pt1LooptimeS = sampleCount / looprateHz;
 
     for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
         sdftInit(&sdft[axis], sdftStartBin, sdftEndBin, sampleCount);
@@ -228,11 +222,12 @@ FAST_CODE void dynNotchUpdate(void)
             }
         }
 
-        // We need DYN_NOTCH_CALC_TICKS ticks to update all axes with newly sampled value
-        // recalculation of filters takes 4 calls per axis => each filter gets updated every DYN_NOTCH_CALC_TICKS calls
-        // at 8kHz PID loop rate this means 8kHz / 4 / 3 = 666Hz => update every 1.5ms
-        // at 4kHz PID loop rate this means 4kHz / 4 / 3 = 333Hz => update every 3ms
+        // process all axes once per averaged gyro sample
         state.tick = DYN_NOTCH_CALC_TICKS;
+        while (state.tick > 0) {
+            dynNotchProcess();
+            --state.tick;
+        }
     }
 
     // 2us @ F722
@@ -242,11 +237,6 @@ FAST_CODE void dynNotchUpdate(void)
     }
     sampleIndex++;
 
-    // Find frequency peaks and update filters
-    if (state.tick > 0) {
-        dynNotchProcess();
-        --state.tick;
-    }
 }
 
 // Find frequency peaks and update filters
