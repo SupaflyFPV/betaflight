@@ -320,12 +320,11 @@
 #define LSM6DSV_CTRL6_LPF1_G_BW_MASK                    0x70 // See table 64
 #define LSM6DSV_CTRL6_LPF1_G_BW_SHIFT                   4
 
-// Gyro LPF1 + LPF2 bandwidth selection when ODR=7.68kHz
-// Note that these figures were advised by STmicro tech support and differ from the datasheet
-#define LSM6DSV_CTRL6_FS_G_BW_288HZ                     0
-#define LSM6DSV_CTRL6_FS_G_BW_215HZ                     1
-#define LSM6DSV_CTRL6_FS_G_BW_157HZ                     2
-#define LSM6DSV_CTRL6_FS_G_BW_455HZ                     3
+// Combined gyro LPF1 + fixed LPF2 bandwidth when ODR=7.68kHz
+#define LSM6DSV_CTRL6_FS_G_BW_281HZ                     0
+#define LSM6DSV_CTRL6_FS_G_BW_213HZ                     1
+#define LSM6DSV_CTRL6_FS_G_BW_156HZ                     2
+#define LSM6DSV_CTRL6_FS_G_BW_407HZ                     3
 #define LSM6DSV_CTRL6_FS_G_BW_102HZ                     4
 #define LSM6DSV_CTRL6_FS_G_BW_58HZ                      5
 #define LSM6DSV_CTRL6_FS_G_BW_28_8HZ                    6
@@ -961,15 +960,19 @@ bool lsm6dsv16xSpiAccDetect(accDev_t *acc)
 static void lsm6dsk320xGyroInit(gyroDev_t *gyro)
 {
     const extDevice_t *dev = &gyro->dev;
-    // Set default LPF1 filter bandwidth to be as close as possible to MPU6000's 250Hz cutoff
+    // Map Betaflight hardware LPF options to the combined LPF1 + fixed LPF2 bandwidth.
     uint8_t lsm6dsk320xLPF1BandwidthOptions[GYRO_HARDWARE_LPF_COUNT] = {
-            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_FS_G_BW_288HZ,
-            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_FS_G_BW_157HZ,
-            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_FS_G_BW_215HZ,
+            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_FS_G_BW_281HZ,
+            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_FS_G_BW_213HZ,
+            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_FS_G_BW_407HZ,
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
-            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_FS_G_BW_455HZ
+            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_FS_G_BW_407HZ
 #endif
     };
+    bool lpf1Enabled = true;
+#ifdef USE_GYRO_DLPF_EXPERIMENTAL
+    lpf1Enabled = gyroConfig()->gyro_hardware_lpf != GYRO_HARDWARE_LPF_EXPERIMENTAL;
+#endif
 
     spiSetClkDivisor(dev, spiCalculateDivider(LSM6DSV16X_MAX_SPI_CLK_HZ));
 
@@ -1027,8 +1030,8 @@ static void lsm6dsk320xGyroInit(gyroDev_t *gyro)
                                     LSM6DSV_CTRL2_ODR_G_MASK,
                                     LSM6DSV_CTRL2_ODR_G_SHIFT));
 
-    // Enable the gyro digital LPF1 filter
-    spiWriteReg(dev, LSM6DSV_CTRL7, LSM6DSV_CTRL7_LPF1_G_EN);
+    // EXPERIMENTAL bypasses LPF1; the fixed 537Hz LPF2 remains active.
+    spiWriteReg(dev, LSM6DSV_CTRL7, lpf1Enabled ? LSM6DSV_CTRL7_LPF1_G_EN : 0);
 
     // Enable the acc digital LPF2 filter
     spiWriteReg(dev, LSM6DSV_CTRL9, LSM6DSV_CTRL9_LPF2_XL_EN);
@@ -1050,11 +1053,11 @@ static void lsm6dsv16xGyroInit(gyroDev_t *gyro)
     const extDevice_t *dev = &gyro->dev;
     // Set default LPF1 filter bandwidth to be as close as possible to MPU6000's 250Hz cutoff
     uint8_t lsm6dsv16xLPF1BandwidthOptions[GYRO_HARDWARE_LPF_COUNT] = {
-            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_FS_G_BW_288HZ,
-            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_FS_G_BW_157HZ,
-            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_FS_G_BW_215HZ,
+            [GYRO_HARDWARE_LPF_NORMAL] = LSM6DSV_CTRL6_FS_G_BW_281HZ,
+            [GYRO_HARDWARE_LPF_OPTION_1] = LSM6DSV_CTRL6_FS_G_BW_156HZ,
+            [GYRO_HARDWARE_LPF_OPTION_2] = LSM6DSV_CTRL6_FS_G_BW_213HZ,
 #ifdef USE_GYRO_DLPF_EXPERIMENTAL
-            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_FS_G_BW_455HZ
+            [GYRO_HARDWARE_LPF_EXPERIMENTAL] = LSM6DSV_CTRL6_FS_G_BW_407HZ
 #endif
     };
 
